@@ -100,7 +100,7 @@ const closeModal = () => {
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div class="space-y-1">
-                    <div class="flex items-center gap-2 text-xs font-semibold text-indigo-600">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-[#0D9488]">
                         <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                         <span>&bull;</span>
                         <span class="text-slate-400">Projects</span>
@@ -110,7 +110,7 @@ const closeModal = () => {
                     </h2>
                 </div>
                 <div class="flex items-center">
-                    <span class="px-3 py-1.5 text-xs font-bold uppercase rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200">
+                    <span class="px-3 py-1.5 text-xs font-bold uppercase rounded-xl border bg-[#F0FDFA] text-[#0D9488] border-teal-200">
                         Team: {{ project.team?.name || 'Unassigned' }}
                     </span>
                 </div>
@@ -129,7 +129,7 @@ const closeModal = () => {
                     <h3 class="font-bold text-slate-800 text-lg">Project Team members</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" v-if="project.team && project.team.members">
                         <div v-for="member in project.team.members" :key="member.id" class="border border-slate-100 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-50 transition">
-                            <div class="h-10 w-10 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                            <div class="h-10 w-10 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-sm">
                                 {{ member.user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() }}
                             </div>
                             <div class="min-w-0">
@@ -157,7 +157,19 @@ const closeModal = () => {
                         </div>
                         <div class="border-t border-slate-200/60 pt-3 flex justify-between" v-if="project.team?.project_manager">
                             <span class="text-slate-400 font-semibold uppercase tracking-wider">Manager:</span>
-                            <span class="font-bold text-indigo-600">{{ project.team.project_manager.user.name }}</span>
+                            <span class="font-bold text-[#0D9488]">{{ project.team.project_manager.user.name }}</span>
+                        </div>
+                        <div class="border-t border-slate-200/60 pt-3 space-y-1.5" v-if="project.progress !== undefined">
+                            <div class="flex justify-between font-semibold text-slate-500">
+                                <span class="text-slate-400 uppercase tracking-wider">Progress:</span>
+                                <span>{{ project.progress }}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-1.5">
+                                <div class="bg-[#0D9488] h-1.5 rounded-full transition-all duration-500" :style="`width: ${project.progress}%`"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-400">
+                                <span>{{ project.completed_tasks }} / {{ project.total_tasks }} tasks</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -240,7 +252,7 @@ const closeModal = () => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Update Status</label>
-                            <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                                 <option value="pending">Pending</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="completed">Completed</option>
@@ -252,34 +264,34 @@ const closeModal = () => {
                     <div v-else class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Task Name</label>
-                            <input type="text" v-model="form.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="e.g. Implement User Authentication" />
+                            <input type="text" v-model="form.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Implement User Authentication" />
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Details / Description</label>
-                            <textarea v-model="form.details" rows="3" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Detail the task scope..."></textarea>
+                            <textarea v-model="form.details" rows="3" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Detail the task scope..."></textarea>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Key Deliverables</label>
-                            <input type="text" v-model="form.deliverables" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="e.g. AuthController, Unit Tests" />
+                            <input type="text" v-model="form.deliverables" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. AuthController, Unit Tests" />
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Duration (Days)</label>
-                                <input type="number" v-model="form.duration" min="1" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" />
+                                <input type="number" v-model="form.duration" min="1" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" />
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Start Date</label>
-                                <input type="date" v-model="form.start_date" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" />
+                                <input type="date" v-model="form.start_date" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign Member</label>
-                                <select v-model="form.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <select v-model="form.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                                     <option value="">Unassigned</option>
                                     <option v-for="member in teamMembers" :key="member.id" :value="member.id">
                                         {{ member.name }} ({{ member.role }})
@@ -288,7 +300,7 @@ const closeModal = () => {
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-                                <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                                     <option value="pending">Pending</option>
                                     <option value="in_progress">In Progress</option>
                                     <option value="completed">Completed</option>
@@ -321,7 +333,7 @@ const closeModal = () => {
                                 v-if="modalMode !== 'view'" 
                                 type="submit" 
                                 :disabled="form.processing"
-                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition shadow-sm"
+                                class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
                             >
                                 Save Changes
                             </button>

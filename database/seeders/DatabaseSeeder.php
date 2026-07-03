@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\Project;
 use App\Models\DevelopmentPhase;
 use App\Models\Task;
+use App\Models\Setting;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -18,6 +19,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0. Seed Default Settings
+        Setting::set('system_name', 'Project Tracker');
+        Setting::set('theme', 'corporate_teal');
+        Setting::set('logo', null);
+
         // 1. Create System Roles
         $adminRole = Role::create(['name' => 'Administrator', 'slug' => 'admin']);
         $userRole = Role::create(['name' => 'User', 'slug' => 'user']);
@@ -128,6 +134,14 @@ class DatabaseSeeder extends Seeder
             'team_id' => $teamAlpha->id,
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-28',
+        ]);
+
+        $projectEcommerce->developmentPhases()->attach([
+            $phaseReq->id,
+            $phaseDesign->id,
+            $phaseDev->id,
+            $phaseTest->id,
+            $phaseDeploy->id,
         ]);
 
         // 8. Create Tasks (with durations, phases, assignees, and dates)

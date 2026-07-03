@@ -24,11 +24,11 @@ const updateTaskStatus = (task, newStatus) => {
 const getStatusClass = (status) => {
     switch (status) {
         case 'completed':
-            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            return 'bg-green-50 text-green-700 border-green-200';
         case 'in_progress':
-            return 'bg-sky-50 text-sky-700 border-sky-200';
+            return 'bg-slate-100 text-slate-700 border-slate-200';
         default:
-            return 'bg-amber-50 text-amber-700 border-amber-200';
+            return 'bg-orange-50 text-orange-700 border-orange-200';
     }
 };
 
@@ -47,13 +47,13 @@ const getInitials = (name) => {
                     </h2>
                     <p class="text-slate-500 text-sm mt-1">
                         System Role: <span class="font-medium text-slate-700">{{ systemRole }}</span> &bull; 
-                        Functional Role: <span class="font-medium text-indigo-600">{{ memberRole }}</span>
+                        Functional Role: <span class="font-medium text-[#0D9488]">{{ memberRole }}</span>
                     </p>
                 </div>
                 <div v-if="isDeptHead" class="flex items-center">
                     <Link
                         :href="route('projects.create')"
-                        class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:from-indigo-700 hover:to-violet-700 active:from-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        class="inline-flex items-center px-4 py-2 bg-[#0D9488] border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#0f766e] active:bg-[#115e59] focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 mr-2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -69,13 +69,13 @@ const getInitials = (name) => {
                 <!-- Metrics Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Projects Count Card -->
-                    <div class="bg-white/80 backdrop-blur-md border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
+                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Projects</p>
                                 <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ projects.length }}</h3>
                             </div>
-                            <div class="bg-indigo-50 p-2.5 rounded-lg text-indigo-600">
+                            <div class="bg-[#F0FDFA] p-2.5 rounded-lg text-[#0D9488]">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                                 </svg>
@@ -84,13 +84,13 @@ const getInitials = (name) => {
                     </div>
 
                     <!-- Pending Tasks Card -->
-                    <div class="bg-white/80 backdrop-blur-md border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
+                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">My Pending Tasks</p>
                                 <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ pendingTasks.length }}</h3>
                             </div>
-                            <div class="bg-sky-50 p-2.5 rounded-lg text-sky-600">
+                            <div class="bg-slate-100 p-2.5 rounded-lg text-[#64748B]">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 11.69a2.625 2.625 0 113.75 3.75L12 18.75l-3.1-3.1a2.625 2.625 0 013.75-3.75h.7z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 2.25H15M9 4.5H15M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0z" />
@@ -100,13 +100,13 @@ const getInitials = (name) => {
                     </div>
 
                     <!-- Overdue Tasks Card -->
-                    <div class="bg-white/80 backdrop-blur-md border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
+                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overdue Tasks</p>
-                                <h3 class="text-3xl font-extrabold text-rose-600 mt-2">{{ undeliveredTasks.length }}</h3>
+                                <h3 class="text-3xl font-extrabold text-[#EA580C] mt-2">{{ undeliveredTasks.length }}</h3>
                             </div>
-                            <div class="bg-rose-50 p-2.5 rounded-lg text-rose-600">
+                            <div class="bg-orange-50 p-2.5 rounded-lg text-[#EA580C]">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                 </svg>
@@ -115,14 +115,14 @@ const getInitials = (name) => {
                     </div>
 
                     <!-- User Persona Card -->
-                    <div class="bg-white/80 backdrop-blur-md border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
+                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Operational Status</p>
                                 <h3 class="text-lg font-bold text-slate-700 mt-2 truncate">{{ $page.props.auth.user.name }}</h3>
-                                <p class="text-xs text-indigo-500 font-semibold mt-1">Logged In</p>
+                                <p class="text-xs text-[#0D9488] font-semibold mt-1">Logged In</p>
                             </div>
-                            <div class="h-11 w-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                            <div class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0D9488] to-[#0f766e] text-white flex items-center justify-center font-bold text-sm shadow-sm">
                                 {{ getInitials($page.props.auth.user.name) }}
                             </div>
                         </div>
@@ -133,7 +133,7 @@ const getInitials = (name) => {
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-indigo-600 rounded-full mr-2"></span>
+                            <span class="w-1 h-5 bg-[#0D9488] rounded-full mr-2"></span>
                             Assigned Projects
                         </h3>
                     </div>
@@ -146,11 +146,11 @@ const getInitials = (name) => {
                         <div v-for="project in projects" :key="project.id" class="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between overflow-hidden">
                             <div class="p-6 space-y-4">
                                 <div class="flex justify-between items-start gap-4">
-                                    <h4 class="font-bold text-slate-800 text-lg hover:text-indigo-600 transition">
+                                    <h4 class="font-bold text-slate-800 text-lg hover:text-[#0D9488] transition">
                                         <Link :href="route('projects.show', project.id)">{{ project.name }}</Link>
                                     </h4>
                                     <span class="px-2.5 py-1 text-[10px] font-bold uppercase rounded-full border"
-                                        :class="project.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'">
+                                        :class="project.status === 'active' || project.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : (project.status === 'planning' || project.status === 'on_hold' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-slate-100 text-slate-700 border-slate-200')">
                                         {{ project.status }}
                                     </span>
                                 </div>
@@ -163,7 +163,7 @@ const getInitials = (name) => {
                                         <span>{{ project.progress }}%</span>
                                     </div>
                                     <div class="w-full bg-slate-100 rounded-full h-2">
-                                        <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" :style="`width: ${project.progress}%`"></div>
+                                        <div class="bg-[#0D9488] h-2 rounded-full transition-all duration-500" :style="`width: ${project.progress}%`"></div>
                                     </div>
                                     <div class="flex justify-between text-[11px] text-slate-400">
                                         <span>{{ project.completed_tasks }} / {{ project.total_tasks }} tasks</span>
@@ -174,14 +174,14 @@ const getInitials = (name) => {
                             <!-- Footer -->
                             <div class="bg-slate-50/50 border-t border-slate-100 px-6 py-4 flex items-center justify-between text-xs text-slate-500">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]" v-if="project.team?.project_manager">
+                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="project.team?.project_manager">
                                         {{ getInitials(project.team.project_manager.user.name) }}
                                     </div>
                                     <span class="font-medium" v-if="project.team?.project_manager">
                                         PM: {{ project.team.project_manager.user.name.split(' ')[0] }}
                                     </span>
                                 </div>
-                                <Link :href="route('projects.show', project.id)" class="text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
+                                <Link :href="route('projects.show', project.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">
                                     Gantt Chart
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -197,7 +197,7 @@ const getInitials = (name) => {
                     <!-- Section 2: Pending/Assigned Tasks -->
                     <div class="space-y-4">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-sky-500 rounded-full mr-2"></span>
+                            <span class="w-1 h-5 bg-[#64748B] rounded-full mr-2"></span>
                             My Pending & Active Tasks
                         </h3>
 
@@ -219,7 +219,7 @@ const getInitials = (name) => {
                                         <select
                                             @change="updateTaskStatus(task, $event.target.value)"
                                             :value="task.status"
-                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-[#0D9488] focus:border-[#0D9488]"
                                             :class="getStatusClass(task.status)"
                                         >
                                             <option value="pending">Pending</option>
@@ -235,7 +235,7 @@ const getInitials = (name) => {
                     <!-- Section 3: Undelivered / Overdue Tasks -->
                     <div class="space-y-4">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-rose-600 rounded-full mr-2"></span>
+                            <span class="w-1 h-5 bg-[#EA580C] rounded-full mr-2"></span>
                             Undelivered & Delayed Tasks
                         </h3>
 
@@ -248,7 +248,7 @@ const getInitials = (name) => {
                                     <div class="space-y-1">
                                         <div class="flex items-center gap-2">
                                             <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-850">
                                                 Overdue
                                             </span>
                                         </div>
@@ -256,7 +256,7 @@ const getInitials = (name) => {
                                             {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.development_phase?.name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Started: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
-                                        <p class="text-xs text-rose-500 font-semibold">
+                                        <p class="text-xs text-[#EA580C] font-semibold">
                                             Should have finished by: 
                                             {{ new Date(new Date(task.start_date).getTime() + task.duration * 24 * 60 * 60 * 1000).toLocaleDateString() }}
                                         </p>
@@ -266,7 +266,7 @@ const getInitials = (name) => {
                                         <select
                                             @change="updateTaskStatus(task, $event.target.value)"
                                             :value="task.status"
-                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-[#0D9488] focus:border-[#0D9488]"
                                             :class="getStatusClass(task.status)"
                                         >
                                             <option value="pending">Pending</option>

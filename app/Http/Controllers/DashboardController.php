@@ -16,7 +16,7 @@ class DashboardController extends Controller
         $member = $user->member;
 
         // 1. Projects Query
-        if ($user->hasRole('admin') || $user->hasRole('viewer')) {
+        if ($user->hasRole('admin')) {
             $projectsQuery = Project::with('team.projectManager.user');
         } else {
             $teamIds = $member ? $member->teams->pluck('id')->toArray() : [];

@@ -6,10 +6,14 @@ use App\Models\User;
 use App\Models\Project;
 use App\Models\DevelopmentPhase;
 use App\Models\Task;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ProjectTrackerTest extends TestCase
 {
+    use RefreshDatabase;
+
+    protected $seed = true;
     /**
      * Test guest redirection.
      */
@@ -29,23 +33,26 @@ class ProjectTrackerTest extends TestCase
 
         $response = $this->actingAs($admin)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSee('Project Workspace');
+        $response->assertInertia(fn ($page) => $page->component('Dashboard')->has('projects'));
         $response->assertSee('Alex Administrator');
     }
 
     /**
-     * Test RBAC for project creation: Admin/Dept Head can create, PM cannot.
+     * Test admin can access project creation page.
      */
-    public function test_rbac_project_creation_authorization(): void
+    public function test_admin_can_access_project_creation(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
-        $pm = User::where('email', 'manager@example.com')->first();
-
-        // Admin (Department Head role) can view create page
         $response = $this->actingAs($admin)->get('/projects/create');
         $response->assertStatus(200);
+    }
 
-        // PM cannot view create page
+    /**
+     * Test PM cannot access project creation page.
+     */
+    public function test_pm_cannot_access_project_creation(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
         $response = $this->actingAs($pm)->get('/projects/create');
         $response->assertStatus(403);
     }
@@ -89,4 +96,49 @@ class ProjectTrackerTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    /**
+     * Test admin can view any project details.
+     */
+    public function test_admin_can_view_project_details(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        $response = $this->actingAs($admin)->get(route('projects.show', $project->id));
+        $response->assertStatus(200);
+    }
+
+    /**
+     * Test team member can view their project details.
+     */
+    public function test_team_member_can_view_project_details(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        $response = $this->actingAs($designer)->get(route('projects.show', $project->id));
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Project/Show')
+            ->has('project')
+            ->has('phases')
+        );
+    }
+
+    /**
+     * Test non-team member cannot view project details.
+     */
+    public function test_non_team_member_cannot_view_project_details(): void
+    {
+        $viewer = User::where('email', 'viewer@example.com')->first();
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        $response = $this->actingAs($viewer)->get(route('projects.show', $project->id));
+        $response->assertStatus(403);
+    }
 }
+

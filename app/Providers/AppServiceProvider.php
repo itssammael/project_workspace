@@ -53,5 +53,10 @@ class AppServiceProvider extends ServiceProvider
             }
             return $project->team && $project->team->member_id === $user->member->id;
         });
+
+        Gate::define('view-project', function (User $user, Project $project) {
+            return $user->member && $user->member->teams()->where('teams.id', $project->team_id)->exists();
+        });
     }
 }
+

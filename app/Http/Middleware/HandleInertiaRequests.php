@@ -35,9 +35,17 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        if ($user = $request->user()) {
+            $user->loadMissing('role');
+        }
+
         return [
             ...parent::share($request),
-            //
+            'settings' => [
+                'system_name' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('system_name', 'Project Tracker') : 'Project Tracker',
+                'theme' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('theme', 'corporate_teal') : 'corporate_teal',
+                'logo' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('logo', null) : null,
+            ],
         ];
     }
 }

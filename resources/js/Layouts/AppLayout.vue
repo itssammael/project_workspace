@@ -28,12 +28,12 @@ const logout = () => {
 </script>
 
 <template>
-    <div>
-        <Head :title="title" />
+    <div :class="'theme-' + ($page.props.settings?.theme || 'corporate_teal')">
+        <Head :title="title ? `${title} - ${$page.props.settings?.system_name || 'Project Tracker'}` : ($page.props.settings?.system_name || 'Project Tracker')" />
 
         <Banner />
 
-        <div class="min-h-screen bg-gray-100">
+        <div class="min-h-screen bg-[#F1F5F9]">
             <nav class="bg-white border-b border-gray-100">
                 <!-- Primary Navigation Menu -->
                 <div class="max-w-full mx-auto px-8 sm:px-6 lg:px-16">
@@ -41,8 +41,11 @@ const logout = () => {
                         <div class="flex">
                             <!-- Logo -->
                             <div class="shrink-0 flex items-center">
-                                <Link :href="route('dashboard')">
+                                <Link :href="route('dashboard')" class="flex items-center space-x-3">
                                     <ApplicationMark class="block h-9 w-auto" />
+                                    <span class="font-bold text-lg text-gray-950 theme-text-primary">
+                                        {{ $page.props.settings?.system_name || 'Project Tracker' }}
+                                    </span>
                                 </Link>
                             </div>
 
@@ -50,6 +53,15 @@ const logout = () => {
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Dashboard
+                                </NavLink>
+                                <NavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
+                                    Projects
+                                </NavLink>
+                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
+                                    Management
+                                </NavLink>
+                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">
+                                    Settings
                                 </NavLink>
                             </div>
                         </div>
@@ -193,6 +205,15 @@ const logout = () => {
                     <div class="pt-2 pb-3 space-y-1">
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
+                            Projects
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
+                            Management
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">
+                            Settings
                         </ResponsiveNavLink>
                     </div>
 

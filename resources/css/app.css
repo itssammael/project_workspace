@@ -5,3 +5,293 @@
 [x-cloak] {
     display: none;
 }
+
+/* Theme presets mapped to CSS custom variables */
+:root {
+    --brand-primary: #0D9488;
+    --brand-primary-hover: #0f766e;
+    --brand-primary-active: #115e59;
+    --brand-secondary: #F0FDFA;
+    --brand-neutral-dark: #0F172A;
+    --brand-neutral-light: #F1F5F9;
+    --brand-card-bg: #FFFFFF;
+    --brand-text-primary: #0F172A;
+    --brand-text-secondary: #475569;
+    --status-success: #16A34A;
+    --status-success-dark: #15803d;
+    --status-warning: #EA580C;
+    --status-warning-dark: #c2410c;
+    --status-neutral: #64748B;
+    --status-neutral-dark: #475569;
+    --brand-border: #E2E8F0;
+}
+
+.theme-refined_indigo {
+    --brand-primary: #4338CA;
+    --brand-primary-hover: #3730A3;
+    --brand-primary-active: #312E81;
+    --brand-secondary: #EEF2FF;
+    --brand-neutral-dark: #1E293B;
+    --brand-neutral-light: #F8FAFC;
+    --brand-card-bg: #FFFFFF;
+    --brand-text-primary: #1E293B;
+    --brand-text-secondary: #64748B;
+    --status-success: #10B981;
+    --status-success-dark: #047857;
+    --status-warning: #F59E0B;
+    --status-warning-dark: #B45309;
+    --status-neutral: #0EA5E9;
+    --status-neutral-dark: #0369A1;
+    --brand-border: #E2E8F0;
+}
+
+.theme-corporate_teal {
+    --brand-primary: #0D9488;
+    --brand-primary-hover: #0f766e;
+    --brand-primary-active: #115e59;
+    --brand-secondary: #F0FDFA;
+    --brand-neutral-dark: #0F172A;
+    --brand-neutral-light: #F1F5F9;
+    --brand-card-bg: #FFFFFF;
+    --brand-text-primary: #0F172A;
+    --brand-text-secondary: #475569;
+    --status-success: #16A34A;
+    --status-success-dark: #15803d;
+    --status-warning: #EA580C;
+    --status-warning-dark: #c2410c;
+    --status-neutral: #64748B;
+    --status-neutral-dark: #475569;
+    --brand-border: #E2E8F0;
+}
+
+.theme-modern_midnight {
+    --brand-primary: #7C3AED;
+    --brand-primary-hover: #6D28D9;
+    --brand-primary-active: #5B21B6;
+    --brand-secondary: #1E1E2F;
+    --brand-neutral-dark: #12121A;
+    --brand-neutral-light: #12121A;
+    --brand-card-bg: #1E1E2F;
+    --brand-text-primary: #F3F4F6;
+    --brand-text-secondary: #9CA3AF;
+    --status-success: #34D399;
+    --status-success-dark: #059669;
+    --status-warning: #FBBF24;
+    --status-warning-dark: #D97706;
+    --status-neutral: #64748B;
+    --status-neutral-dark: #475569;
+    --brand-border: #2A2A3F;
+}
+
+/* Global utility overrides to follow theme custom variables */
+
+/* Primary brand color overrides (Tailwind normalizes arbitrary values to lowercase) */
+.bg-\[\#0d9488\] {
+    background-color: var(--brand-primary) !important;
+}
+.text-\[\#0d9488\] {
+    color: var(--brand-primary) !important;
+}
+.border-\[\#0d9488\] {
+    border-color: var(--brand-primary) !important;
+}
+.focus\:border-\[\#0d9488\]:focus {
+    border-color: var(--brand-primary) !important;
+}
+.focus\:ring-\[\#0d9488\]:focus {
+    --tw-ring-color: var(--brand-primary) !important;
+}
+.hover\:bg-\[\#0f766e\]:hover {
+    background-color: var(--brand-primary-hover) !important;
+}
+.active\:bg-\[\#115e59\]:active {
+    background-color: var(--brand-primary-active) !important;
+}
+
+/* Secondary brand color overrides */
+.bg-\[\#f0fdfa\] {
+    background-color: var(--brand-secondary) !important;
+}
+.text-\[\#f0fdfa\] {
+    color: var(--brand-secondary) !important;
+}
+.border-\[\#f0fdfa\] {
+    border-color: var(--brand-secondary) !important;
+}
+.hover\:bg-\[\#f0fdfa\]:hover {
+    background-color: var(--brand-secondary) !important;
+}
+.bg-teal-50 {
+    background-color: var(--brand-secondary) !important;
+}
+.text-teal-900 {
+    color: var(--brand-text-primary) !important;
+}
+.text-\[\#0f766e\] {
+    color: var(--brand-primary-hover) !important;
+}
+
+/* Legacy Indigo Class Mappings (for components and Jetstream elements still utilizing Indigo utilities) */
+.bg-indigo-50 {
+    background-color: var(--brand-secondary) !important;
+}
+.bg-indigo-100 {
+    background-color: var(--brand-secondary) !important;
+}
+.bg-indigo-600 {
+    background-color: var(--brand-primary) !important;
+}
+.hover\:bg-indigo-700:hover {
+    background-color: var(--brand-primary-hover) !important;
+}
+.active\:bg-indigo-800:active {
+    background-color: var(--brand-primary-active) !important;
+}
+.text-indigo-600 {
+    color: var(--brand-primary) !important;
+}
+.text-indigo-700 {
+    color: var(--brand-primary-hover) !important;
+}
+.text-indigo-900 {
+    color: var(--brand-text-primary) !important;
+}
+.border-indigo-500 {
+    border-color: var(--brand-primary) !important;
+}
+.border-indigo-600 {
+    border-color: var(--brand-primary) !important;
+}
+.focus\:border-indigo-500:focus {
+    border-color: var(--brand-primary) !important;
+}
+.focus\:ring-indigo-500:focus {
+    --tw-ring-color: var(--brand-primary) !important;
+}
+
+/* Page background override */
+.bg-\[\#f1f5f9\], .bg-slate-100 {
+    background-color: var(--brand-neutral-light) !important;
+}
+
+/* Status: Success overrides */
+.bg-\[\#16a34a\] {
+    background-color: var(--status-success) !important;
+}
+.from-\[\#16a34a\] {
+    --tw-gradient-from: var(--status-success) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(22, 163, 74, 0)) !important;
+}
+.to-\[\#15803d\] {
+    --tw-gradient-to: var(--status-success-dark) !important;
+}
+.text-\[\#16a34a\] {
+    color: var(--status-success) !important;
+}
+.border-\[\#16a34a\] {
+    border-color: var(--status-success) !important;
+}
+
+/* Status: Warning overrides */
+.bg-\[\#ea580c\] {
+    background-color: var(--status-warning) !important;
+}
+.from-\[\#ea580c\] {
+    --tw-gradient-from: var(--status-warning) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(234, 88, 12, 0)) !important;
+}
+.to-\[\#c2410c\] {
+    --tw-gradient-to: var(--status-warning-dark) !important;
+}
+.text-\[\#ea580c\] {
+    color: var(--status-warning) !important;
+}
+.border-\[\#ea580c\] {
+    border-color: var(--status-warning) !important;
+}
+
+/* Status: Neutral overrides */
+.bg-\[\#64748b\] {
+    background-color: var(--status-neutral) !important;
+}
+.from-\[\#64748b\] {
+    --tw-gradient-from: var(--status-neutral) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(100, 116, 139, 0)) !important;
+}
+.to-\[\#475569\] {
+    --tw-gradient-to: var(--status-neutral-dark) !important;
+}
+.text-\[\#64748b\] {
+    color: var(--status-neutral) !important;
+}
+.border-\[\#64748b\] {
+    border-color: var(--status-neutral) !important;
+}
+
+/* Modern Midnight Dark Mode Theme Overrides */
+.theme-modern_midnight {
+    background-color: var(--brand-neutral-dark) !important;
+    color: var(--brand-text-primary) !important;
+}
+
+.theme-modern_midnight .bg-white,
+.theme-modern_midnight .bg-slate-50,
+.theme-modern_midnight .bg-slate-50\/70,
+.theme-modern_midnight .bg-slate-50\/50,
+.theme-modern_midnight .bg-slate-50\/40,
+.theme-modern_midnight .bg-slate-50\/20,
+.theme-modern_midnight .bg-slate-50\/10,
+.theme-modern_midnight .bg-slate-100 {
+    background-color: var(--brand-card-bg) !important;
+}
+
+.theme-modern_midnight nav.bg-white {
+    background-color: var(--brand-card-bg) !important;
+    border-color: var(--brand-border) !important;
+}
+
+.theme-modern_midnight .text-slate-800,
+.theme-modern_midnight .text-slate-900,
+.theme-modern_midnight .text-slate-700,
+.theme-modern_midnight .text-slate-600 {
+    color: var(--brand-text-primary) !important;
+}
+
+.theme-modern_midnight .text-slate-500,
+.theme-modern_midnight .text-slate-400 {
+    color: var(--brand-text-secondary) !important;
+}
+
+.theme-modern_midnight .border-slate-100,
+.theme-modern_midnight .border-slate-200,
+.theme-modern_midnight .border-slate-100\/60,
+.theme-modern_midnight .border-slate-100\/40,
+.theme-modern_midnight .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.theme-modern_midnight .border-t,
+.theme-modern_midnight .border-b,
+.theme-modern_midnight .border {
+    border-color: var(--brand-border) !important;
+}
+
+.theme-modern_midnight input,
+.theme-modern_midnight select,
+.theme-modern_midnight textarea {
+    background-color: var(--brand-neutral-dark) !important;
+    border-color: var(--brand-border) !important;
+    color: var(--brand-text-primary) !important;
+}
+
+.theme-modern_midnight input::placeholder {
+    color: var(--brand-text-secondary) !important;
+}
+
+/* Fix text and layout contrast in Dark Mode */
+.theme-modern_midnight .hover\:bg-slate-50\/50:hover,
+.theme-modern_midnight .hover\:bg-slate-50:hover,
+.theme-modern_midnight .hover\:bg-slate-50\/30:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.theme-modern_midnight header {
+    border-color: var(--brand-border) !important;
+}

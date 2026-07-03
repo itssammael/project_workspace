@@ -65,16 +65,16 @@ const getTaskBarClass = (task) => {
     const isOverdue = task.status !== 'completed' && new Date('2026-07-01') > new Date(new Date(task.start_date).getTime() + task.duration * 24 * 60 * 60 * 1000);
     
     if (isOverdue) {
-        return 'from-rose-500 to-red-600 shadow-rose-100 hover:shadow-rose-200 text-white';
+        return 'from-[#EA580C] to-[#c2410c] shadow-orange-100/50 hover:shadow-orange-200/50 text-white';
     }
     
     switch (task.status) {
         case 'completed':
-            return 'from-emerald-500 to-teal-600 shadow-emerald-100 hover:shadow-emerald-200 text-white';
+            return 'from-[#16A34A] to-[#15803d] shadow-green-100/50 hover:shadow-green-200/50 text-white';
         case 'in_progress':
-            return 'from-sky-500 to-indigo-600 shadow-sky-100 hover:shadow-sky-200 text-white animate-pulse-subtle';
+            return 'from-[#0D9488] to-[#0f766e] shadow-teal-100/50 hover:shadow-teal-200/50 text-white animate-pulse-subtle';
         default:
-            return 'from-amber-400 to-orange-500 shadow-amber-100 hover:shadow-amber-200 text-white';
+            return 'from-[#64748B] to-[#475569] shadow-slate-100/50 hover:shadow-slate-200/50 text-white';
     }
 };
 
@@ -95,19 +95,19 @@ const getInitials = (name) => {
             </div>
             <div class="flex items-center gap-4 text-xs font-semibold">
                 <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded bg-gradient-to-r from-emerald-500 to-teal-600 inline-block"></span>
+                    <span class="w-3 h-3 rounded bg-gradient-to-r from-[#16A34A] to-[#15803d] inline-block"></span>
                     <span class="text-slate-600">Completed</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded bg-gradient-to-r from-sky-500 to-indigo-600 inline-block"></span>
+                    <span class="w-3 h-3 rounded bg-gradient-to-r from-[#0D9488] to-[#0f766e] inline-block"></span>
                     <span class="text-slate-600">In Progress</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded bg-gradient-to-r from-amber-400 to-orange-500 inline-block"></span>
+                    <span class="w-3 h-3 rounded bg-gradient-to-r from-[#64748B] to-[#475569] inline-block"></span>
                     <span class="text-slate-600">Pending</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded bg-gradient-to-r from-rose-500 to-red-600 inline-block"></span>
+                    <span class="w-3 h-3 rounded bg-gradient-to-r from-[#EA580C] to-[#c2410c] inline-block"></span>
                     <span class="text-slate-600">Overdue</span>
                 </div>
             </div>
@@ -121,13 +121,17 @@ const getInitials = (name) => {
                 <div class="h-[60px] border-b border-slate-100 bg-slate-50/20"></div>
                 
                 <div v-for="phase in phases" :key="phase.id" class="divide-y divide-slate-100 border-b border-slate-100">
-                    <!-- Phase Header -->
                     <div class="px-4 py-3 bg-slate-50/40 flex justify-between items-center font-bold text-xs text-slate-600 uppercase tracking-wider">
-                        <span>{{ phase.name }}</span>
+                        <div class="flex items-center gap-2">
+                            <span>{{ phase.name }}</span>
+                            <span v-if="phase.total_tasks > 0" class="text-[10px] text-slate-400 normal-case font-semibold">
+                                ({{ phase.progress }}%)
+                            </span>
+                        </div>
                         <button 
                             v-if="canManageTasks" 
                             @click="emit('add-task', phase.id)"
-                            class="text-indigo-600 hover:text-indigo-800 normal-case font-bold flex items-center gap-0.5"
+                            class="text-[#0D9488] hover:text-[#0f766e] normal-case font-bold flex items-center gap-0.5"
                         >
                             + Add
                         </button>
@@ -150,7 +154,7 @@ const getInitials = (name) => {
                                 <p class="text-[10px] text-slate-400 mt-0.5">Duration: {{ task.duration }} days</p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <div v-if="task.member" class="h-6 w-6 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[9px] flex items-center justify-center border border-indigo-100" :title="task.member.user.name">
+                                <div v-if="task.member" class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] font-bold text-[9px] flex items-center justify-center border border-teal-100" :title="task.member.user.name">
                                     {{ getInitials(task.member.user.name) }}
                                 </div>
                             </div>
@@ -218,7 +222,7 @@ const getInitials = (name) => {
                                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 bg-slate-900 text-slate-100 p-4 rounded-xl shadow-xl border border-slate-800 text-xs font-normal z-30 space-y-2 pointer-events-none">
                                     <div class="flex justify-between items-start border-b border-slate-800 pb-1.5">
                                         <p class="font-bold text-white text-sm truncate max-w-[200px]">{{ task.name }}</p>
-                                        <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="task.status === 'completed' ? 'text-emerald-400' : task.status === 'in_progress' ? 'text-sky-400' : 'text-amber-400'">
+                                        <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="task.status === 'completed' ? 'text-green-400' : task.status === 'in_progress' ? 'text-teal-400' : 'text-slate-450'">
                                             {{ task.status.replace('_', ' ') }}
                                         </span>
                                     </div>
