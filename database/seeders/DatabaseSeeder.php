@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
         $adminUser = User::create([
             'name' => 'Alex Administrator',
             'email' => 'admin@example.com',
+            'username' => 'admin',
             'password' => Hash::make('password'),
             'role_id' => $adminRole->id,
         ]);
@@ -63,6 +64,7 @@ class DatabaseSeeder extends Seeder
         $pmUser = User::create([
             'name' => 'Paul Manager',
             'email' => 'manager@example.com',
+            'username' => 'manager',
             'password' => Hash::make('password'),
             'role_id' => $userRole->id,
         ]);
@@ -75,6 +77,7 @@ class DatabaseSeeder extends Seeder
         $designerUser = User::create([
             'name' => 'Diana Designer',
             'email' => 'designer@example.com',
+            'username' => 'designer',
             'password' => Hash::make('password'),
             'role_id' => $userRole->id,
         ]);
@@ -87,6 +90,7 @@ class DatabaseSeeder extends Seeder
         $developerUser = User::create([
             'name' => 'Devon Developer',
             'email' => 'developer@example.com',
+            'username' => 'developer',
             'password' => Hash::make('password'),
             'role_id' => $userRole->id,
         ]);
@@ -99,6 +103,7 @@ class DatabaseSeeder extends Seeder
         $viewerUser = User::create([
             'name' => 'Valerie Viewer',
             'email' => 'viewer@example.com',
+            'username' => 'viewer',
             'password' => Hash::make('password'),
             'role_id' => $viewerRole->id,
         ]);

@@ -40,8 +40,11 @@ Route::middleware([
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');
     Route::post('/admin/users', [AdminManagementController::class, 'storeUser'])->name('admin.users.store');
+    Route::post('/admin/users/bulk-destroy', [AdminManagementController::class, 'bulkDestroyUsers'])->name('admin.users.bulk-destroy');
     Route::put('/admin/users/{user}', [AdminManagementController::class, 'updateUser'])->name('admin.users.update');
     Route::delete('/admin/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('admin.users.destroy');
+    Route::post('/admin/member-roles', [AdminManagementController::class, 'storeMemberRole'])->name('admin.member-roles.store');
+    Route::delete('/admin/member-roles/{memberRole}', [AdminManagementController::class, 'destroyMemberRole'])->name('admin.member-roles.destroy');
     Route::post('/admin/teams', [AdminManagementController::class, 'storeTeam'])->name('admin.teams.store');
     Route::put('/admin/teams/{team}', [AdminManagementController::class, 'updateTeam'])->name('admin.teams.update');
     Route::delete('/admin/teams/{team}', [AdminManagementController::class, 'destroyTeam'])->name('admin.teams.destroy');

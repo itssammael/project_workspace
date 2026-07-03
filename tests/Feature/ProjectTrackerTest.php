@@ -140,5 +140,31 @@ class ProjectTrackerTest extends TestCase
         $response = $this->actingAs($viewer)->get(route('projects.show', $project->id));
         $response->assertStatus(403);
     }
+
+    /**
+     * Test user can log in using their email or username.
+     */
+    public function test_user_can_login_using_email_or_username(): void
+    {
+        // 1. Login with email
+        $response = $this->post('/login', [
+            'email' => 'manager@example.com',
+            'password' => 'password',
+        ]);
+        $response->assertRedirect('/dashboard');
+        $this->assertAuthenticated();
+
+        // Logout
+        $this->post('/logout');
+        $this->assertGuest();
+
+        // 2. Login with username
+        $response = $this->post('/login', [
+            'email' => 'manager',
+            'password' => 'password',
+        ]);
+        $response->assertRedirect('/dashboard');
+        $this->assertAuthenticated();
+    }
 }
 

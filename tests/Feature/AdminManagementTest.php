@@ -69,6 +69,7 @@ class AdminManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.users.store'), [
             'name' => 'Test Developer',
+            'username' => 'testdev',
             'email' => 'testdev@example.com',
             'password' => 'secret123',
             'role_id' => $userRole->id,
@@ -116,5 +117,77 @@ class AdminManagementTest extends TestCase
         if (!empty($members)) {
             $this->assertEquals(count($members), $team->members()->count());
         }
+    }
+
+    /**
+     * Admin can create a new functional role.
+     */
+    public function test_admin_can_create_functional_role(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $this->actingAs($admin)
+            ->post(route('admin.member-roles.store'), [
+                'name' => 'QA Architect',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('member_roles', [
+            'name' => 'QA Architect',
+            'slug' => 'qa-architect',
+        ]);
+    }
+
+    /**
+     * Admin can delete a functional role.
+     */
+    public function test_admin_can_delete_functional_role(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $role = MemberRole::create([
+            'name' => 'Test Temporary Role',
+            'slug' => 'test-temporary-role',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.member-roles.destroy', $role->id))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('member_roles', [
+            'id' => $role->id,
+        ]);
+    }
+
+    /**
+     * Admin can bulk delete users.
+     */
+    public function test_admin_can_bulk_delete_users(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        
+        $user1 = User::factory()->create(['email' => 't1@example.com', 'username' => 't1']);
+        $user2 = User::factory()->create(['email' => 't2@example.com', 'username' => 't2']);
+
+        // Create associated members
+        Member::create(['user_id' => $user1->id]);
+        Member::create(['user_id' => $user2->id]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.bulk-destroy'), [
+                'ids' => [$user1->id, $user2->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $user1->id,
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'id' => $user2->id,
+        ]);
+        $this->assertDatabaseMissing('members', [
+            'user_id' => $user1->id,
+        ]);
+        $this->assertDatabaseMissing('members', [
+            'user_id' => $user2->id,
+        ]);
     }
 }

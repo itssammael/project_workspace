@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -32,19 +32,31 @@ const isPhaseModalOpen = ref(false);
 const phaseModalMode = ref('create'); // 'create', 'edit'
 const isDevTypeModalOpen = ref(false);
 const devTypeModalMode = ref('create'); // 'create', 'edit'
+const isRoleModalOpen = ref(false);
 
 // Bulk phase assignment selection
 const selectedPhaseIds = ref([]);
 const bulkDevTypeId = ref('');
 
+// User selection for bulk delete
+const selectedUserIds = ref([]);
+
 // Forms
 const userForm = useForm({
     id: null,
     name: '',
+    username: '',
     email: '',
     password: '',
     role_id: '',
     member_role_id: '',
+});
+
+// Sync email domain when creating a new user by default
+watch(() => userForm.username, (newUsername) => {
+    if (userModalMode.value === 'create') {
+        userForm.email = newUsername ? `${newUsername}@bayawancity.gov.ph` : '';
+    }
 });
 
 const teamForm = useForm({
@@ -64,6 +76,14 @@ const phaseForm = useForm({
 const devTypeForm = useForm({
     id: null,
     name: '',
+});
+
+const roleForm = useForm({
+    name: '',
+});
+
+const bulkDeleteForm = useForm({
+    ids: [],
 });
 
 // Compute stats reactively
@@ -98,7 +118,8 @@ const stats = computed(() => {
 const filteredUsers = computed(() => {
     return props.users.filter(u => {
         const matchesSearch = u.name.toLowerCase().includes(userSearch.value.toLowerCase()) || 
-                              u.email.toLowerCase().includes(userSearch.value.toLowerCase());
+                              u.email.toLowerCase().includes(userSearch.value.toLowerCase()) ||
+                              (u.username && u.username.toLowerCase().includes(userSearch.value.toLowerCase()));
         const matchesRole = !roleFilter.value || u.member_role_id == roleFilter.value || u.role_id == roleFilter.value;
         return matchesSearch && matchesRole;
     });
@@ -146,6 +167,7 @@ const openEditUserModal = (user) => {
     userForm.reset();
     userForm.id = user.id;
     userForm.name = user.name;
+    userForm.username = user.username;
     userForm.email = user.email;
     userForm.password = ''; // leave blank by default
     userForm.role_id = user.role_id;
@@ -169,6 +191,51 @@ const submitUserForm = () => {
 const deleteUser = (user) => {
     if (confirm(`Are you sure you want to delete ${user.name}? This will also delete their member profile.`)) {
         userForm.delete(route('admin.users.destroy', user.id));
+    }
+};
+
+const toggleAllUsers = () => {
+    if (selectedUserIds.value.length === filteredUsers.value.length) {
+        selectedUserIds.value = [];
+    } else {
+        selectedUserIds.value = filteredUsers.value.map(u => u.id);
+    }
+};
+
+const bulkDeleteUsers = () => {
+    if (selectedUserIds.value.length === 0) return;
+    if (confirm(`Are you sure you want to delete ${selectedUserIds.value.length} selected users? This will also delete their member profiles.`)) {
+        bulkDeleteForm.ids = selectedUserIds.value;
+        bulkDeleteForm.post(route('admin.users.bulk-destroy'), {
+            onSuccess: () => {
+                selectedUserIds.value = [];
+            }
+        });
+    }
+};
+
+// Role Management Actions
+const openRoleModal = () => {
+    roleForm.reset();
+    isRoleModalOpen.value = true;
+};
+
+const closeRoleModal = () => {
+    isRoleModalOpen.value = false;
+    roleForm.reset();
+};
+
+const submitRoleForm = () => {
+    roleForm.post(route('admin.member-roles.store'), {
+        onSuccess: () => {
+            roleForm.reset();
+        }
+    });
+};
+
+const deleteRole = (role) => {
+    if (confirm(`Are you sure you want to delete the functional role "${role.name}"?`)) {
+        roleForm.delete(route('admin.member-roles.destroy', role.id));
     }
 };
 
@@ -459,14 +526,44 @@ const submitBulkAssign = () => {
                                 </optgroup>
                             </select>
                         </div>
+                        <div class="flex gap-2">
+                            <button 
+                                @click="openRoleModal"
+                                class="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-slate-500">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                Manage Roles
+                            </button>
+                            <button 
+                                @click="openAddUserModal"
+                                class="px-4 py-2.5 bg-[#0D9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Add New User
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Delete Toolbar -->
+                    <div v-if="selectedUserIds.length > 0" class="flex items-center justify-between bg-rose-50 border border-rose-100 p-4 rounded-2xl shadow-sm animate-fade-in transition-all">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-rose-700 uppercase tracking-wider">
+                                {{ selectedUserIds.length }} User(s) Selected
+                            </span>
+                        </div>
                         <button 
-                            @click="openAddUserModal"
-                            class="px-4 py-2.5 bg-[#0D9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+                            @click="bulkDeleteUsers"
+                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                             </svg>
-                            Add New User
+                            Delete Selected
                         </button>
                     </div>
 
@@ -476,6 +573,9 @@ const submitBulkAssign = () => {
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="bg-[#F0FDFA]/70 border-b border-teal-100 text-[#0f766e] font-bold uppercase text-[10px] tracking-wider">
+                                        <th class="py-4 px-6 w-12 text-center">
+                                            <input type="checkbox" :checked="selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0" @change="toggleAllUsers" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
+                                        </th>
                                         <th class="py-4 px-6">User details</th>
                                         <th class="py-4 px-6">System Role</th>
                                         <th class="py-4 px-6">Functional Role</th>
@@ -484,14 +584,20 @@ const submitBulkAssign = () => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
-                                    <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/50 transition">
+                                    <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/50 transition even:bg-gray-200/50">
+                                        <td class="py-4 px-6 text-center">
+                                            <input type="checkbox" v-model="selectedUserIds" :value="user.id" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
+                                        </td>
                                         <td class="py-4 px-6">
                                             <div class="flex items-center gap-3">
                                                 <div class="h-10 w-10 rounded-full bg-slate-100 border border-slate-200/50 text-slate-600 flex items-center justify-center font-bold text-xs">
                                                     {{ getInitials(user.name) }}
                                                 </div>
                                                 <div>
-                                                    <h4 class="font-bold text-slate-800 leading-tight">{{ user.name }}</h4>
+                                                    <h4 class="font-bold text-slate-800 leading-tight">
+                                                        {{ user.name }}
+                                                        <span class="text-[11px] font-normal text-slate-400 ml-1">@{{ user.username }}</span>
+                                                    </h4>
                                                     <span class="text-xs text-slate-400">{{ user.email }}</span>
                                                 </div>
                                             </div>
@@ -898,13 +1004,19 @@ const submitBulkAssign = () => {
                 <form @submit.prevent="submitUserForm" class="p-6 space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                        <input type="text" v-model="userForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Jane Doe" />
+                        <input type="text" autocomplete="off" v-model="userForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Jane Doe" />
                         <div v-if="userForm.errors.name" class="text-rose-500 text-xs mt-1">{{ userForm.errors.name }}</div>
                     </div>
 
                     <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Username</label>
+                        <input type="text" autocomplete="off" v-model="userForm.username" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. janedoe" />
+                        <div v-if="userForm.errors.username" class="text-rose-500 text-xs mt-1">{{ userForm.errors.username }}</div>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email Address</label>
-                        <input type="email" v-model="userForm.email" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. jane@example.com" />
+                        <input type="email" autocomplete="off" v-model="userForm.email" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. jane@example.com" />
                         <div v-if="userForm.errors.email" class="text-rose-500 text-xs mt-1">{{ userForm.errors.email }}</div>
                     </div>
 
@@ -912,7 +1024,7 @@ const submitBulkAssign = () => {
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                             Password <span v-if="userModalMode === 'edit'" class="text-slate-400 font-normal">(Leave empty to keep current)</span>
                         </label>
-                        <input type="password" v-model="userForm.password" :required="userModalMode === 'create'" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Minimum 8 characters" />
+                        <input type="password" autocomplete="off" v-model="userForm.password" :required="userModalMode === 'create'" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Minimum 8 characters" />
                         <div v-if="userForm.errors.password" class="text-rose-500 text-xs mt-1">{{ userForm.errors.password }}</div>
                     </div>
 
@@ -1139,6 +1251,77 @@ const submitBulkAssign = () => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Manage Functional Roles Modal -->
+        <div v-if="isRoleModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeRoleModal"></div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-lg">
+                        Manage Functional Roles
+                    </h3>
+                    <button @click="closeRoleModal" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- Create Role Form -->
+                    <form @submit.prevent="submitRoleForm" class="space-y-3">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Create New Functional Role</label>
+                        <div class="flex gap-2">
+                            <input 
+                                type="text" 
+                                v-model="roleForm.name" 
+                                required 
+                                placeholder="Role Name (e.g. QA Engineer)" 
+                                class="flex-1 rounded-lg border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488]"
+                            />
+                            <button 
+                                type="submit" 
+                                :disabled="roleForm.processing"
+                                class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm"
+                            >
+                                Add Role
+                            </button>
+                        </div>
+                        <div v-if="roleForm.errors.name" class="text-rose-500 text-xs">{{ roleForm.errors.name }}</div>
+                    </form>
+
+                    <!-- Roles List -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Existing Functional Roles</label>
+                        <div class="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                            <div v-for="role in memberRoles" :key="role.id" class="px-4 py-3 flex items-center justify-between hover:bg-slate-50/50 transition">
+                                <span class="text-sm font-medium text-slate-700">{{ role.name }}</span>
+                                <button 
+                                    @click="deleteRole(role)"
+                                    class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                                    title="Delete Role"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                        <button 
+                            type="button" 
+                            @click="closeRoleModal" 
+                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </AppLayout>

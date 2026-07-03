@@ -34,6 +34,7 @@ class AdminManagementController extends Controller
                     'id' => $u->id,
                     'name' => $u->name,
                     'email' => $u->email,
+                    'username' => $u->username,
                     'role_id' => $u->role_id,
                     'system_role' => $u->role?->name ?? 'User',
                     'system_role_slug' => $u->role?->slug ?? 'user',
@@ -116,6 +117,7 @@ class AdminManagementController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
@@ -125,6 +127,7 @@ class AdminManagementController extends Controller
         // Create the user
         $user = User::create([
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role_id' => $validated['role_id'],
@@ -148,6 +151,7 @@ class AdminManagementController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username,' . $user->id,
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8',
             'role_id' => 'required|exists:roles,id',
@@ -156,6 +160,7 @@ class AdminManagementController extends Controller
 
         $userData = [
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'role_id' => $validated['role_id'],
         ];
@@ -375,5 +380,73 @@ class AdminManagementController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Development Phases updated successfully.');
+    }
+
+    /**
+     * Store a new Member Role.
+     */
+    public function storeMemberRole(Request $request): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:member_roles,name',
+        ]);
+
+        MemberRole::create([
+            'name' => $validated['name'],
+            'slug' => \Illuminate\Support\Str::slug($validated['name']),
+        ]);
+
+        return redirect()->back()->with('success', 'Functional Role created successfully.');
+    }
+
+    /**
+     * Delete a Member Role.
+     */
+    public function destroyMemberRole(MemberRole $memberRole): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        // Detach role from members using it
+        Member::where('member_role_id', $memberRole->id)->update([
+            'member_role_id' => null
+        ]);
+
+        $memberRole->delete();
+
+        return redirect()->back()->with('success', 'Functional Role deleted successfully.');
+    }
+
+    /**
+     * Bulk delete users.
+     */
+    public function bulkDestroyUsers(Request $request): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id',
+        ]);
+
+        // Prevent admin from deleting themselves if they accidentally select themselves
+        $currentUser = $request->user();
+        $idsToDelete = array_filter($validated['ids'], function ($id) use ($currentUser) {
+            return $id != $currentUser->id;
+        });
+
+        if (empty($idsToDelete)) {
+            return redirect()->back()->withErrors(['ids' => 'No valid users selected for deletion.']);
+        }
+
+        DB::transaction(function () use ($idsToDelete) {
+            // Delete associated member records
+            Member::whereIn('user_id', $idsToDelete)->delete();
+            // Delete users
+            User::whereIn('id', $idsToDelete)->delete();
+        });
+
+        return redirect()->back()->with('success', 'Selected users deleted successfully.');
     }
 }
