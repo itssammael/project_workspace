@@ -166,5 +166,85 @@ class ProjectTrackerTest extends TestCase
         $response->assertRedirect('/dashboard');
         $this->assertAuthenticated();
     }
+
+    /**
+     * Guest/Non-admin cannot delete a project.
+     */
+    public function test_non_admin_cannot_delete_project(): void
+    {
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        // Guest
+        $response = $this->delete(route('projects.destroy', $project->id));
+        $response->assertRedirect('/login');
+
+        // Non-admin (PM)
+        $pm = User::where('email', 'manager@example.com')->first();
+        $response = $this->actingAs($pm)->delete(route('projects.destroy', $project->id));
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Admin can delete a project.
+     */
+    public function test_admin_can_delete_project(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        $response = $this->actingAs($admin)->delete(route('projects.destroy', $project->id));
+        $response->assertRedirect(route('projects.index'));
+
+        $this->assertDatabaseMissing('projects', [
+            'id' => $project->id,
+        ]);
+    }
+
+    /**
+     * Guest/Non-admin cannot update project team.
+     */
+    public function test_non_admin_cannot_update_project_team(): void
+    {
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        // Guest
+        $response = $this->put(route('projects.update', $project->id), [
+            'team_id' => 1,
+        ]);
+        $response->assertRedirect('/login');
+
+        // Non-admin (PM)
+        $pm = User::where('email', 'manager@example.com')->first();
+        $response = $this->actingAs($pm)->put(route('projects.update', $project->id), [
+            'team_id' => 1,
+        ]);
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Admin can update project team.
+     */
+    public function test_admin_can_update_project_team(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $project = Project::first();
+        $this->assertNotNull($project);
+
+        // Create a new team to assign
+        $otherTeam = \App\Models\Team::create([
+            'name' => 'Beta Software Team',
+            'member_id' => $project->team->member_id,
+        ]);
+
+        $response = $this->actingAs($admin)->put(route('projects.update', $project->id), [
+            'team_id' => $otherTeam->id,
+        ]);
+        $response->assertRedirect();
+
+        $this->assertEquals($otherTeam->id, $project->fresh()->team_id);
+    }
 }
 

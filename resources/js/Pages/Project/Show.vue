@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { useForm, Link } from '@inertiajs/vue3';
+import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import GanttChart from '@/Components/GanttChart.vue';
 
@@ -9,6 +9,8 @@ const props = defineProps({
     phases: Array,
     teamMembers: Array,
     canManageTasks: Boolean,
+    canDeleteProject: Boolean,
+    teams: Array,
 });
 
 // Modal state
@@ -93,6 +95,34 @@ const closeModal = () => {
     form.reset();
     selectedTask.value = null;
 };
+
+const deleteProject = () => {
+    if (confirm(`Are you sure you want to delete the project "${props.project.name}"? This action is permanent and will delete all tasks and phase associations.`)) {
+        router.delete(route('projects.destroy', props.project.id));
+    }
+};
+
+const isTeamModalOpen = ref(false);
+const teamForm = useForm({
+    team_id: props.project.team_id || '',
+});
+
+const openTeamModal = () => {
+    teamForm.team_id = props.project.team_id || '';
+    isTeamModalOpen.value = true;
+};
+
+const closeTeamModal = () => {
+    isTeamModalOpen.value = false;
+};
+
+const submitTeamForm = () => {
+    teamForm.put(route('projects.update', props.project.id), {
+        onSuccess: () => {
+            closeTeamModal();
+        }
+    });
+};
 </script>
 
 <template>
@@ -109,10 +139,31 @@ const closeModal = () => {
                         {{ project.name }}
                     </h2>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center gap-3">
                     <span class="px-3 py-1.5 text-xs font-bold uppercase rounded-xl border bg-[#F0FDFA] text-[#0D9488] border-teal-200">
                         Team: {{ project.team?.name || 'Unassigned' }}
                     </span>
+                    <button 
+                        v-if="canDeleteProject"
+                        @click="openTeamModal"
+                        class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+                        title="Update Team"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-500">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.003 9.003 0 0 0-12 0m12 0a9 9 0 0 0-3-2.24M18 18.72V17a4.907 4.907 0 0 0-1.815-3.815m1.815 5.535A9.003 9.003 0 0 0 20 17a9.003 9.003 0 0 0-3-2.24m0 0A9.003 9.003 0 0 0 12 10.75A9.003 9.003 0 0 0 7 14.76m5-3.01v-1.5a3 3 0 1 1 6 0v1.5m-6 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 7.72V17a4.907 4.907 0 0 1 1.815-3.815M1.815 18.72A9.003 9.003 0 0 1 4 17a9.003 9.003 0 0 1 3-2.24" />
+                        </svg>
+                        Update Team
+                    </button>
+                    <button 
+                        v-if="canDeleteProject"
+                        @click="deleteProject"
+                        class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                        Delete Project
+                    </button>
                 </div>
             </div>
         </template>
@@ -338,6 +389,58 @@ const closeModal = () => {
                                 Save Changes
                             </button>
                         </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Update Team Modal -->
+        <div v-if="isTeamModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeTeamModal"></div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-lg">
+                        Assign Team to Project
+                    </h3>
+                    <button @click="closeTeamModal" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitTeamForm" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Select Team</label>
+                        <select 
+                            v-model="teamForm.team_id" 
+                            required 
+                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm"
+                        >
+                            <option value="" disabled>Select a team</option>
+                            <option v-for="team in teams" :key="team.id" :value="team.id">
+                                {{ team.name }}
+                            </option>
+                        </select>
+                        <div v-if="teamForm.errors.team_id" class="text-rose-500 text-xs mt-1">{{ teamForm.errors.team_id }}</div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                        <button 
+                            type="button" 
+                            @click="closeTeamModal" 
+                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            :disabled="teamForm.processing"
+                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
+                        >
+                            Assign Team
+                        </button>
                     </div>
                 </form>
             </div>
