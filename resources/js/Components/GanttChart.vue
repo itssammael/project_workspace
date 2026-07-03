@@ -121,7 +121,7 @@ const getInitials = (name) => {
                 <div class="h-[60px] border-b border-slate-100 bg-slate-50/20"></div>
                 
                 <div v-for="phase in phases" :key="phase.id" class="divide-y divide-slate-100 border-b border-slate-100">
-                    <div class="px-4 py-3 bg-slate-50/40 flex justify-between items-center font-bold text-xs text-slate-600 uppercase tracking-wider">
+                    <div class="px-4 py-3 bg-gray-300/70 flex justify-between items-center font-bold text-xs text-slate-600 uppercase tracking-wider">
                         <div class="flex items-center gap-2">
                             <span>{{ phase.name }}</span>
                             <span v-if="phase.total_tasks > 0" class="text-[10px] text-slate-400 normal-case font-semibold">
@@ -146,7 +146,7 @@ const getInitials = (name) => {
                             v-for="task in phase.tasks" 
                             :key="task.id" 
                             @click="canManageTasks ? emit('edit-task', task) : null"
-                            class="px-4 h-[60px] flex items-center justify-between gap-3 text-slate-700 hover:bg-slate-50/50 transition cursor-pointer"
+                            class="px-4 h-[60px] flex items-center justify-between gap-3 text-slate-700 even:bg-gray-100 hover:bg-slate-50/50 transition cursor-pointer"
                             :class="{'cursor-default': !canManageTasks}"
                         >
                             <div class="min-w-0 flex-1">

@@ -36,14 +36,16 @@ class ProjectController extends Controller
         });
 
         $canCreateProjects = Gate::allows('create-projects');
+        $canDeleteProjects = $user->hasRole('admin');
 
         return Inertia::render('Project/Index', [
             'projects' => $projects,
             'canCreateProjects' => $canCreateProjects,
+            'canDeleteProjects' => $canDeleteProjects,
         ]);
     }
 
-    public function show(Project $project): Response
+    public function show(Request $request, Project $project): Response
     {
         Gate::authorize('view-project', $project);
 
@@ -84,11 +86,15 @@ class ProjectController extends Controller
             ];
         }) : [];
 
+        $teams = $request->user()->hasRole('admin') ? Team::all() : [];
+
         return Inertia::render('Project/Show', [
             'project' => $project,
             'phases' => $phases,
             'teamMembers' => $teamMembers,
             'canManageTasks' => Gate::allows('manage-tasks', $project),
+            'canDeleteProject' => $request->user()->hasRole('admin'),
+            'teams' => $teams,
         ]);
     }
 
@@ -139,5 +145,29 @@ class ProjectController extends Controller
         $project->developmentPhases()->sync($validated['phase_ids']);
 
         return redirect()->route('dashboard')->with('success', 'Project created successfully.');
+    }
+
+    public function update(Request $request, Project $project): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $validated = $request->validate([
+            'team_id' => 'required|exists:teams,id',
+        ]);
+
+        $project->update([
+            'team_id' => $validated['team_id'],
+        ]);
+
+        return redirect()->back()->with('success', 'Project team updated successfully.');
+    }
+
+    public function destroy(Project $project): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $project->delete();
+
+        return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
     }
 }
