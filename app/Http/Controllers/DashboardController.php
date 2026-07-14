@@ -17,10 +17,10 @@ class DashboardController extends Controller
 
         // 1. Projects Query
         if ($user->hasRole('admin')) {
-            $projectsQuery = Project::with('team.projectManager.user');
+            $projectsQuery = Project::with('section.projectManager.user');
         } else {
-            $teamIds = $member ? $member->teams->pluck('id')->toArray() : [];
-            $projectsQuery = Project::whereIn('team_id', $teamIds)->with('team.projectManager.user');
+            $sectionIds = $member ? $member->sections->pluck('id')->toArray() : [];
+            $projectsQuery = Project::whereIn('section_id', $sectionIds)->with('section.projectManager.user');
         }
         
         $projects = $projectsQuery->get()->map(function (Project $project) {

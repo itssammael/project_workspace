@@ -209,15 +209,15 @@ const deleteProject = (project) => {
                                 <span>{{ formatDate(project.end_date) }}</span>
                             </div>
 
-                            <!-- Team Details -->
+                            <!-- Section Details -->
                             <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-xs">
                                 <div class="min-w-0">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Team</span>
-                                    <span class="font-bold text-slate-700 truncate block mt-0.5">{{ project.team?.name || 'Unassigned Team' }}</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Section</span>
+                                    <span class="font-bold text-slate-700 truncate block mt-0.5">{{ project.section?.name || 'Unassigned Section' }}</span>
                                 </div>
-                                <div class="text-right shrink-0" v-if="project.team?.project_manager">
+                                <div class="text-right shrink-0" v-if="project.section?.project_manager">
                                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Manager</span>
-                                    <span class="font-bold text-[#0D9488] block mt-0.5">{{ project.team.project_manager.user.name }}</span>
+                                    <span class="font-bold text-[#0D9488] block mt-0.5">{{ project.section.project_manager.user.name }}</span>
                                 </div>
                             </div>
 

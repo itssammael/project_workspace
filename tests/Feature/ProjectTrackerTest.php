@@ -115,9 +115,9 @@ class ProjectTrackerTest extends TestCase
     }
 
     /**
-     * Test team member can view their project details.
+     * Test section member can view their project details.
      */
-    public function test_team_member_can_view_project_details(): void
+    public function test_section_member_can_view_project_details(): void
     {
         $designer = User::where('email', 'designer@example.com')->first();
         $project = Project::first();
@@ -133,9 +133,9 @@ class ProjectTrackerTest extends TestCase
     }
 
     /**
-     * Test non-team member cannot view project details.
+     * Test non-section member cannot view project details.
      */
-    public function test_non_team_member_cannot_view_project_details(): void
+    public function test_non_section_member_cannot_view_project_details(): void
     {
         $viewer = User::where('email', 'viewer@example.com')->first();
         $project = Project::first();
@@ -207,48 +207,48 @@ class ProjectTrackerTest extends TestCase
     }
 
     /**
-     * Guest/Non-admin cannot update project team.
+     * Guest/Non-admin cannot update project section.
      */
-    public function test_non_admin_cannot_update_project_team(): void
+    public function test_non_admin_cannot_update_project_section(): void
     {
         $project = Project::first();
         $this->assertNotNull($project);
 
         // Guest
         $response = $this->put(route('projects.update', $project->id), [
-            'team_id' => 1,
+            'section_id' => 1,
         ]);
         $response->assertRedirect('/login');
 
         // Non-admin (PM)
         $pm = User::where('email', 'manager@example.com')->first();
         $response = $this->actingAs($pm)->put(route('projects.update', $project->id), [
-            'team_id' => 1,
+            'section_id' => 1,
         ]);
         $response->assertStatus(403);
     }
 
     /**
-     * Admin can update project team.
+     * Admin can update project section.
      */
-    public function test_admin_can_update_project_team(): void
+    public function test_admin_can_update_project_section(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
         $project = Project::first();
         $this->assertNotNull($project);
 
-        // Create a new team to assign
-        $otherTeam = \App\Models\Team::create([
-            'name' => 'Beta Software Team',
-            'member_id' => $project->team->member_id,
+        // Create a new section to assign
+        $otherSection = \App\Models\Section::create([
+            'name' => 'Beta Software Section',
+            'member_id' => $project->section->member_id,
         ]);
 
         $response = $this->actingAs($admin)->put(route('projects.update', $project->id), [
-            'team_id' => $otherTeam->id,
+            'section_id' => $otherSection->id,
         ]);
         $response->assertRedirect();
 
-        $this->assertEquals($otherTeam->id, $project->fresh()->team_id);
+        $this->assertEquals($otherSection->id, $project->fresh()->section_id);
     }
 }
 

@@ -7,7 +7,7 @@ use App\Models\Role;
 use App\Models\RoleAccess;
 use App\Models\MemberRole;
 use App\Models\Member;
-use App\Models\Team;
+use App\Models\Section;
 use App\Models\Project;
 use App\Models\DevelopmentPhase;
 use App\Models\Task;
@@ -118,13 +118,13 @@ class DatabaseSeeder extends Seeder
         $phaseTest = DevelopmentPhase::create(['name' => 'Testing', 'order' => 4]);
         $phaseDeploy = DevelopmentPhase::create(['name' => 'Deployment', 'order' => 5]);
 
-        // 6. Create Teams & Pivot bindings
-        $teamAlpha = Team::create([
-            'name' => 'Alpha Software Team',
+        // 6. Create Sections & Pivot bindings
+        $sectionAlpha = Section::create([
+            'name' => 'Alpha Software Section',
             'member_id' => $pmMember->id, // PM is the Manager
         ]);
         
-        $teamAlpha->members()->attach([
+        $sectionAlpha->members()->attach([
             $pmMember->id,
             $designerMember->id,
             $developerMember->id,
@@ -135,7 +135,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'E-Commerce Platform Redesign',
             'description' => 'Upgrade the existing store layout, migrate products database, and optimize checkout flows.',
             'status' => 'active',
-            'team_id' => $teamAlpha->id,
+            'section_id' => $sectionAlpha->id,
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-28',
         ]);

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Member;
-use App\Models\Team;
+use App\Models\Section;
 use App\Models\Role;
 use App\Models\MemberRole;
 use App\Models\DevelopmentPhase;
@@ -26,8 +26,8 @@ class AdminManagementController extends Controller
     {
         Gate::authorize('admin');
 
-        // Fetch users with roles, member, and team relations
-        $users = User::with(['role', 'member.memberRoles', 'member.teams'])
+        // Fetch users with roles, member, and section relations
+        $users = User::with(['role', 'member.memberRoles', 'member.sections'])
             ->get()
             ->map(function (User $u) {
                 return [
@@ -41,17 +41,17 @@ class AdminManagementController extends Controller
                     'member_id' => $u->member?->id,
                     'member_role_ids' => $u->member ? $u->member->memberRoles->pluck('id')->toArray() : [],
                     'member_role' => $u->member && $u->member->memberRoles->isNotEmpty() ? $u->member->memberRoles->pluck('name')->implode(', ') : 'None',
-                    'teams' => $u->member ? $u->member->teams->map(fn($t) => [
+                    'sections' => $u->member ? $u->member->sections->map(fn($t) => [
                         'id' => $t->id,
                         'name' => $t->name
                     ]) : [],
                 ];
             });
 
-        // Fetch teams with manager and assigned members
-        $teams = Team::with(['projectManager.user', 'members.user', 'members.memberRoles'])
+        // Fetch sections with manager and assigned members
+        $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles'])
             ->get()
-            ->map(function (Team $t) {
+            ->map(function (Section $t) {
                 return [
                     'id' => $t->id,
                     'name' => $t->name,
@@ -109,7 +109,7 @@ class AdminManagementController extends Controller
             ];
         });
 
-        return Inertia::render('Admin/Management', compact('users', 'teams', 'roles', 'memberRoles', 'membersList', 'phases', 'developmentTypes'));
+        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'phases', 'developmentTypes'));
     }
 
     /**
@@ -204,9 +204,9 @@ class AdminManagementController extends Controller
     }
 
     /**
-     * Store a new Team and sync its members.
+     * Store a new Section and sync its members.
      */
-    public function storeTeam(Request $request): RedirectResponse
+    public function storeSection(Request $request): RedirectResponse
     {
         Gate::authorize('admin');
 
@@ -217,22 +217,22 @@ class AdminManagementController extends Controller
             'member_ids.*' => 'exists:members,id',
         ]);
 
-        $team = Team::create([
+        $section = Section::create([
             'name' => $validated['name'],
             'member_id' => $validated['member_id'],
         ]);
 
         if (!empty($validated['member_ids'])) {
-            $team->members()->sync($validated['member_ids']);
+            $section->members()->sync($validated['member_ids']);
         }
 
-        return redirect()->back()->with('success', 'Team created successfully.');
+        return redirect()->back()->with('success', 'Section created successfully.');
     }
 
     /**
-     * Update an existing Team and its member syncs.
+     * Update an existing Section and its member syncs.
      */
-    public function updateTeam(Request $request, Team $team): RedirectResponse
+    public function updateSection(Request $request, Section $section): RedirectResponse
     {
         Gate::authorize('admin');
 
@@ -243,26 +243,26 @@ class AdminManagementController extends Controller
             'member_ids.*' => 'exists:members,id',
         ]);
 
-        $team->update([
+        $section->update([
             'name' => $validated['name'],
             'member_id' => $validated['member_id'],
         ]);
 
-        $team->members()->sync($validated['member_ids'] ?? []);
+        $section->members()->sync($validated['member_ids'] ?? []);
 
-        return redirect()->back()->with('success', 'Team updated successfully.');
+        return redirect()->back()->with('success', 'Section updated successfully.');
     }
 
     /**
-     * Delete a Team.
+     * Delete a Section.
      */
-    public function destroyTeam(Team $team): RedirectResponse
+    public function destroySection(Section $section): RedirectResponse
     {
         Gate::authorize('admin');
 
-        $team->delete();
+        $section->delete();
 
-        return redirect()->back()->with('success', 'Team deleted successfully.');
+        return redirect()->back()->with('success', 'Section deleted successfully.');
     }
 
     /**

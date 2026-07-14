@@ -5,7 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
 
 const props = defineProps({
-    teams: Array,
+    sections: Array,
     phases: Array,
     memberRoles: Array,
 });
@@ -14,7 +14,7 @@ const form = useForm({
     name: '',
     description: '',
     status: 'planning',
-    team_id: '',
+    section_id: '',
     start_date: '',
     end_date: '',
     phase_ids: props.phases ? props.phases.map(p => p.id) : [],
@@ -54,11 +54,11 @@ const submit = () => {
     form.post(route('projects.store'));
 };
 
-const selectedTeamMembers = computed(() => {
-    if (!form.team_id) return [];
-    const team = props.teams.find(t => t.id === form.team_id);
-    if (!team) return [];
-    return team.members || [];
+const selectedSectionMembers = computed(() => {
+    if (!form.section_id) return [];
+    const section = props.sections.find(t => t.id === form.section_id);
+    if (!section) return [];
+    return section.members || [];
 });
 
 const isMemberSelected = (memberId) => {
@@ -144,18 +144,18 @@ watch(() => form.team_id, () => {
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Team</label>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section</label>
                                 <select 
-                                    v-model="form.team_id" 
+                                    v-model="form.section_id" 
                                     required 
                                     class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm"
                                 >
-                                    <option value="" disabled>Select a team...</option>
-                                    <option v-for="team in teams" :key="team.id" :value="team.id">
-                                        {{ team.name }} (PM: {{ team.project_manager?.user?.name || 'None' }})
+                                    <option value="" disabled>Select a section...</option>
+                                    <option v-for="section in sections" :key="section.id" :value="section.id">
+                                        {{ section.name }} (PM: {{ section.project_manager?.user?.name || 'None' }})
                                     </option>
                                 </select>
-                                <div v-if="form.errors.team_id" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.team_id }}</div>
+                                <div v-if="form.errors.section_id" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.section_id }}</div>
                             </div>
 
                             <div>
@@ -174,16 +174,16 @@ watch(() => form.team_id, () => {
                             </div>
                         </div>
 
-                        <!-- Selected Team Members & Roles Assignment -->
-                        <div v-if="form.team_id" class="border-t border-slate-100 pt-6">
+                        <!-- Selected Section Members & Roles Assignment -->
+                        <div v-if="form.section_id" class="border-t border-slate-100 pt-6">
                             <div class="mb-4">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Team Members & Project Roles</label>
-                                <p class="text-xs text-slate-400 mt-0.5">Select members from this team to work on this project, and assign their project-specific functional roles.</p>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Project Roles</label>
+                                <p class="text-xs text-slate-400 mt-0.5">Select members from this section to work on this project, and assign their project-specific functional roles.</p>
                             </div>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 <div 
-                                    v-for="member in selectedTeamMembers" 
+                                    v-for="member in selectedSectionMembers" 
                                     :key="member.id"
                                     class="border border-slate-100 rounded-xl p-4 flex flex-col gap-3 bg-slate-50/20"
                                 >

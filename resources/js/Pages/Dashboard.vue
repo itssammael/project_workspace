@@ -139,7 +139,7 @@ const getInitials = (name) => {
                     </div>
 
                     <div v-if="projects.length === 0" class="bg-white border border-slate-100 rounded-xl p-8 text-center text-slate-400">
-                        No projects assigned to your teams yet.
+                        No projects assigned to your sections yet.
                     </div>
 
                     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -174,11 +174,11 @@ const getInitials = (name) => {
                             <!-- Footer -->
                             <div class="bg-slate-50/50 border-t border-slate-100 px-6 py-4 flex items-center justify-between text-xs text-slate-500">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="project.team?.project_manager">
-                                        {{ getInitials(project.team.project_manager.user.name) }}
+                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="project.section?.project_manager">
+                                        {{ getInitials(project.section.project_manager.user.name) }}
                                     </div>
-                                    <span class="font-medium" v-if="project.team?.project_manager">
-                                        PM: {{ project.team.project_manager.user.name.split(' ')[0] }}
+                                    <span class="font-medium" v-if="project.section?.project_manager">
+                                        PM: {{ project.section.project_manager.user.name.split(' ')[0] }}
                                     </span>
                                 </div>
                                 <Link :href="route('projects.show', project.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">

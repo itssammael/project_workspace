@@ -45,9 +45,9 @@ Route::middleware([
     Route::delete('/admin/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('admin.users.destroy');
     Route::post('/admin/member-roles', [AdminManagementController::class, 'storeMemberRole'])->name('admin.member-roles.store');
     Route::delete('/admin/member-roles/{memberRole}', [AdminManagementController::class, 'destroyMemberRole'])->name('admin.member-roles.destroy');
-    Route::post('/admin/teams', [AdminManagementController::class, 'storeTeam'])->name('admin.teams.store');
-    Route::put('/admin/teams/{team}', [AdminManagementController::class, 'updateTeam'])->name('admin.teams.update');
-    Route::delete('/admin/teams/{team}', [AdminManagementController::class, 'destroyTeam'])->name('admin.teams.destroy');
+    Route::post('/admin/sections', [AdminManagementController::class, 'storeSection'])->name('admin.sections.store');
+    Route::put('/admin/sections/{section}', [AdminManagementController::class, 'updateSection'])->name('admin.sections.update');
+    Route::delete('/admin/sections/{section}', [AdminManagementController::class, 'destroySection'])->name('admin.sections.destroy');
     Route::post('/admin/phases', [AdminManagementController::class, 'storePhase'])->name('admin.phases.store');
     Route::put('/admin/phases/{phase}', [AdminManagementController::class, 'updatePhase'])->name('admin.phases.update');
     Route::delete('/admin/phases/{phase}', [AdminManagementController::class, 'destroyPhase'])->name('admin.phases.destroy');
@@ -62,4 +62,46 @@ Route::middleware([
     // Admin Settings
     Route::get('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'index'])->name('admin.settings');
     Route::post('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'update'])->name('admin.settings.update');
+});
+
+Route::get('/run-migrations-temp', function() {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        return \Illuminate\Support\Facades\Artisan::output();
+    } catch (\Throwable $e) {
+        return $e->getMessage() . "\n" . $e->getTraceAsString();
+    }
+});
+
+Route::get('/migrate-status-temp', function() {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate:status');
+        return \Illuminate\Support\Facades\Artisan::output();
+    } catch (\Throwable $e) {
+        return $e->getMessage() . "\n" . $e->getTraceAsString();
+    }
+});
+
+Route::get('/db-query-temp', function() {
+    try {
+        return \Illuminate\Support\Facades\DB::table('migrations')->get();
+    } catch (\Throwable $e) {
+        return $e->getMessage() . "\n" . $e->getTraceAsString();
+    }
+});
+
+Route::get('/opcache-reset-temp', function() {
+    if (function_exists('opcache_reset')) {
+        return opcache_reset() ? 'OPcache cleared' : 'OPcache clear failed';
+    }
+    return 'OPcache not enabled';
+});
+
+Route::get('/scan-migrations-temp', function() {
+    try {
+        $migrator = app('migrator');
+        return $migrator->getMigrationFiles(database_path('migrations'));
+    } catch (\Throwable $e) {
+        return $e->getMessage() . "\n" . $e->getTraceAsString();
+    }
 });

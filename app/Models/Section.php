@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Team extends Model
+class Section extends Model
 {
     protected $fillable = ['name', 'member_id'];
 
@@ -18,7 +18,7 @@ class Team extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(Member::class, 'teams_member_pivot');
+        return $this->belongsToMany(Member::class, 'sections_member_pivot');
     }
 
     public function projects(): HasMany

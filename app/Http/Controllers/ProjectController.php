@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
-use App\Models\Team;
+use App\Models\Section;
 use App\Models\DevelopmentPhase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -19,10 +19,10 @@ class ProjectController extends Controller
         $member = $user->member;
 
         if ($user->hasRole('admin')) {
-            $projectsQuery = Project::with(['team.projectManager.user', 'tasks.subTasks']);
+            $projectsQuery = Project::with(['section.projectManager.user', 'tasks.subTasks']);
         } else {
-            $teamIds = $member ? $member->teams->pluck('id')->toArray() : [];
-            $projectsQuery = Project::whereIn('team_id', $teamIds)->with(['team.projectManager.user', 'tasks.subTasks']);
+            $sectionIds = $member ? $member->sections->pluck('id')->toArray() : [];
+            $projectsQuery = Project::whereIn('section_id', $sectionIds)->with(['section.projectManager.user', 'tasks.subTasks']);
         }
 
         $projects = $projectsQuery->get()->map(function (Project $project) {
@@ -50,8 +50,8 @@ class ProjectController extends Controller
     {
         Gate::authorize('view-project', $project);
 
-        // Load team, assigned project members, tasks and phases
-        $project->load(['team.projectManager.user', 'team.members.user', 'members.user', 'members.memberRoles']);
+        // Load section, assigned project members, tasks and phases
+        $project->load(['section.projectManager.user', 'section.members.user', 'members.user', 'members.memberRoles']);
 
         $project->members->transform(function ($m) {
             $projectRole = \App\Models\MemberRole::find($m->pivot->member_role_id);
@@ -79,11 +79,34 @@ class ProjectController extends Controller
                 $subTasks = $task->subTasks;
                 if ($subTasks->isNotEmpty()) {
                     $task->deliverables = $subTasks->pluck('deliverables')->filter()->implode(', ');
-                    $task->duration = $subTasks->sum('duration');
+                    
+                    $earliestStart = null;
+                    $latestEnd = null;
+                    
+                    foreach ($subTasks as $st) {
+                        if ($st->start_date) {
+                            $stStart = \Carbon\Carbon::parse($st->start_date);
+                            $stEnd = $stStart->copy()->addDays($st->duration);
+                            
+                            if (is_null($earliestStart) || $stStart->lessThan($earliestStart)) {
+                                $earliestStart = $stStart;
+                            }
+                            if (is_null($latestEnd) || $stEnd->greaterThan($latestEnd)) {
+                                $latestEnd = $stEnd;
+                            }
+                        }
+                    }
+                    
+                    if ($earliestStart && $latestEnd) {
+                        $task->start_date = $earliestStart->format('Y-m-d');
+                        $task->duration = $earliestStart->diffInDays($latestEnd);
+                    } else {
+                        $task->start_date = $subTasks->min('start_date');
+                        $task->duration = $subTasks->sum('duration');
+                    }
                     
                     $firstSubTask = $subTasks->first();
                     $task->member_id = $firstSubTask ? $firstSubTask->member_id : null;
-                    $task->start_date = $subTasks->min('start_date');
                     
                     if ($subTasks->every(fn($st) => $st->status === 'completed')) {
                         $task->status = 'completed';
@@ -150,8 +173,8 @@ class ProjectController extends Controller
             ];
         });
 
-        $teams = $request->user()->hasRole('admin') 
-            ? Team::with(['members.user', 'members.memberRoles'])->get()->map(function ($t) {
+        $sections = $request->user()->hasRole('admin') 
+            ? Section::with(['members.user', 'members.memberRoles'])->get()->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'name' => $t->name,
@@ -173,7 +196,7 @@ class ProjectController extends Controller
             'teamMembers' => $teamMembers,
             'canManageTasks' => Gate::allows('manage-tasks', $project),
             'canDeleteProject' => $request->user()->hasRole('admin'),
-            'teams' => $teams,
+            'sections' => $sections,
             'memberRoles' => \App\Models\MemberRole::all(),
         ]);
     }
@@ -182,7 +205,7 @@ class ProjectController extends Controller
     {
         Gate::authorize('create-projects');
 
-        $teams = Team::with(['projectManager.user', 'members.user', 'members.memberRoles'])->get()->map(function ($t) {
+        $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles'])->get()->map(function ($t) {
             return [
                 'id' => $t->id,
                 'name' => $t->name,
@@ -211,7 +234,7 @@ class ProjectController extends Controller
         });
         
         return Inertia::render('Project/Create', [
-            'teams' => $teams,
+            'sections' => $sections,
             'phases' => $phases,
             'memberRoles' => \App\Models\MemberRole::all(),
         ]);
@@ -225,7 +248,7 @@ class ProjectController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => 'required|string|in:planning,active,completed,on_hold',
-            'team_id' => 'required|exists:teams,id',
+            'section_id' => 'required|exists:sections,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'phase_ids' => 'required|array|min:1',
@@ -239,7 +262,7 @@ class ProjectController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'],
             'status' => $validated['status'],
-            'team_id' => $validated['team_id'],
+            'section_id' => $validated['section_id'],
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
         ]);
@@ -262,14 +285,14 @@ class ProjectController extends Controller
         Gate::authorize('admin');
 
         $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id',
+            'section_id' => 'required|exists:sections,id',
             'members' => 'nullable|array',
             'members.*.id' => 'required|exists:members,id',
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
 
         $project->update([
-            'team_id' => $validated['team_id'],
+            'section_id' => $validated['section_id'],
         ]);
 
         $syncData = [];

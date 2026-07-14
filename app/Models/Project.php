@@ -9,16 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Project extends Model
 {
-    protected $fillable = ['name', 'description', 'status', 'team_id', 'start_date', 'end_date'];
+    protected $fillable = ['name', 'description', 'status', 'section_id', 'start_date', 'end_date'];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
     ];
 
-    public function team(): BelongsTo
+    public function section(): BelongsTo
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(Section::class);
     }
 
     public function tasks(): HasMany

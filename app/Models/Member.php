@@ -21,9 +21,9 @@ class Member extends Model
         return $this->belongsToMany(MemberRole::class, 'member_member_role');
     }
 
-    public function teams(): BelongsToMany
+    public function sections(): BelongsToMany
     {
-        return $this->belongsToMany(Team::class, 'teams_member_pivot');
+        return $this->belongsToMany(Section::class, 'sections_member_pivot');
     }
 
     public function tasks(): HasMany
