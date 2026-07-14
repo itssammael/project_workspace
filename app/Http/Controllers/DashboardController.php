@@ -24,8 +24,9 @@ class DashboardController extends Controller
         }
         
         $projects = $projectsQuery->get()->map(function (Project $project) {
-            $totalTasks = $project->tasks()->count();
-            $completedTasks = $project->tasks()->where('status', 'completed')->count();
+            $taskIds = $project->tasks()->pluck('id');
+            $totalTasks = \App\Models\SubTask::whereIn('task_id', $taskIds)->count();
+            $completedTasks = \App\Models\SubTask::whereIn('task_id', $taskIds)->where('status', 'completed')->count();
             
             $project->total_tasks = $totalTasks;
             $project->completed_tasks = $completedTasks;
@@ -35,42 +36,70 @@ class DashboardController extends Controller
 
         // 2. Pending/Assigned Tasks
         if ($user->hasRole('admin')) {
-            $tasksQuery = Task::where('status', '!=', 'completed')
-                ->with(['project', 'developmentPhase', 'member.user']);
+            $subTasksQuery = \App\Models\SubTask::where('status', '!=', 'completed')
+                ->with(['task.project', 'task.developmentPhase', 'member.user']);
         } else {
-            $tasksQuery = Task::where('member_id', $member?->id ?? 0)
+            $subTasksQuery = \App\Models\SubTask::where('member_id', $member?->id ?? 0)
                 ->where('status', '!=', 'completed')
-                ->with(['project', 'developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.developmentPhase', 'member.user']);
         }
-        $pendingTasks = $tasksQuery->get();
+        $pendingTasks = $subTasksQuery->get()->map(function ($subTask) {
+            return [
+                'id' => $subTask->id,
+                'name' => $subTask->name,
+                'details' => $subTask->details,
+                'deliverables' => $subTask->deliverables,
+                'duration' => $subTask->duration,
+                'member_id' => $subTask->member_id,
+                'start_date' => $subTask->start_date ? \Carbon\Carbon::parse($subTask->start_date)->format('Y-m-d') : null,
+                'status' => $subTask->status,
+                'parent_task_name' => $subTask->task?->name,
+                'project' => $subTask->task?->project,
+                'development_phase' => $subTask->task?->developmentPhase,
+            ];
+        })->values();
 
         // 3. Undelivered/Overdue Tasks (status != completed and current date > start_date + duration)
         $today = now()->startOfDay();
         
         if ($user->hasRole('admin')) {
-            $undeliveredQuery = Task::where('status', '!=', 'completed')
-                ->with(['project', 'developmentPhase', 'member.user']);
+            $undeliveredSubQuery = \App\Models\SubTask::where('status', '!=', 'completed')
+                ->with(['task.project', 'task.developmentPhase', 'member.user']);
         } else {
-            $undeliveredQuery = Task::where('member_id', $member?->id ?? 0)
+            $undeliveredSubQuery = \App\Models\SubTask::where('member_id', $member?->id ?? 0)
                 ->where('status', '!=', 'completed')
-                ->with(['project', 'developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.developmentPhase', 'member.user']);
         }
 
-        $undeliveredTasks = $undeliveredQuery->get()->filter(function (Task $task) use ($today) {
-            if (!$task->start_date) {
+        $undeliveredTasks = $undeliveredSubQuery->get()->filter(function ($subTask) use ($today) {
+            if (!$subTask->start_date) {
                 return false;
             }
-            $dueDate = $task->start_date->copy()->addDays($task->duration);
+            $dueDate = $subTask->start_date->copy()->addDays($subTask->duration);
             return $today->greaterThan($dueDate);
+        })->map(function ($subTask) {
+            return [
+                'id' => $subTask->id,
+                'name' => $subTask->name,
+                'details' => $subTask->details,
+                'deliverables' => $subTask->deliverables,
+                'duration' => $subTask->duration,
+                'member_id' => $subTask->member_id,
+                'start_date' => $subTask->start_date ? \Carbon\Carbon::parse($subTask->start_date)->format('Y-m-d') : null,
+                'status' => $subTask->status,
+                'parent_task_name' => $subTask->task?->name,
+                'project' => $subTask->task?->project,
+                'development_phase' => $subTask->task?->developmentPhase,
+            ];
         })->values();
 
         return Inertia::render('Dashboard', [
             'projects' => $projects,
             'pendingTasks' => $pendingTasks,
             'undeliveredTasks' => $undeliveredTasks,
-            'isDeptHead' => $member && $member->memberRole && $member->memberRole->slug === 'department_head',
-            'isProjectManager' => $member && $member->memberRole && $member->memberRole->slug === 'project_manager',
-            'memberRole' => $member?->memberRole?->name ?? 'None',
+            'isDeptHead' => $member && $member->memberRoles()->where('slug', 'department_head')->exists(),
+            'isProjectManager' => $member && $member->memberRoles()->where('slug', 'project_manager')->exists(),
+            'memberRole' => $member ? $member->memberRoles->pluck('name')->implode(', ') : 'None',
             'systemRole' => $user->role?->name ?? 'User',
         ]);
     }

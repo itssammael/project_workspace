@@ -46,6 +46,10 @@ class HandleInertiaRequests extends Middleware
                 'theme' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('theme', 'corporate_teal') : 'corporate_teal',
                 'logo' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('logo', null) : null,
             ],
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
         ];
     }
 }

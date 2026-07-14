@@ -49,7 +49,7 @@ const userForm = useForm({
     email: '',
     password: '',
     role_id: '',
-    member_role_id: '',
+    member_role_ids: [],
 });
 
 // Sync email domain when creating a new user by default
@@ -90,8 +90,8 @@ const bulkDeleteForm = useForm({
 const stats = computed(() => {
     const totalUsers = props.users.length;
     const totalAdmins = props.users.filter(u => u.system_role_slug === 'admin').length;
-    const totalPMs = props.users.filter(u => u.member_role === 'Project Manager').length;
-    const totalDevs = props.users.filter(u => u.member_role === 'Developer' || u.member_role === 'Lead Developer').length;
+    const totalPMs = props.users.filter(u => u.member_role && u.member_role.includes('Project Manager')).length;
+    const totalDevs = props.users.filter(u => u.member_role && (u.member_role.includes('Developer') || u.member_role.includes('Lead Developer'))).length;
     
     const totalTeams = props.teams.length;
     
@@ -120,7 +120,7 @@ const filteredUsers = computed(() => {
         const matchesSearch = u.name.toLowerCase().includes(userSearch.value.toLowerCase()) || 
                               u.email.toLowerCase().includes(userSearch.value.toLowerCase()) ||
                               (u.username && u.username.toLowerCase().includes(userSearch.value.toLowerCase()));
-        const matchesRole = !roleFilter.value || u.member_role_id == roleFilter.value || u.role_id == roleFilter.value;
+        const matchesRole = !roleFilter.value || (u.member_role_ids && u.member_role_ids.includes(Number(roleFilter.value))) || u.role_id == roleFilter.value;
         return matchesSearch && matchesRole;
     });
 });
@@ -171,7 +171,7 @@ const openEditUserModal = (user) => {
     userForm.email = user.email;
     userForm.password = ''; // leave blank by default
     userForm.role_id = user.role_id;
-    userForm.member_role_id = user.member_role_id || '';
+    userForm.member_role_ids = user.member_role_ids || [];
     userModalMode.value = 'edit';
     isUserModalOpen.value = true;
 };
@@ -442,7 +442,7 @@ const submitBulkAssign = () => {
                                  : 'text-slate-500 hover:text-slate-800'
                          ]"
                     >
-                        Development Phases
+                        Project Development Phases
                     </button>
                 </div>
             </div>
@@ -976,7 +976,7 @@ const submitBulkAssign = () => {
                             </div>
                             
                             <div v-if="Object.keys(groupedPhases).length === 0" class="bg-white border border-slate-100 p-8 text-center text-slate-400 italic rounded-2xl shadow-sm">
-                                No development phases found.
+                                No project development phases found.
                             </div>
                         </div>
                     </div>
@@ -1039,12 +1039,22 @@ const submitBulkAssign = () => {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Functional Role</label>
-                            <select v-model="userForm.member_role_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                <option value="">None (Visitor)</option>
-                                <option v-for="mr in memberRoles" :key="mr.id" :value="mr.id">{{ mr.name }}</option>
-                            </select>
-                            <div v-if="userForm.errors.member_role_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_id }}</div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Functional Roles</label>
+                            <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
+                                <div v-for="mr in memberRoles" :key="mr.id" class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :id="'member_role_' + mr.id" 
+                                        :value="mr.id" 
+                                        v-model="userForm.member_role_ids" 
+                                        class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                    />
+                                    <label :for="'member_role_' + mr.id" class="ms-2 text-xs font-medium text-slate-700 select-none cursor-pointer">
+                                        {{ mr.name }}
+                                    </label>
+                                </div>
+                            </div>
+                            <div v-if="userForm.errors.member_role_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_ids }}</div>
                         </div>
                     </div>
 
@@ -1160,7 +1170,7 @@ const submitBulkAssign = () => {
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        {{ phaseModalMode === 'create' ? 'Add Development Phase' : 'Edit Development Phase' }}
+                        {{ phaseModalMode === 'create' ? 'Add Project Development Phase' : 'Edit Project Development Phase' }}
                     </h3>
                     <button @click="closePhaseModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">

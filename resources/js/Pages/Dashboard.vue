@@ -13,8 +13,8 @@ const props = defineProps({
     systemRole: String,
 });
 
-const updateTaskStatus = (task, newStatus) => {
-    router.put(route('tasks.update', task.id), {
+const updateTaskStatus = (subtask, newStatus) => {
+    router.put(route('subtasks.update-status', subtask.id), {
         status: newStatus
     }, {
         preserveScroll: true
@@ -211,6 +211,7 @@ const getInitials = (name) => {
                                         <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
                                         <p class="text-xs text-slate-400">
                                             {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.development_phase?.name }}</span>
+                                            &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Starts: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
                                     </div>
@@ -254,6 +255,7 @@ const getInitials = (name) => {
                                         </div>
                                         <p class="text-xs text-slate-400">
                                             {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.development_phase?.name }}</span>
+                                            &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Started: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
                                         <p class="text-xs text-[#EA580C] font-semibold">

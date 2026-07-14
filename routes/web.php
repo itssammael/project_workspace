@@ -10,12 +10,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminManagementController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
 Route::middleware([
@@ -39,6 +34,9 @@ Route::middleware([
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
+    // Subtasks
+    Route::put('/subtasks/{subTask}/status', [TaskController::class, 'updateSubtaskStatus'])->name('subtasks.update-status');
+
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');
     Route::post('/admin/users', [AdminManagementController::class, 'storeUser'])->name('admin.users.store');
@@ -57,6 +55,9 @@ Route::middleware([
     Route::post('/admin/dev-types', [AdminManagementController::class, 'storeDevelopmentType'])->name('admin.dev-types.store');
     Route::put('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'updateDevelopmentType'])->name('admin.dev-types.update');
     Route::delete('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'destroyDevelopmentType'])->name('admin.dev-types.destroy');
+
+    // Add role to member
+    Route::post('/admin/members/{member}/attach-role', [AdminManagementController::class, 'attachRoleToMember'])->name('admin.members.attach-role');
 
     // Admin Settings
     Route::get('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'index'])->name('admin.settings');

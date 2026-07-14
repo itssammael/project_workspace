@@ -1,11 +1,13 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
 
 const props = defineProps({
     teams: Array,
     phases: Array,
+    memberRoles: Array,
 });
 
 const form = useForm({
@@ -16,6 +18,7 @@ const form = useForm({
     start_date: '',
     end_date: '',
     phase_ids: props.phases ? props.phases.map(p => p.id) : [],
+    members: [], // list of { id, member_role_id }
 });
 
 const groupedPhases = computed(() => {
@@ -50,6 +53,48 @@ const deselectAllPhases = () => {
 const submit = () => {
     form.post(route('projects.store'));
 };
+
+const selectedTeamMembers = computed(() => {
+    if (!form.team_id) return [];
+    const team = props.teams.find(t => t.id === form.team_id);
+    if (!team) return [];
+    return team.members || [];
+});
+
+const isMemberSelected = (memberId) => {
+    return form.members.some(m => m.id === memberId);
+};
+
+const toggleMemberSelection = (member) => {
+    const index = form.members.findIndex(m => m.id === member.id);
+    if (index > -1) {
+        form.members.splice(index, 1);
+    } else {
+        const defaultRoleId = member.member_roles && member.member_roles.length > 0 
+            ? member.member_roles[0].id 
+            : '';
+        form.members.push({
+            id: member.id,
+            member_role_id: defaultRoleId
+        });
+    }
+};
+
+const getMemberProjectRoleId = (memberId) => {
+    const found = form.members.find(m => m.id === memberId);
+    return found ? found.member_role_id : '';
+};
+
+const updateMemberProjectRole = (memberId, roleId) => {
+    const found = form.members.find(m => m.id === memberId);
+    if (found) {
+        found.member_role_id = Number(roleId);
+    }
+};
+
+watch(() => form.team_id, () => {
+    form.members = [];
+});
 </script>
 
 <template>
@@ -129,6 +174,46 @@ const submit = () => {
                             </div>
                         </div>
 
+                        <!-- Selected Team Members & Roles Assignment -->
+                        <div v-if="form.team_id" class="border-t border-slate-100 pt-6">
+                            <div class="mb-4">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Team Members & Project Roles</label>
+                                <p class="text-xs text-slate-400 mt-0.5">Select members from this team to work on this project, and assign their project-specific functional roles.</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div 
+                                    v-for="member in selectedTeamMembers" 
+                                    :key="member.id"
+                                    class="border border-slate-100 rounded-xl p-4 flex flex-col gap-3 bg-slate-50/20"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <input 
+                                            type="checkbox" 
+                                            :id="'member-' + member.id"
+                                            :checked="isMemberSelected(member.id)"
+                                            @change="toggleMemberSelection(member)"
+                                            class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                        />
+                                        <label :for="'member-' + member.id" class="text-xs font-bold text-slate-800 cursor-pointer select-none">
+                                            {{ member.name }}
+                                        </label>
+                                    </div>
+                                    
+                                    <div v-if="isMemberSelected(member.id)" class="pl-6 space-y-1">
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Role</label>
+                                        <RoleSelectDropdown
+                                            :member="member"
+                                            :all-roles="memberRoles"
+                                            :model-value="getMemberProjectRoleId(member.id)"
+                                            @update:model-value="updateMemberProjectRole(member.id, $event)"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="form.errors.members" class="text-xs text-rose-500 font-semibold mt-2">{{ form.errors.members }}</div>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Start Date</label>
@@ -157,7 +242,7 @@ const submit = () => {
                         <div class="border-t border-slate-100 pt-6">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Choose Development Phases</label>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Choose Project Development Phases</label>
                                     <p class="text-xs text-slate-400 mt-0.5">Select the execution workflow phases that will construct the project timeline.</p>
                                 </div>
                                 <div class="flex gap-2">

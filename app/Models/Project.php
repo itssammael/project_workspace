@@ -30,4 +30,11 @@ class Project extends Model
     {
         return $this->belongsToMany(DevelopmentPhase::class, 'project_development_phase');
     }
+
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(Member::class, 'project_members')
+            ->withPivot('member_role_id')
+            ->withTimestamps();
+    }
 }

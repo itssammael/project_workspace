@@ -27,7 +27,7 @@ class AdminManagementController extends Controller
         Gate::authorize('admin');
 
         // Fetch users with roles, member, and team relations
-        $users = User::with(['role', 'member.memberRole', 'member.teams'])
+        $users = User::with(['role', 'member.memberRoles', 'member.teams'])
             ->get()
             ->map(function (User $u) {
                 return [
@@ -39,8 +39,8 @@ class AdminManagementController extends Controller
                     'system_role' => $u->role?->name ?? 'User',
                     'system_role_slug' => $u->role?->slug ?? 'user',
                     'member_id' => $u->member?->id,
-                    'member_role_id' => $u->member?->member_role_id,
-                    'member_role' => $u->member?->memberRole?->name ?? 'None',
+                    'member_role_ids' => $u->member ? $u->member->memberRoles->pluck('id')->toArray() : [],
+                    'member_role' => $u->member && $u->member->memberRoles->isNotEmpty() ? $u->member->memberRoles->pluck('name')->implode(', ') : 'None',
                     'teams' => $u->member ? $u->member->teams->map(fn($t) => [
                         'id' => $t->id,
                         'name' => $t->name
@@ -49,7 +49,7 @@ class AdminManagementController extends Controller
             });
 
         // Fetch teams with manager and assigned members
-        $teams = Team::with(['projectManager.user', 'members.user', 'members.memberRole'])
+        $teams = Team::with(['projectManager.user', 'members.user', 'members.memberRoles'])
             ->get()
             ->map(function (Team $t) {
                 return [
@@ -65,7 +65,11 @@ class AdminManagementController extends Controller
                         'id' => $m->id,
                         'name' => $m->user->name,
                         'email' => $m->user->email,
-                        'role' => $m->memberRole?->name ?? 'Developer',
+                        'role' => $m->memberRoles->isNotEmpty() ? $m->memberRoles->pluck('name')->implode(', ') : 'Developer',
+                        'member_roles' => $m->memberRoles->map(fn($mr) => [
+                            'id' => $mr->id,
+                            'name' => $mr->name
+                        ])
                     ]),
                 ];
             });
@@ -75,14 +79,14 @@ class AdminManagementController extends Controller
         $memberRoles = MemberRole::all();
         
         // Members list to populate managers and team assignments
-        $membersList = Member::with('user', 'memberRole')
+        $membersList = Member::with(['user', 'memberRoles'])
             ->get()
             ->map(function (Member $m) {
                 return [
                     'id' => $m->id,
                     'name' => $m->user->name,
                     'email' => $m->user->email,
-                    'role' => $m->memberRole?->name ?? 'None',
+                    'role' => $m->memberRoles->isNotEmpty() ? $m->memberRoles->pluck('name')->implode(', ') : 'None',
                 ];
             });
 
@@ -121,7 +125,8 @@ class AdminManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
-            'member_role_id' => 'nullable|exists:member_roles,id',
+            'member_role_ids' => 'nullable|array',
+            'member_role_ids.*' => 'exists:member_roles,id',
         ]);
 
         // Create the user
@@ -134,10 +139,11 @@ class AdminManagementController extends Controller
         ]);
 
         // Create the associated member
-        Member::create([
+        $member = Member::create([
             'user_id' => $user->id,
-            'member_role_id' => $validated['member_role_id'],
         ]);
+        
+        $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
 
         return redirect()->back()->with('success', 'User and member profile created successfully.');
     }
@@ -155,7 +161,8 @@ class AdminManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8',
             'role_id' => 'required|exists:roles,id',
-            'member_role_id' => 'nullable|exists:member_roles,id',
+            'member_role_ids' => 'nullable|array',
+            'member_role_ids.*' => 'exists:member_roles,id',
         ]);
 
         $userData = [
@@ -173,9 +180,7 @@ class AdminManagementController extends Controller
 
         // Update or create associated member
         $member = Member::firstOrCreate(['user_id' => $user->id]);
-        $member->update([
-            'member_role_id' => $validated['member_role_id'],
-        ]);
+        $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
 
         return redirect()->back()->with('success', 'User updated successfully.');
     }
@@ -409,9 +414,7 @@ class AdminManagementController extends Controller
         Gate::authorize('admin');
 
         // Detach role from members using it
-        Member::where('member_role_id', $memberRole->id)->update([
-            'member_role_id' => null
-        ]);
+        $memberRole->members()->detach();
 
         $memberRole->delete();
 
@@ -448,5 +451,24 @@ class AdminManagementController extends Controller
         });
 
         return redirect()->back()->with('success', 'Selected users deleted successfully.');
+    }
+
+    /**
+     * Attach a functional role to a member globally.
+     */
+    public function attachRoleToMember(Request $request, Member $member): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $validated = $request->validate([
+            'member_role_id' => 'required|exists:member_roles,id',
+        ]);
+
+        // Only attach if not already globally assigned
+        if (!$member->memberRoles()->where('member_roles.id', $validated['member_role_id'])->exists()) {
+            $member->memberRoles()->attach($validated['member_role_id']);
+        }
+
+        return redirect()->back()->with('success', 'Functional role added to member successfully.');
     }
 }

@@ -73,7 +73,7 @@ class AdminManagementTest extends TestCase
             'email' => 'testdev@example.com',
             'password' => 'secret123',
             'role_id' => $userRole->id,
-            'member_role_id' => $devRole ? $devRole->id : null,
+            'member_role_ids' => $devRole ? [$devRole->id] : [],
         ]);
 
         $response->assertRedirect();
@@ -85,7 +85,7 @@ class AdminManagementTest extends TestCase
         
         $this->assertNotNull($user->member);
         if ($devRole) {
-            $this->assertEquals($devRole->id, $user->member->member_role_id);
+            $this->assertTrue($user->member->memberRoles->contains($devRole->id));
         }
     }
 

@@ -65,8 +65,10 @@ class ProjectTrackerTest extends TestCase
         $designer = User::where('email', 'designer@example.com')->first();
         $this->assertNotNull($designer);
 
-        // Find a task assigned to the designer
-        $task = Task::where('member_id', $designer->member->id)->first();
+        // Find a task assigned to the designer via its subtask
+        $subTask = \App\Models\SubTask::where('member_id', $designer->member->id)->first();
+        $this->assertNotNull($subTask);
+        $task = $subTask->task;
         $this->assertNotNull($task);
 
         // Designer updates status to in_progress
@@ -75,7 +77,7 @@ class ProjectTrackerTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $this->assertEquals('in_progress', $task->fresh()->status);
+        $this->assertEquals('in_progress', $subTask->fresh()->status);
     }
 
     /**
@@ -86,8 +88,10 @@ class ProjectTrackerTest extends TestCase
         $developer = User::where('email', 'developer@example.com')->first();
         $designer = User::where('email', 'designer@example.com')->first();
 
-        // Find a task assigned to the designer
-        $task = Task::where('member_id', $designer->member->id)->first();
+        // Find a task assigned to the designer via its subtask
+        $subTask = \App\Models\SubTask::where('member_id', $designer->member->id)->first();
+        $this->assertNotNull($subTask);
+        $task = $subTask->task;
 
         // Developer tries to update designer's task status
         $response = $this->actingAs($developer)->put(route('tasks.update', $task->id), [

@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
-import Banner from '@/Components/Banner.vue';
+import ToastList from '@/Components/ToastList.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
@@ -31,7 +31,7 @@ const logout = () => {
     <div :class="'theme-' + ($page.props.settings?.theme || 'corporate_teal')">
         <Head :title="title ? `${title} - ${$page.props.settings?.system_name || 'Project Tracker'}` : ($page.props.settings?.system_name || 'Project Tracker')" />
 
-        <Banner />
+        <ToastList />
 
         <div class="min-h-screen bg-[#F1F5F9]">
             <nav class="bg-white border-b border-gray-100">
