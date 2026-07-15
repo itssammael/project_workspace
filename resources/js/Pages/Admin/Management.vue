@@ -5,7 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     users: Array,
-    teams: Array,
+    sections: Array,
     roles: Array,
     memberRoles: Array,
     membersList: Array,
@@ -14,20 +14,20 @@ const props = defineProps({
 });
 
 // Active tab
-const activeTab = ref('users'); // 'users', 'teams', or 'phases'
+const activeTab = ref('users'); // 'users', 'sections', or 'phases'
 
 // Search & filter states
 const userSearch = ref('');
 const roleFilter = ref('');
-const teamSearch = ref('');
+const sectionSearch = ref('');
 const phaseSearch = ref('');
 const projectTypeFilter = ref('');
 
 // Modals state
 const isUserModalOpen = ref(false);
 const userModalMode = ref('create'); // 'create', 'edit'
-const isTeamModalOpen = ref(false);
-const teamModalMode = ref('create'); // 'create', 'edit'
+const isSectionModalOpen = ref(false);
+const sectionModalMode = ref('create'); // 'create', 'edit'
 const isPhaseModalOpen = ref(false);
 const phaseModalMode = ref('create'); // 'create', 'edit'
 const isDevTypeModalOpen = ref(false);
@@ -49,7 +49,7 @@ const userForm = useForm({
     email: '',
     password: '',
     role_id: '',
-    member_role_id: '',
+    member_role_ids: [],
 });
 
 // Sync email domain when creating a new user by default
@@ -59,7 +59,7 @@ watch(() => userForm.username, (newUsername) => {
     }
 });
 
-const teamForm = useForm({
+const sectionForm = useForm({
     id: null,
     name: '',
     member_id: '', // PM
@@ -90,14 +90,14 @@ const bulkDeleteForm = useForm({
 const stats = computed(() => {
     const totalUsers = props.users.length;
     const totalAdmins = props.users.filter(u => u.system_role_slug === 'admin').length;
-    const totalPMs = props.users.filter(u => u.member_role === 'Project Manager').length;
-    const totalDevs = props.users.filter(u => u.member_role === 'Developer' || u.member_role === 'Lead Developer').length;
+    const totalPMs = props.users.filter(u => u.member_role && u.member_role.includes('Project Manager')).length;
+    const totalDevs = props.users.filter(u => u.member_role && (u.member_role.includes('Developer') || u.member_role.includes('Lead Developer'))).length;
     
-    const totalTeams = props.teams.length;
+    const totalSections = props.sections.length;
     
-    // Count unique members assigned to at least one team
+    // Count unique members assigned to at least one section
     const assignedMemberIds = new Set();
-    props.teams.forEach(t => {
+    props.sections.forEach(t => {
         t.members.forEach(m => assignedMemberIds.add(m.id));
     });
     const assignedMembers = assignedMemberIds.size;
@@ -108,7 +108,7 @@ const stats = computed(() => {
         totalAdmins,
         totalPMs,
         totalDevs,
-        totalTeams,
+        totalSections,
         assignedMembers,
         unassignedMembers
     };
@@ -120,17 +120,17 @@ const filteredUsers = computed(() => {
         const matchesSearch = u.name.toLowerCase().includes(userSearch.value.toLowerCase()) || 
                               u.email.toLowerCase().includes(userSearch.value.toLowerCase()) ||
                               (u.username && u.username.toLowerCase().includes(userSearch.value.toLowerCase()));
-        const matchesRole = !roleFilter.value || u.member_role_id == roleFilter.value || u.role_id == roleFilter.value;
+        const matchesRole = !roleFilter.value || (u.member_role_ids && u.member_role_ids.includes(Number(roleFilter.value))) || u.role_id == roleFilter.value;
         return matchesSearch && matchesRole;
     });
 });
 
-// Filter teams
-const filteredTeams = computed(() => {
-    if (!teamSearch.value) return props.teams;
-    return props.teams.filter(t => 
-        t.name.toLowerCase().includes(teamSearch.value.toLowerCase()) ||
-        (t.project_manager && t.project_manager.name.toLowerCase().includes(teamSearch.value.toLowerCase()))
+// Filter sections
+const filteredSections = computed(() => {
+    if (!sectionSearch.value) return props.sections;
+    return props.sections.filter(t => 
+        t.name.toLowerCase().includes(sectionSearch.value.toLowerCase()) ||
+        (t.project_manager && t.project_manager.name.toLowerCase().includes(sectionSearch.value.toLowerCase()))
     );
 });
 
@@ -171,7 +171,7 @@ const openEditUserModal = (user) => {
     userForm.email = user.email;
     userForm.password = ''; // leave blank by default
     userForm.role_id = user.role_id;
-    userForm.member_role_id = user.member_role_id || '';
+    userForm.member_role_ids = user.member_role_ids || [];
     userModalMode.value = 'edit';
     isUserModalOpen.value = true;
 };
@@ -244,52 +244,52 @@ const closeUserModal = () => {
     userForm.reset();
 };
 
-// Team Actions
-const openAddTeamModal = () => {
-    teamForm.reset();
-    teamModalMode.value = 'create';
-    isTeamModalOpen.value = true;
+// Section Actions
+const openAddSectionModal = () => {
+    sectionForm.reset();
+    sectionModalMode.value = 'create';
+    isSectionModalOpen.value = true;
 };
 
-const openEditTeamModal = (team) => {
-    teamForm.reset();
-    teamForm.id = team.id;
-    teamForm.name = team.name;
-    teamForm.member_id = team.member_id || '';
-    teamForm.member_ids = team.members.map(m => m.id);
-    teamModalMode.value = 'edit';
-    isTeamModalOpen.value = true;
+const openEditSectionModal = (section) => {
+    sectionForm.reset();
+    sectionForm.id = section.id;
+    sectionForm.name = section.name;
+    sectionForm.member_id = section.member_id || '';
+    sectionForm.member_ids = section.members.map(m => m.id);
+    sectionModalMode.value = 'edit';
+    isSectionModalOpen.value = true;
 };
 
-const submitTeamForm = () => {
-    if (teamModalMode.value === 'create') {
-        teamForm.post(route('admin.teams.store'), {
-            onSuccess: () => closeTeamModal(),
+const submitSectionForm = () => {
+    if (sectionModalMode.value === 'create') {
+        sectionForm.post(route('admin.sections.store'), {
+            onSuccess: () => closeSectionModal(),
         });
     } else {
-        teamForm.put(route('admin.teams.update', teamForm.id), {
-            onSuccess: () => closeTeamModal(),
+        sectionForm.put(route('admin.sections.update', sectionForm.id), {
+            onSuccess: () => closeSectionModal(),
         });
     }
 };
 
-const deleteTeam = (team) => {
-    if (confirm(`Are you sure you want to delete the team "${team.name}"?`)) {
-        teamForm.delete(route('admin.teams.destroy', team.id));
+const deleteSection = (section) => {
+    if (confirm(`Are you sure you want to delete the section "${section.name}"?`)) {
+        sectionForm.delete(route('admin.sections.destroy', section.id));
     }
 };
 
-const closeTeamModal = () => {
-    isTeamModalOpen.value = false;
-    teamForm.reset();
+const closeSectionModal = () => {
+    isSectionModalOpen.value = false;
+    sectionForm.reset();
 };
 
 const toggleMemberAssignment = (memberId) => {
-    const index = teamForm.member_ids.indexOf(memberId);
+    const index = sectionForm.member_ids.indexOf(memberId);
     if (index > -1) {
-        teamForm.member_ids.splice(index, 1);
+        sectionForm.member_ids.splice(index, 1);
     } else {
-        teamForm.member_ids.push(memberId);
+        sectionForm.member_ids.push(memberId);
     }
 };
 
@@ -423,15 +423,15 @@ const submitBulkAssign = () => {
                         Users & Members
                     </button>
                     <button 
-                        @click="activeTab = 'teams'"
+                        @click="activeTab = 'sections'"
                         :class="[
                              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
-                             activeTab === 'teams' 
+                             activeTab === 'sections' 
                                  ? 'bg-white text-[#0D9488] shadow-sm border border-slate-200/20' 
                                  : 'text-slate-500 hover:text-slate-800'
                          ]"
                     >
-                        Teams & Assignments
+                        Sections & Assignments
                     </button>
                     <button 
                         @click="activeTab = 'phases'"
@@ -442,7 +442,7 @@ const submitBulkAssign = () => {
                                  : 'text-slate-500 hover:text-slate-800'
                          ]"
                     >
-                        Development Phases
+                        Project Development Phases
                     </button>
                 </div>
             </div>
@@ -620,16 +620,16 @@ const submitBulkAssign = () => {
                                             <span class="font-medium text-slate-700">{{ user.member_role }}</span>
                                         </td>
                                         <td class="py-4 px-6">
-                                            <div class="flex flex-wrap gap-1.5" v-if="user.teams.length">
+                                            <div class="flex flex-wrap gap-1.5" v-if="user.sections.length">
                                                 <span 
-                                                    v-for="t in user.teams" 
+                                                    v-for="t in user.sections" 
                                                     :key="t.id"
                                                     class="px-2 py-0.5 text-xs font-semibold rounded-md border bg-slate-50 text-slate-600 border-slate-150"
                                                 >
                                                     {{ t.name }}
                                                 </span>
                                             </div>
-                                            <span v-else class="text-xs text-slate-400 italic">No assigned teams</span>
+                                            <span v-else class="text-xs text-slate-400 italic">No assigned sections</span>
                                         </td>
                                         <td class="py-4 px-6 text-right">
                                             <div class="flex items-center justify-end gap-2">
@@ -665,8 +665,8 @@ const submitBulkAssign = () => {
                     </div>
                 </div>
 
-                <!-- Tab: Teams -->
-                <div v-else-if="activeTab === 'teams'" class="space-y-6">
+                <!-- Tab: Sections -->
+                <div v-else-if="activeTab === 'sections'" class="space-y-6">
                     <!-- Stats Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div class="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex items-center gap-4">
@@ -676,8 +676,8 @@ const submitBulkAssign = () => {
                                 </svg>
                             </div>
                             <div>
-                                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Teams</p>
-                                <h3 class="text-2xl font-bold text-slate-800 mt-0.5">{{ stats.totalTeams }}</h3>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Sections</p>
+                                <h3 class="text-2xl font-bold text-slate-800 mt-0.5">{{ stats.totalSections }}</h3>
                             </div>
                         </div>
 
@@ -706,50 +706,50 @@ const submitBulkAssign = () => {
                         </div>
                     </div>
 
-                    <!-- Teams control header -->
+                    <!-- Sections control header -->
                     <div class="flex flex-col sm:flex-row justify-between gap-4 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
                         <input 
                             type="text" 
-                            v-model="teamSearch"
-                            placeholder="Search by team name or manager..."
+                            v-model="sectionSearch"
+                            placeholder="Search by section name or manager..."
                             class="max-w-xl flex-1 rounded-xl border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm"
                         />
                         <button 
-                            @click="openAddTeamModal"
+                            @click="openAddSectionModal"
                             class="px-4 py-2.5 bg-[#0D9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
-                            Create New Team
+                            Create New Section
                         </button>
                     </div>
 
-                    <!-- Teams Card Grid -->
+                    <!-- Sections Card Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div 
-                            v-for="team in filteredTeams" 
-                            :key="team.id"
+                            v-for="section in filteredSections" 
+                            :key="section.id"
                             class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition relative group"
                         >
                             <div class="space-y-4">
                                 <div class="flex justify-between items-start gap-4">
-                                    <h3 class="font-bold text-slate-800 text-lg leading-tight group-hover:text-[#0D9488] transition">{{ team.name }}</h3>
+                                    <h3 class="font-bold text-slate-800 text-lg leading-tight group-hover:text-[#0D9488] transition">{{ section.name }}</h3>
                                     
                                     <div class="flex gap-1.5 opacity-80 group-hover:opacity-100 transition">
                                         <button 
-                                            @click="openEditTeamModal(team)"
+                                            @click="openEditSectionModal(section)"
                                             class="p-1.5 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded-lg transition"
-                                            title="Edit Team"
+                                            title="Edit Section"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
                                             </svg>
                                         </button>
                                         <button 
-                                            @click="deleteTeam(team)"
+                                            @click="deleteSection(section)"
                                             class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                            title="Delete Team"
+                                            title="Delete Section"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -761,12 +761,12 @@ const submitBulkAssign = () => {
                                 <!-- PM -->
                                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center gap-3">
                                     <div class="h-9 w-9 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-xs">
-                                        {{ team.project_manager ? getInitials(team.project_manager.name) : 'PM' }}
+                                        {{ section.project_manager ? getInitials(section.project_manager.name) : 'PM' }}
                                     </div>
                                     <div>
                                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Manager</p>
                                         <h4 class="font-bold text-slate-700 text-sm mt-0.5">
-                                            {{ team.project_manager ? team.project_manager.name : 'Unassigned' }}
+                                            {{ section.project_manager ? section.project_manager.name : 'Unassigned' }}
                                         </h4>
                                     </div>
                                 </div>
@@ -774,12 +774,12 @@ const submitBulkAssign = () => {
                                 <!-- Members List -->
                                 <div class="space-y-2">
                                     <div class="flex justify-between items-center text-xs">
-                                        <span class="text-slate-400 font-bold uppercase tracking-wider">Team Members</span>
-                                        <span class="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{{ team.members.length }}</span>
+                                        <span class="text-slate-400 font-bold uppercase tracking-wider">Section Members</span>
+                                        <span class="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{{ section.members.length }}</span>
                                     </div>
-                                    <div class="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto" v-if="team.members.length">
+                                    <div class="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto" v-if="section.members.length">
                                         <div 
-                                            v-for="m in team.members" 
+                                            v-for="m in section.members" 
                                             :key="m.id"
                                             class="border border-slate-100 rounded-lg py-1.5 px-2.5 flex items-center gap-2 hover:bg-slate-50/50 transition cursor-default bg-white shadow-sm"
                                         >
@@ -793,13 +793,13 @@ const submitBulkAssign = () => {
                                         </div>
                                     </div>
                                     <div v-else class="text-slate-400 text-xs italic py-2">
-                                        No members assigned to this team yet.
+                                        No members assigned to this section yet.
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div v-if="filteredTeams.length === 0" class="col-span-full py-8 text-center text-slate-400 italic bg-white border border-slate-100 rounded-2xl shadow-sm">
-                            No teams found matching your search.
+                        <div v-if="filteredSections.length === 0" class="col-span-full py-8 text-center text-slate-400 italic bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            No sections found matching your search.
                         </div>
                     </div>
                 </div>
@@ -976,7 +976,7 @@ const submitBulkAssign = () => {
                             </div>
                             
                             <div v-if="Object.keys(groupedPhases).length === 0" class="bg-white border border-slate-100 p-8 text-center text-slate-400 italic rounded-2xl shadow-sm">
-                                No development phases found.
+                                No project development phases found.
                             </div>
                         </div>
                     </div>
@@ -1039,12 +1039,22 @@ const submitBulkAssign = () => {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Functional Role</label>
-                            <select v-model="userForm.member_role_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                <option value="">None (Visitor)</option>
-                                <option v-for="mr in memberRoles" :key="mr.id" :value="mr.id">{{ mr.name }}</option>
-                            </select>
-                            <div v-if="userForm.errors.member_role_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_id }}</div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Functional Roles</label>
+                            <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
+                                <div v-for="mr in memberRoles" :key="mr.id" class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :id="'member_role_' + mr.id" 
+                                        :value="mr.id" 
+                                        v-model="userForm.member_role_ids" 
+                                        class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                    />
+                                    <label :for="'member_role_' + mr.id" class="ms-2 text-xs font-medium text-slate-700 select-none cursor-pointer">
+                                        {{ mr.name }}
+                                    </label>
+                                </div>
+                            </div>
+                            <div v-if="userForm.errors.member_role_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_ids }}</div>
                         </div>
                     </div>
 
@@ -1068,43 +1078,43 @@ const submitBulkAssign = () => {
             </div>
         </div>
 
-        <!-- Team Create/Edit Modal -->
-        <div v-if="isTeamModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeTeamModal"></div>
+        <!-- Section Create/Edit Modal -->
+        <div v-if="isSectionModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeSectionModal"></div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-lg w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        {{ teamModalMode === 'create' ? 'Create New Team' : 'Edit Team' }}
+                        {{ sectionModalMode === 'create' ? 'Create New Section' : 'Edit Section' }}
                     </h3>
-                    <button @click="closeTeamModal" class="text-slate-400 hover:text-slate-600">
+                    <button @click="closeSectionModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <form @submit.prevent="submitTeamForm" class="p-6 space-y-4">
+                <form @submit.prevent="submitSectionForm" class="p-6 space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Team Name</label>
-                        <input type="text" v-model="teamForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Beta Development Team" />
-                        <div v-if="teamForm.errors.name" class="text-rose-500 text-xs mt-1">{{ teamForm.errors.name }}</div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Section Name</label>
+                        <input type="text" v-model="sectionForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Beta Development Section" />
+                        <div v-if="sectionForm.errors.name" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.name }}</div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Project Manager / Team Leader</label>
-                        <select v-model="teamForm.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Project Manager / Section Leader</label>
+                        <select v-model="sectionForm.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                             <option value="">Unassigned</option>
                             <option v-for="m in membersList" :key="m.id" :value="m.id">
                                 {{ m.name }} ({{ m.role }})
                             </option>
                         </select>
-                        <div v-if="teamForm.errors.member_id" class="text-rose-500 text-xs mt-1">{{ teamForm.errors.member_id }}</div>
+                        <div v-if="sectionForm.errors.member_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.member_id }}</div>
                     </div>
 
                     <!-- Member Assignment List -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Team Members</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section Members</label>
                         <div class="border border-slate-100 rounded-xl max-h-60 overflow-y-auto p-3 bg-slate-50/50 space-y-2">
                             <div 
                                 v-for="m in membersList" 
@@ -1112,14 +1122,14 @@ const submitBulkAssign = () => {
                                 @click="toggleMemberAssignment(m.id)"
                                 :class="[
                                     'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer select-none transition-all',
-                                    teamForm.member_ids.includes(m.id) 
+                                    sectionForm.member_ids.includes(m.id) 
                                         ? 'bg-[#F0FDFA] border-teal-200 text-teal-900 shadow-sm' 
                                         : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
                                 ]"
                             >
                                 <input 
                                     type="checkbox" 
-                                    :checked="teamForm.member_ids.includes(m.id)" 
+                                    :checked="sectionForm.member_ids.includes(m.id)" 
                                     @click.stop 
                                     @change="toggleMemberAssignment(m.id)"
                                     class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
@@ -1137,17 +1147,17 @@ const submitBulkAssign = () => {
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
                         <button 
                             type="button" 
-                            @click="closeTeamModal" 
+                            @click="closeSectionModal" 
                             class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            :disabled="teamForm.processing"
+                            :disabled="sectionForm.processing"
                             class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
                         >
-                            Save Team
+                            Save Section
                         </button>
                     </div>
                 </form>
@@ -1160,7 +1170,7 @@ const submitBulkAssign = () => {
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        {{ phaseModalMode === 'create' ? 'Add Development Phase' : 'Edit Development Phase' }}
+                        {{ phaseModalMode === 'create' ? 'Add Project Development Phase' : 'Edit Project Development Phase' }}
                     </h3>
                     <button @click="closePhaseModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\MemberRole;
-use App\Models\Team;
+use App\Models\Section;
 use App\Models\Member;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,7 +73,7 @@ class AdminManagementTest extends TestCase
             'email' => 'testdev@example.com',
             'password' => 'secret123',
             'role_id' => $userRole->id,
-            'member_role_id' => $devRole ? $devRole->id : null,
+            'member_role_ids' => $devRole ? [$devRole->id] : [],
         ]);
 
         $response->assertRedirect();
@@ -85,14 +85,14 @@ class AdminManagementTest extends TestCase
         
         $this->assertNotNull($user->member);
         if ($devRole) {
-            $this->assertEquals($devRole->id, $user->member->member_role_id);
+            $this->assertTrue($user->member->memberRoles->contains($devRole->id));
         }
     }
 
     /**
-     * Admin can create a team and sync its members.
+     * Admin can create a section and sync its members.
      */
-    public function test_admin_can_create_team_and_assign_members(): void
+    public function test_admin_can_create_section_and_assign_members(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
         if (!$admin) {
@@ -102,20 +102,20 @@ class AdminManagementTest extends TestCase
         // Get some members
         $members = Member::take(2)->pluck('id')->toArray();
 
-        $response = $this->actingAs($admin)->post(route('admin.teams.store'), [
-            'name' => 'Test Team Alpha',
+        $response = $this->actingAs($admin)->post(route('admin.sections.store'), [
+            'name' => 'Test Section Alpha',
             'member_id' => $members[0] ?? null, // Project Manager
             'member_ids' => $members,
         ]);
 
         $response->assertRedirect();
 
-        $team = Team::where('name', 'Test Team Alpha')->first();
-        $this->assertNotNull($team);
-        $this->assertEquals($members[0] ?? null, $team->member_id);
+        $section = Section::where('name', 'Test Section Alpha')->first();
+        $this->assertNotNull($section);
+        $this->assertEquals($members[0] ?? null, $section->member_id);
         
         if (!empty($members)) {
-            $this->assertEquals(count($members), $team->members()->count());
+            $this->assertEquals(count($members), $section->members()->count());
         }
     }
 

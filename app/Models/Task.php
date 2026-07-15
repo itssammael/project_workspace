@@ -10,18 +10,11 @@ class Task extends Model
     protected $fillable = [
         'name',
         'details',
-        'deliverables',
-        'duration',
         'development_phase_id',
-        'member_id',
         'project_id',
-        'start_date',
-        'status',
     ];
 
-    protected $casts = [
-        'start_date' => 'date',
-    ];
+    protected $casts = [];
 
     public function project(): BelongsTo
     {
@@ -33,8 +26,8 @@ class Task extends Model
         return $this->belongsTo(DevelopmentPhase::class);
     }
 
-    public function member(): BelongsTo
+    public function subTasks(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->belongsTo(Member::class);
+        return $this->hasMany(SubTask::class);
     }
 }

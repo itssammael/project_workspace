@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import GanttChart from '@/Components/GanttChart.vue';
+import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
 
 const props = defineProps({
     project: Object,
@@ -10,7 +11,8 @@ const props = defineProps({
     teamMembers: Array,
     canManageTasks: Boolean,
     canDeleteProject: Boolean,
-    teams: Array,
+    sections: Array,
+    memberRoles: Array,
 });
 
 // Modal state
@@ -22,47 +24,206 @@ const form = useForm({
     id: null,
     name: '',
     details: '',
-    deliverables: '',
-    duration: 1,
     development_phase_id: '',
-    member_id: '',
-    start_date: '',
-    status: 'pending',
+    subtasks: [],
+    status: 'pending', // Fallback for status_only mode
 });
+
+const collapsedSubtasks = ref({});
 
 const openAddTaskModal = (phaseId) => {
     form.reset();
+    collapsedSubtasks.value = {};
     form.development_phase_id = phaseId;
-    form.start_date = props.project.start_date ? props.project.start_date.split('T')[0] : '';
+    form.subtasks = [
+        {
+            id: null,
+            name: '',
+            details: '',
+            deliverables: '',
+            duration: 1,
+            member_id: '',
+            start_date: props.project.start_date ? props.project.start_date.split('T')[0] : '',
+            status: 'pending',
+            has_requirements: false,
+        }
+    ];
     modalMode.value = 'create';
     isModalOpen.value = true;
 };
 
 const openEditTaskModal = (task) => {
     selectedTask.value = task;
+    collapsedSubtasks.value = {};
     form.id = task.id;
     form.name = task.name;
     form.details = task.details || '';
-    form.deliverables = task.deliverables || '';
-    form.duration = task.duration;
     form.development_phase_id = task.development_phase_id;
-    form.member_id = task.member_id || '';
-    form.start_date = task.start_date ? task.start_date.split('T')[0] : '';
-    form.status = task.status;
+    
+    // Load subtasks
+    form.subtasks = task.sub_tasks && task.sub_tasks.length > 0
+        ? task.sub_tasks.map(st => ({
+            id: st.id,
+            name: st.name,
+            details: st.details || '',
+            deliverables: st.deliverables || '',
+            duration: st.duration,
+            member_id: st.member_id || '',
+            start_date: st.start_date ? st.start_date.split('T')[0] : '',
+            status: st.status,
+            has_requirements: st.deliverables && (st.deliverables.includes('File Upload: ') || st.deliverables.includes('Commit ID: ') || st.deliverables.includes("PM's Approval")),
+          }))
+        : [
+            {
+                id: null,
+                name: task.name + ' Subtask',
+                details: task.details || '',
+                deliverables: task.deliverables || '',
+                duration: task.duration || 1,
+                member_id: task.member_id || '',
+                start_date: task.start_date ? task.start_date.split('T')[0] : '',
+                status: task.status || 'pending',
+                has_requirements: false,
+            }
+          ];
 
     // Check permissions
     const currentMemberId = props.teamMembers.find(m => m.email === props.$page?.props?.auth?.user?.email)?.id;
-    const isAssignee = task.member_id && task.member_id === currentMemberId;
+    const mySubTask = task.sub_tasks ? task.sub_tasks.find(st => st.member_id === currentMemberId) : null;
+    const isAssignee = !!mySubTask;
 
     if (props.canManageTasks) {
         modalMode.value = 'edit';
     } else if (isAssignee) {
         modalMode.value = 'status_only';
+        form.status = mySubTask.status;
     } else {
         modalMode.value = 'view';
     }
     
     isModalOpen.value = true;
+};
+
+const addSubtask = () => {
+    form.subtasks.push({
+        id: null,
+        name: '',
+        details: '',
+        deliverables: '',
+        duration: 1,
+        member_id: '',
+        start_date: props.project.start_date ? props.project.start_date.split('T')[0] : '',
+        status: 'pending',
+        has_requirements: false,
+    });
+    collapsedSubtasks.value[form.subtasks.length - 1] = false; // keep new subtask expanded
+};
+
+const removeSubtask = (index) => {
+    if (form.subtasks.length > 1) {
+        form.subtasks.splice(index, 1);
+        // Shift collapse state keys accordingly
+        const newCollapsed = {};
+        Object.keys(collapsedSubtasks.value).forEach(k => {
+            const numKey = Number(k);
+            if (numKey < index) {
+                newCollapsed[numKey] = collapsedSubtasks.value[numKey];
+            } else if (numKey > index) {
+                newCollapsed[numKey - 1] = collapsedSubtasks.value[numKey];
+            }
+        });
+        collapsedSubtasks.value = newCollapsed;
+    } else {
+        alert('At least one subtask is required.');
+    }
+};
+
+const toggleSubtaskCollapse = (index) => {
+    collapsedSubtasks.value[index] = !collapsedSubtasks.value[index];
+};
+
+const isSubtaskCollapsed = (index) => {
+    return !!collapsedSubtasks.value[index];
+};
+
+// Requirements Modal and formatting state
+const isRequirementsModalOpen = ref(false);
+const activeSubtaskIndex = ref(null);
+const modalRequirements = ref([]);
+
+const parseDeliverables = (str) => {
+    if (!str) return [];
+    return str.split(', ').map(item => {
+        if (item.startsWith('File Upload: ')) {
+            return { type: 'File Upload', value: item.replace('File Upload: ', '') };
+        } else if (item.startsWith('Commit ID: ')) {
+            return { type: 'Commit ID', value: item.replace('Commit ID: ', '') };
+        } else if (item === "PM's Approval") {
+            return { type: 'Approval', value: "PM's Approval" };
+        } else {
+            return { type: 'File Upload', value: item };
+        }
+    });
+};
+
+const openRequirementsModal = (index) => {
+    activeSubtaskIndex.value = index;
+    const subtask = form.subtasks[index];
+    modalRequirements.value = parseDeliverables(subtask.deliverables);
+    if (modalRequirements.value.length === 0) {
+        modalRequirements.value.push({ type: 'File Upload', value: '' });
+    }
+    isRequirementsModalOpen.value = true;
+};
+
+const closeRequirementsModal = () => {
+    isRequirementsModalOpen.value = false;
+    activeSubtaskIndex.value = null;
+    modalRequirements.value = [];
+};
+
+const addRequirementRow = () => {
+    modalRequirements.value.push({ type: 'File Upload', value: '' });
+};
+
+const removeRequirementRow = (idx) => {
+    modalRequirements.value.splice(idx, 1);
+};
+
+const onRequirementTypeChange = (row) => {
+    if (row.type === 'Approval') {
+        row.value = "PM's Approval";
+    } else {
+        row.value = "";
+    }
+};
+
+const onRequirementsCheckboxChange = (index, isChecked) => {
+    const subtask = form.subtasks[index];
+    subtask.has_requirements = isChecked;
+    if (isChecked) {
+        openRequirementsModal(index);
+    } else {
+        subtask.deliverables = '';
+    }
+};
+
+const saveRequirements = () => {
+    if (activeSubtaskIndex.value === null) return;
+    const subtask = form.subtasks[activeSubtaskIndex.value];
+    
+    // Compile to deliverables string
+    subtask.deliverables = modalRequirements.value.map(r => {
+        if (r.type === 'Approval') {
+            return "PM's Approval";
+        }
+        if (r.type === 'Commit ID') {
+            return 'Commit ID: ' + r.value;
+        }
+        return 'File Upload: ' + r.value;
+    }).join(', ');
+    
+    closeRequirementsModal();
 };
 
 const submitForm = () => {
@@ -102,27 +263,91 @@ const deleteProject = () => {
     }
 };
 
-const isTeamModalOpen = ref(false);
-const teamForm = useForm({
-    team_id: props.project.team_id || '',
+const isSectionModalOpen = ref(false);
+const sectionForm = useForm({
+    section_id: props.project.section_id || '',
+    members: [], // list of { id, member_role_id }
 });
 
-const openTeamModal = () => {
-    teamForm.team_id = props.project.team_id || '';
-    isTeamModalOpen.value = true;
+const modalSectionMembers = computed(() => {
+    if (!sectionForm.section_id) return [];
+    const section = props.sections.find(t => t.id === sectionForm.section_id);
+    if (!section) return [];
+    return section.members || [];
+});
+
+const isModalMemberSelected = (memberId) => {
+    return sectionForm.members.some(m => m.id === memberId);
 };
 
-const closeTeamModal = () => {
-    isTeamModalOpen.value = false;
+const toggleModalMemberSelection = (member) => {
+    const index = sectionForm.members.findIndex(m => m.id === member.id);
+    if (index > -1) {
+        sectionForm.members.splice(index, 1);
+    } else {
+        const defaultRoleId = member.member_roles && member.member_roles.length > 0 
+            ? member.member_roles[0].id 
+            : '';
+        sectionForm.members.push({
+            id: member.id,
+            member_role_id: defaultRoleId
+        });
+    }
 };
 
-const submitTeamForm = () => {
-    teamForm.put(route('projects.update', props.project.id), {
+const getModalMemberProjectRoleId = (memberId) => {
+    const found = sectionForm.members.find(m => m.id === memberId);
+    return found ? found.member_role_id : '';
+};
+
+const updateModalMemberProjectRole = (memberId, roleId) => {
+    const found = sectionForm.members.find(m => m.id === memberId);
+    if (found) {
+        found.member_role_id = Number(roleId);
+    }
+};
+
+const openSectionModal = () => {
+    sectionForm.section_id = props.project.section_id || '';
+    sectionForm.members = [];
+    if (props.project.section_id && props.project.members) {
+        props.project.members.forEach(m => {
+            sectionForm.members.push({
+                id: m.id,
+                member_role_id: m.pivot.member_role_id
+            });
+        });
+    }
+    isSectionModalOpen.value = true;
+};
+
+const closeSectionModal = () => {
+    isSectionModalOpen.value = false;
+};
+
+const submitSectionForm = () => {
+    sectionForm.put(route('projects.update', props.project.id), {
         onSuccess: () => {
-            closeTeamModal();
+            closeSectionModal();
         }
     });
 };
+
+watch(() => sectionForm.section_id, (newSectionId) => {
+    if (newSectionId !== props.project.section_id) {
+        sectionForm.members = [];
+    } else {
+        sectionForm.members = [];
+        if (props.project.members) {
+            props.project.members.forEach(m => {
+                sectionForm.members.push({
+                    id: m.id,
+                    member_role_id: m.pivot.member_role_id
+                });
+            });
+        }
+    }
+});
 </script>
 
 <template>
@@ -141,18 +366,18 @@ const submitTeamForm = () => {
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="px-3 py-1.5 text-xs font-bold uppercase rounded-xl border bg-[#F0FDFA] text-[#0D9488] border-teal-200">
-                        Team: {{ project.team?.name || 'Unassigned' }}
+                        Section: {{ project.section?.name || 'Unassigned' }}
                     </span>
                     <button 
                         v-if="canDeleteProject"
-                        @click="openTeamModal"
+                        @click="openSectionModal"
                         class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
-                        title="Update Team"
+                        title="Update Section"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-500">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.003 9.003 0 0 0-12 0m12 0a9 9 0 0 0-3-2.24M18 18.72V17a4.907 4.907 0 0 0-1.815-3.815m1.815 5.535A9.003 9.003 0 0 0 20 17a9.003 9.003 0 0 0-3-2.24m0 0A9.003 9.003 0 0 0 12 10.75A9.003 9.003 0 0 0 7 14.76m5-3.01v-1.5a3 3 0 1 1 6 0v1.5m-6 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 7.72V17a4.907 4.907 0 0 1 1.815-3.815M1.815 18.72A9.003 9.003 0 0 1 4 17a9.003 9.003 0 0 1 3-2.24" />
                         </svg>
-                        Update Team
+                        Update Section
                     </button>
                     <button 
                         v-if="canDeleteProject"
@@ -177,20 +402,20 @@ const submitTeamForm = () => {
                         <p class="text-slate-600 text-sm leading-relaxed">{{ project.description || 'No description provided.' }}</p>
                     </div>
                     <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
-                    <h3 class="font-bold text-slate-800 text-lg">Project Team members</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" v-if="project.team && project.team.members">
-                        <div v-for="member in project.team.members" :key="member.id" class="border border-slate-100 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-50 transition">
+                    <h3 class="font-bold text-slate-800 text-lg">Project Section members</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" v-if="project.members && project.members.length">
+                        <div v-for="member in project.members" :key="member.id" class="border border-slate-100 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-50 transition">
                             <div class="h-10 w-10 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-sm">
                                 {{ member.user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() }}
                             </div>
                             <div class="min-w-0">
                                 <h4 class="font-bold text-slate-800 text-sm truncate">{{ member.user.name }}</h4>
-                                <p class="text-xs text-slate-400 truncate">{{ member.member_role?.name || 'Developer' }}</p>
+                                <p class="text-xs text-slate-400 truncate">{{ member.project_role || 'Developer' }}</p>
                             </div>
                         </div>
                     </div>
                     <div v-else class="text-slate-400 text-sm">
-                        No team assigned to this project yet.
+                        No members assigned to this project yet.
                     </div>
                 </div>
                     <div class="shrink-0 bg-slate-50 border border-slate-100 rounded-xl p-5 w-full md:w-64 space-y-3 text-xs">
@@ -206,9 +431,9 @@ const submitTeamForm = () => {
                             <span class="text-slate-400 font-semibold uppercase tracking-wider">Ends:</span>
                             <span class="font-bold text-slate-700">{{ project.end_date ? new Date(project.end_date).toLocaleDateString() : 'N/A' }}</span>
                         </div>
-                        <div class="border-t border-slate-200/60 pt-3 flex justify-between" v-if="project.team?.project_manager">
+                        <div class="border-t border-slate-200/60 pt-3 flex justify-between" v-if="project.section?.project_manager">
                             <span class="text-slate-400 font-semibold uppercase tracking-wider">Manager:</span>
-                            <span class="font-bold text-[#0D9488]">{{ project.team.project_manager.user.name }}</span>
+                            <span class="font-bold text-[#0D9488]">{{ project.section.project_manager.user.name }}</span>
                         </div>
                         <div class="border-t border-slate-200/60 pt-3 space-y-1.5" v-if="project.progress !== undefined">
                             <div class="flex justify-between font-semibold text-slate-500">
@@ -244,7 +469,7 @@ const submitTeamForm = () => {
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
 
             <!-- Modal Content -->
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-lg w-full z-10 transform transition-all flex flex-col">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-10 transform transition-all flex flex-col" :class="modalMode === 'view' || modalMode === 'status_only' ? 'max-w-lg w-full' : 'max-w-4xl w-full'">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
                         {{ modalMode === 'create' ? 'Add New Task' : modalMode === 'edit' ? 'Edit Task Details' : modalMode === 'status_only' ? 'Update Task Status' : 'Task Details' }}
@@ -267,30 +492,27 @@ const submitTeamForm = () => {
                             <span class="block text-xs font-semibold text-slate-400 uppercase">Details</span>
                             <p class="text-slate-600 mt-1 leading-relaxed">{{ selectedTask?.details }}</p>
                         </div>
-                        <div v-if="selectedTask?.deliverables">
-                            <span class="block text-xs font-semibold text-slate-400 uppercase">Deliverables</span>
-                            <p class="text-slate-600 mt-1 leading-relaxed">{{ selectedTask?.deliverables }}</p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <span class="block text-xs font-semibold text-slate-400 uppercase">Duration</span>
-                                <span class="text-slate-800 font-semibold block mt-1">{{ selectedTask?.duration }} Days</span>
-                            </div>
-                            <div>
-                                <span class="block text-xs font-semibold text-slate-400 uppercase">Start Date</span>
-                                <span class="text-slate-800 font-semibold block mt-1">{{ selectedTask?.start_date ? new Date(selectedTask.start_date).toLocaleDateString() : 'N/A' }}</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <span class="block text-xs font-semibold text-slate-400 uppercase">Status</span>
-                                <span class="px-2 py-0.5 inline-block text-[10px] font-bold rounded uppercase mt-1 border bg-slate-50 text-slate-600 border-slate-200">
-                                    {{ selectedTask?.status.replace('_', ' ') }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="block text-xs font-semibold text-slate-400 uppercase">Assignee</span>
-                                <span class="text-slate-800 font-semibold block mt-1">{{ selectedTask?.member?.user?.name || 'Unassigned' }}</span>
+                        
+                        <div class="border-t border-slate-100 pt-4">
+                            <h4 class="font-bold text-slate-800 text-sm mb-3">Subtasks</h4>
+                            <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                                <div v-for="st in selectedTask?.sub_tasks" :key="st.id" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+                                    <div class="flex justify-between items-start gap-2">
+                                        <h5 class="font-bold text-slate-800 text-sm">{{ st.name }}</h5>
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded uppercase border bg-white shrink-0" :class="st.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : st.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 border-slate-200'">
+                                            {{ st.status.replace('_', ' ') }}
+                                        </span>
+                                    </div>
+                                    <p v-if="st.details" class="text-xs text-slate-500 mt-1">{{ st.details }}</p>
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-[11px] text-slate-400">
+                                        <div><strong>Duration:</strong> {{ st.duration }} Days</div>
+                                        <div><strong>Start:</strong> {{ st.start_date }}</div>
+                                        <div><strong>Assignee:</strong> {{ st.member?.name || 'Unassigned' }}</div>
+                                    </div>
+                                    <div v-if="st.deliverables" class="text-[11px] text-slate-500 mt-1.5">
+                                        <strong>Deliverables:</strong> {{ st.deliverables }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -313,49 +535,151 @@ const submitTeamForm = () => {
 
                     <!-- Full Create/Edit Form -->
                     <div v-else class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Task Name</label>
-                            <input type="text" v-model="form.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Implement User Authentication" />
-                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Left Column: Task Group Details -->
+                            <div class="md:col-span-1 space-y-4">
+                                <h4 class="font-bold text-slate-800 text-sm border-b pb-2">Task Details</h4>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Task Name</label>
+                                    <input type="text" v-model="form.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Implement Checkout Flow" />
+                                </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Details / Description</label>
-                            <textarea v-model="form.details" rows="3" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Detail the task scope..."></textarea>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Key Deliverables</label>
-                            <input type="text" v-model="form.deliverables" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. AuthController, Unit Tests" />
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Duration (Days)</label>
-                                <input type="number" v-model="form.duration" min="1" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" />
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Details / Description</label>
+                                    <textarea v-model="form.details" rows="5" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Detail the task scope..."></textarea>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Start Date</label>
-                                <input type="date" v-model="form.start_date" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" />
-                            </div>
-                        </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign Member</label>
-                                <select v-model="form.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                    <option value="">Unassigned</option>
-                                    <option v-for="member in teamMembers" :key="member.id" :value="member.id">
-                                        {{ member.name }} ({{ member.role }})
-                                    </option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-                                <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                    <option value="pending">Pending</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="completed">Completed</option>
-                                </select>
+                            <!-- Right Column: Subtasks List -->
+                            <div class="md:col-span-2 space-y-4">
+                                <div class="flex justify-between items-center border-b pb-2">
+                                    <h4 class="font-bold text-slate-800 text-sm">Subtasks Setup</h4>
+                                    <button type="button" @click="addSubtask" class="inline-flex items-center gap-1.5 text-[#0D9488] hover:text-[#0f766e] text-xs font-bold transition">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                        Add Subtask
+                                    </button>
+                                </div>
+
+                                <div class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                                    <div 
+                                        v-for="(subtask, index) in form.subtasks" 
+                                        :key="index" 
+                                        class="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-sm transition-all"
+                                    >
+                                        <!-- Subtask Header (Togglable) -->
+                                        <div 
+                                            @click="toggleSubtaskCollapse(index)"
+                                            class="flex justify-between items-center p-3 bg-slate-50/50 hover:bg-slate-50 cursor-pointer select-none transition border-b border-transparent"
+                                            :class="{ 'border-slate-100': !isSubtaskCollapsed(index) }"
+                                        >
+                                            <div class="flex items-center gap-2 min-w-0">
+                                                <!-- Collapse Arrow -->
+                                                <svg 
+                                                    class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200"
+                                                    :class="{ 'rotate-180': !isSubtaskCollapsed(index) }"
+                                                    fill="none" 
+                                                    viewBox="0 0 24 24" 
+                                                    stroke-width="2.5" 
+                                                    stroke="currentColor"
+                                                >
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                                </svg>
+                                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Subtask #{{ index + 1 }}</span>
+                                                <span 
+                                                    class="text-xs font-semibold text-slate-800 truncate"
+                                                    v-if="isSubtaskCollapsed(index)"
+                                                >
+                                                    &mdash; {{ subtask.name || 'Untitled Subtask' }}
+                                                </span>
+                                            </div>
+
+                                            <!-- Remove Action -->
+                                            <button 
+                                                type="button" 
+                                                v-if="form.subtasks.length > 1" 
+                                                @click.stop="removeSubtask(index)" 
+                                                class="flex items-center justify-center p-1 rounded hover:bg-rose-50 text-rose-500 hover:text-rose-700 transition shrink-0"
+                                                title="Delete Subtask"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Subtask Body Fields -->
+                                        <div v-show="!isSubtaskCollapsed(index)" class="p-4 space-y-3">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Subtask Name</label>
+                                                    <input type="text" v-model="subtask.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs" placeholder="e.g. Write integration tests" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Key Deliverables</label>
+                                                    <input type="text" v-model="subtask.deliverables" :disabled="subtask.has_requirements" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed" placeholder="e.g. Unit tests, test suites" />
+                                                    
+                                                    <!-- Requirements checkbox -->
+                                                    <div class="flex items-center gap-2 mt-1.5">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            :id="'req-check-' + index"
+                                                            v-model="subtask.has_requirements"
+                                                            @change="onRequirementsCheckboxChange(index, $event.target.checked)"
+                                                            class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-3.5 w-3.5"
+                                                        />
+                                                        <label :for="'req-check-' + index" class="text-[11px] font-semibold text-slate-600 cursor-pointer select-none">
+                                                            Add Requiremen
+                                                        </label>
+                                                        
+                                                        <button
+                                                            v-if="subtask.has_requirements"
+                                                            type="button"
+                                                            @click="openRequirementsModal(index)"
+                                                            class="text-[10px] text-[#0D9488] hover:underline font-bold"
+                                                        >
+                                                            (Edit Requirements)
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Details</label>
+                                                <textarea v-model="subtask.details" rows="2" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs" placeholder="Details of this specific subtask..."></textarea>
+                                            </div>
+
+                                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Duration (d)</label>
+                                                    <input type="number" v-model="subtask.duration" min="1" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+                                                    <input type="date" v-model="subtask.start_date" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Assignee</label>
+                                                    <select v-model="subtask.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs">
+                                                        <option value="">Unassigned</option>
+                                                        <option v-for="member in teamMembers" :key="member.id" :value="member.id">
+                                                            {{ member.name }}
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+                                                    <select v-model="subtask.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs">
+                                                        <option value="pending">Pending</option>
+                                                        <option value="in_progress">In Progress</option>
+                                                        <option value="completed">Completed</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -394,52 +718,174 @@ const submitTeamForm = () => {
             </div>
         </div>
 
-        <!-- Update Team Modal -->
-        <div v-if="isTeamModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeTeamModal"></div>
+        <!-- Update Section Modal -->
+        <div v-if="isSectionModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeSectionModal"></div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        Assign Team to Project
+                        Assign Section to Project
                     </h3>
-                    <button @click="closeTeamModal" class="text-slate-400 hover:text-slate-600">
+                    <button @click="closeSectionModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <form @submit.prevent="submitTeamForm" class="p-6 space-y-4">
+                <form @submit.prevent="submitSectionForm" class="p-6 space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Select Team</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Select Section</label>
                         <select 
-                            v-model="teamForm.team_id" 
+                            v-model="sectionForm.section_id" 
                             required 
                             class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm"
                         >
-                            <option value="" disabled>Select a team</option>
-                            <option v-for="team in teams" :key="team.id" :value="team.id">
-                                {{ team.name }}
+                            <option value="" disabled>Select a section</option>
+                            <option v-for="section in sections" :key="section.id" :value="section.id">
+                                {{ section.name }}
                             </option>
                         </select>
-                        <div v-if="teamForm.errors.team_id" class="text-rose-500 text-xs mt-1">{{ teamForm.errors.team_id }}</div>
+                        <div v-if="sectionForm.errors.section_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.section_id }}</div>
+                    </div>
+
+                    <!-- Selected Section Members & Roles Assignment -->
+                    <div v-if="sectionForm.section_id" class="mt-4 border-t border-slate-100 pt-4 max-h-[300px] overflow-y-auto">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section Members & Project Roles</label>
+                        <div class="space-y-3">
+                            <div 
+                                v-for="member in modalSectionMembers" 
+                                :key="member.id"
+                                class="border border-slate-100 rounded-lg p-3 bg-slate-50/30 space-y-2"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <input 
+                                        type="checkbox" 
+                                        :id="'modal-member-' + member.id"
+                                        :checked="isModalMemberSelected(member.id)"
+                                        @change="toggleModalMemberSelection(member)"
+                                        class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                    />
+                                    <label :for="'modal-member-' + member.id" class="text-xs font-bold text-slate-800 cursor-pointer select-none">
+                                        {{ member.name }}
+                                    </label>
+                                </div>
+                                
+                                <div v-if="isModalMemberSelected(member.id)" class="pl-6">
+                                    <RoleSelectDropdown
+                                        :member="member"
+                                        :all-roles="memberRoles"
+                                        :model-value="getModalMemberProjectRoleId(member.id)"
+                                        @update:model-value="updateModalMemberProjectRole(member.id, $event)"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="sectionForm.errors.members" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.members }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
                         <button 
                             type="button" 
-                            @click="closeTeamModal" 
+                            @click="closeSectionModal" 
                             class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            :disabled="teamForm.processing"
+                            :disabled="sectionForm.processing"
                             class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
                         >
-                            Assign Team
+                            Assign Section
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- Requirements Modal -->
+        <div v-if="isRequirementsModalOpen" class="fixed inset-0 overflow-y-auto z-[60] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeRequirementsModal"></div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-sm">
+                        Describe Requirements
+                    </h3>
+                    <button @click="closeRequirementsModal" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveRequirements" class="p-6 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Requirements List</label>
+                        <button 
+                            type="button" 
+                            @click="addRequirementRow" 
+                            class="text-xs font-bold text-[#0D9488] hover:text-[#0f766e] flex items-center gap-1"
+                        >
+                            + Add Requirement
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 max-h-[250px] overflow-y-auto pr-1">
+                        <div v-for="(row, idx) in modalRequirements" :key="idx" class="flex gap-2 items-center">
+                            <select 
+                                v-model="row.type" 
+                                @change="onRequirementTypeChange(row)"
+                                class="rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs w-1/3"
+                            >
+                                <option value="File Upload">File Upload</option>
+                                <option value="Approval">Approval</option>
+                                <option value="Commit ID">Commit ID</option>
+                            </select>
+
+                            <input 
+                                type="text" 
+                                v-model="row.value" 
+                                :disabled="row.type === 'Approval'"
+                                :pattern="row.type === 'Commit ID' ? '^[a-fA-F0-9]{40}$' : undefined"
+                                :maxlength="row.type === 'Commit ID' ? 40 : undefined"
+                                :minlength="row.type === 'Commit ID' ? 40 : undefined"
+                                :title="row.type === 'Commit ID' ? 'A 40-character hexadecimal Commit ID is required' : undefined"
+                                required
+                                class="rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs flex-1 bg-white disabled:bg-slate-50 disabled:opacity-80"
+                                :placeholder="row.type === 'Commit ID' ? 'Enter 40-char hex commit ID...' : 'Specify file description...'"
+                            />
+
+                            <button 
+                                type="button" 
+                                @click="removeRequirementRow(idx)"
+                                class="text-rose-500 hover:text-rose-700 p-1 transition"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div v-if="modalRequirements.length === 0" class="text-slate-400 text-xs text-center py-4">
+                            No requirements defined yet. Click "+ Add Requirement".
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                        <button 
+                            type="button" 
+                            @click="closeRequirementsModal" 
+                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
+                        >
+                            Save
                         </button>
                     </div>
                 </form>

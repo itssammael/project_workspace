@@ -7,7 +7,7 @@ use App\Models\Role;
 use App\Models\RoleAccess;
 use App\Models\MemberRole;
 use App\Models\Member;
-use App\Models\Team;
+use App\Models\Section;
 use App\Models\Project;
 use App\Models\DevelopmentPhase;
 use App\Models\Task;
@@ -57,8 +57,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $adminMember = Member::create([
             'user_id' => $adminUser->id,
-            'member_role_id' => $deptHead->id,
         ]);
+        $adminMember->memberRoles()->attach($deptHead->id);
 
         // Project Manager
         $pmUser = User::create([
@@ -70,8 +70,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $pmMember = Member::create([
             'user_id' => $pmUser->id,
-            'member_role_id' => $projManager->id,
         ]);
+        $pmMember->memberRoles()->attach($projManager->id);
 
         // Designer
         $designerUser = User::create([
@@ -83,8 +83,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $designerMember = Member::create([
             'user_id' => $designerUser->id,
-            'member_role_id' => $uiUxDesigner->id,
         ]);
+        $designerMember->memberRoles()->attach($uiUxDesigner->id);
 
         // Developer
         $developerUser = User::create([
@@ -96,8 +96,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $developerMember = Member::create([
             'user_id' => $developerUser->id,
-            'member_role_id' => $leadDeveloper->id,
         ]);
+        $developerMember->memberRoles()->attach([$leadDeveloper->id, $developer->id]);
 
         // Viewer
         $viewerUser = User::create([
@@ -109,7 +109,6 @@ class DatabaseSeeder extends Seeder
         ]);
         $viewerMember = Member::create([
             'user_id' => $viewerUser->id,
-            'member_role_id' => null,
         ]);
 
         // 5. Create Development Phases
@@ -119,13 +118,13 @@ class DatabaseSeeder extends Seeder
         $phaseTest = DevelopmentPhase::create(['name' => 'Testing', 'order' => 4]);
         $phaseDeploy = DevelopmentPhase::create(['name' => 'Deployment', 'order' => 5]);
 
-        // 6. Create Teams & Pivot bindings
-        $teamAlpha = Team::create([
-            'name' => 'Alpha Software Team',
+        // 6. Create Sections & Pivot bindings
+        $sectionAlpha = Section::create([
+            'name' => 'Alpha Software Section',
             'member_id' => $pmMember->id, // PM is the Manager
         ]);
         
-        $teamAlpha->members()->attach([
+        $sectionAlpha->members()->attach([
             $pmMember->id,
             $designerMember->id,
             $developerMember->id,
@@ -136,7 +135,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'E-Commerce Platform Redesign',
             'description' => 'Upgrade the existing store layout, migrate products database, and optimize checkout flows.',
             'status' => 'active',
-            'team_id' => $teamAlpha->id,
+            'section_id' => $sectionAlpha->id,
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-28',
         ]);
@@ -149,107 +148,145 @@ class DatabaseSeeder extends Seeder
             $phaseDeploy->id,
         ]);
 
-        // 8. Create Tasks (with durations, phases, assignees, and dates)
+        $projectEcommerce->members()->attach([
+            $pmMember->id => ['member_role_id' => $projManager->id],
+            $designerMember->id => ['member_role_id' => $uiUxDesigner->id],
+            $developerMember->id => ['member_role_id' => $leadDeveloper->id],
+        ]);
+
+        // 8. Create Tasks and Sub-tasks
         // Task 1: Requirements Analysis
-        Task::create([
+        $t1 = Task::create([
             'name' => 'Define Scope & Requirements',
+            'details' => 'Draft functional specification documents and list third-party APIs to integrate.',
+            'development_phase_id' => $phaseReq->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t1->subTasks()->create([
+            'name' => 'Define Scope & Requirements Subtask',
             'details' => 'Draft functional specification documents and list third-party APIs to integrate.',
             'deliverables' => 'Functional Specs PDF, API Registry Spreadsheet',
             'duration' => 4,
-            'development_phase_id' => $phaseReq->id,
             'member_id' => $pmMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-01',
             'status' => 'completed',
         ]);
 
         // Task 2: Database Schema
-        Task::create([
+        $t2 = Task::create([
             'name' => 'Design Database Architecture',
+            'details' => 'Draft relational schemas and plan performance optimization/indexes.',
+            'development_phase_id' => $phaseReq->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t2->subTasks()->create([
+            'name' => 'Design Database Architecture Subtask',
             'details' => 'Draft relational schemas and plan performance optimization/indexes.',
             'deliverables' => 'DB Schema Diagram, Migration Scripts',
             'duration' => 3,
-            'development_phase_id' => $phaseReq->id,
             'member_id' => $developerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-05',
             'status' => 'completed',
         ]);
 
         // Task 3: UI Design
-        Task::create([
+        $t3 = Task::create([
             'name' => 'Create High-Fidelity UI Mockups',
+            'details' => 'Design interfaces for homepage, product detail page, and checkout process.',
+            'development_phase_id' => $phaseDesign->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t3->subTasks()->create([
+            'name' => 'Create High-Fidelity UI Mockups Subtask',
             'details' => 'Design interfaces for homepage, product detail page, and checkout process.',
             'deliverables' => 'Figma Prototype Link',
             'duration' => 5,
-            'development_phase_id' => $phaseDesign->id,
             'member_id' => $designerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-08',
             'status' => 'completed',
         ]);
 
         // Task 4: Frontend Development
-        Task::create([
+        $t4 = Task::create([
             'name' => 'Frontend Assembly & Component Styling',
+            'details' => 'Implement designs in Vue 3 with responsive layout structures.',
+            'development_phase_id' => $phaseDev->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t4->subTasks()->create([
+            'name' => 'Frontend Assembly & Component Styling Subtask',
             'details' => 'Implement designs in Vue 3 with responsive layout structures.',
             'deliverables' => 'Vue files pushed to repository',
             'duration' => 6,
-            'development_phase_id' => $phaseDev->id,
             'member_id' => $designerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-13',
             'status' => 'in_progress',
         ]);
 
         // Task 5: Backend API Development
-        Task::create([
+        $t5 = Task::create([
             'name' => 'Implement Backend Checkout API',
+            'details' => 'Construct controller logic and integrate Stripe payment processing.',
+            'development_phase_id' => $phaseDev->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t5->subTasks()->create([
+            'name' => 'Implement Backend Checkout API Subtask',
             'details' => 'Construct controller logic and integrate Stripe payment processing.',
             'deliverables' => 'Checkout endpoints, Stripe integration unit tests',
             'duration' => 8,
-            'development_phase_id' => $phaseDev->id,
             'member_id' => $developerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-13',
             'status' => 'in_progress',
         ]);
 
         // Task 6: Testing
-        Task::create([
+        $t6 = Task::create([
             'name' => 'Perform Integration & QA Testing',
+            'details' => 'Write end-to-end checkout flow automation tests and run security checks.',
+            'development_phase_id' => $phaseTest->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t6->subTasks()->create([
+            'name' => 'Perform Integration & QA Testing Subtask',
             'details' => 'Write end-to-end checkout flow automation tests and run security checks.',
             'deliverables' => 'QA Checklist Report, Cypress Test Log',
             'duration' => 4,
-            'development_phase_id' => $phaseTest->id,
             'member_id' => $developerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-21',
             'status' => 'pending',
         ]);
 
         // Task 7: Client Deployment
-        Task::create([
+        $t7 = Task::create([
             'name' => 'Staging & Production Deployment',
+            'details' => 'Prepare environment configs and launch to production servers.',
+            'development_phase_id' => $phaseDeploy->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t7->subTasks()->create([
+            'name' => 'Staging & Production Deployment Subtask',
             'details' => 'Prepare environment configs and launch to production servers.',
             'deliverables' => 'Live website access, Deployment log',
             'duration' => 2,
-            'development_phase_id' => $phaseDeploy->id,
             'member_id' => $pmMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-07-25',
             'status' => 'pending',
         ]);
 
         // Task 8: Overdue Task (Undelivered)
-        Task::create([
+        $t8 = Task::create([
             'name' => 'Final Brand Assets Package',
+            'details' => 'Create SVG files for standard brand logo variations.',
+            'development_phase_id' => $phaseDesign->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t8->subTasks()->create([
+            'name' => 'Final Brand Assets Package Subtask',
             'details' => 'Create SVG files for standard brand logo variations.',
             'deliverables' => 'Branding Assets ZIP',
             'duration' => 2,
-            'development_phase_id' => $phaseDesign->id,
             'member_id' => $designerMember->id,
-            'project_id' => $projectEcommerce->id,
             'start_date' => '2026-06-25', // Overdue since 2026-06-27 (relative to current date 2026-07-01)
             'status' => 'pending',
         ]);

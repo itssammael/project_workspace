@@ -9,21 +9,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Member extends Model
 {
-    protected $fillable = ['user_id', 'member_role_id'];
+    protected $fillable = ['user_id'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function memberRole(): BelongsTo
+    public function memberRoles(): BelongsToMany
     {
-        return $this->belongsTo(MemberRole::class);
+        return $this->belongsToMany(MemberRole::class, 'member_member_role');
     }
 
-    public function teams(): BelongsToMany
+    public function sections(): BelongsToMany
     {
-        return $this->belongsToMany(Team::class, 'teams_member_pivot');
+        return $this->belongsToMany(Section::class, 'sections_member_pivot');
     }
 
     public function tasks(): HasMany

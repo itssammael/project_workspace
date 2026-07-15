@@ -10,12 +10,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminManagementController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
 Route::middleware([
@@ -39,6 +34,9 @@ Route::middleware([
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
+    // Subtasks
+    Route::put('/subtasks/{subTask}/status', [TaskController::class, 'updateSubtaskStatus'])->name('subtasks.update-status');
+
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');
     Route::post('/admin/users', [AdminManagementController::class, 'storeUser'])->name('admin.users.store');
@@ -47,9 +45,9 @@ Route::middleware([
     Route::delete('/admin/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('admin.users.destroy');
     Route::post('/admin/member-roles', [AdminManagementController::class, 'storeMemberRole'])->name('admin.member-roles.store');
     Route::delete('/admin/member-roles/{memberRole}', [AdminManagementController::class, 'destroyMemberRole'])->name('admin.member-roles.destroy');
-    Route::post('/admin/teams', [AdminManagementController::class, 'storeTeam'])->name('admin.teams.store');
-    Route::put('/admin/teams/{team}', [AdminManagementController::class, 'updateTeam'])->name('admin.teams.update');
-    Route::delete('/admin/teams/{team}', [AdminManagementController::class, 'destroyTeam'])->name('admin.teams.destroy');
+    Route::post('/admin/sections', [AdminManagementController::class, 'storeSection'])->name('admin.sections.store');
+    Route::put('/admin/sections/{section}', [AdminManagementController::class, 'updateSection'])->name('admin.sections.update');
+    Route::delete('/admin/sections/{section}', [AdminManagementController::class, 'destroySection'])->name('admin.sections.destroy');
     Route::post('/admin/phases', [AdminManagementController::class, 'storePhase'])->name('admin.phases.store');
     Route::put('/admin/phases/{phase}', [AdminManagementController::class, 'updatePhase'])->name('admin.phases.update');
     Route::delete('/admin/phases/{phase}', [AdminManagementController::class, 'destroyPhase'])->name('admin.phases.destroy');
@@ -57,6 +55,9 @@ Route::middleware([
     Route::post('/admin/dev-types', [AdminManagementController::class, 'storeDevelopmentType'])->name('admin.dev-types.store');
     Route::put('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'updateDevelopmentType'])->name('admin.dev-types.update');
     Route::delete('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'destroyDevelopmentType'])->name('admin.dev-types.destroy');
+
+    // Add role to member
+    Route::post('/admin/members/{member}/attach-role', [AdminManagementController::class, 'attachRoleToMember'])->name('admin.members.attach-role');
 
     // Admin Settings
     Route::get('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'index'])->name('admin.settings');
