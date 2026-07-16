@@ -1,6 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
 
@@ -10,6 +10,34 @@ const props = defineProps({
     memberRoles: Array,
 });
 
+const workflows = computed(() => {
+    const list = new Set();
+    if (props.phases) {
+        props.phases.forEach(phase => {
+            list.add(phase.workflow_type || 'General');
+        });
+    }
+    return Array.from(list);
+});
+
+const selectedWorkflow = ref(workflows.value[0] || '');
+const workflowSearchQuery = ref('');
+const isWorkflowDropdownOpen = ref(false);
+
+const filteredWorkflows = computed(() => {
+    return workflows.value.filter(wf => 
+        wf.toLowerCase().includes(workflowSearchQuery.value.toLowerCase())
+    );
+});
+
+const selectWorkflow = (wf) => {
+    selectedWorkflow.value = wf;
+    isWorkflowDropdownOpen.value = false;
+    workflowSearchQuery.value = '';
+    // Auto-select all phases of the newly selected workflow
+    form.phase_ids = props.phases.filter(p => p.workflow_type === wf).map(p => p.id);
+};
+
 const form = useForm({
     name: '',
     description: '',
@@ -17,18 +45,21 @@ const form = useForm({
     section_id: '',
     start_date: '',
     end_date: '',
-    phase_ids: props.phases ? props.phases.map(p => p.id) : [],
+    phase_ids: props.phases ? props.phases.filter(p => p.workflow_type === (workflows.value[0] || 'General')).map(p => p.id) : [],
     members: [], // list of { id, member_role_id }
 });
 
 const groupedPhases = computed(() => {
+    if (!selectedWorkflow.value) return {};
     const groups = {};
     props.phases.forEach(phase => {
-        const type = phase.project_type || 'General';
-        if (!groups[type]) {
-            groups[type] = [];
+        const type = phase.workflow_type || 'General';
+        if (type === selectedWorkflow.value) {
+            if (!groups[type]) {
+                groups[type] = [];
+            }
+            groups[type].push(phase);
         }
-        groups[type].push(phase);
     });
     return groups;
 });
@@ -43,7 +74,8 @@ const togglePhase = (phaseId) => {
 };
 
 const selectAllPhases = () => {
-    form.phase_ids = props.phases.map(p => p.id);
+    const currentPhases = props.phases.filter(p => p.workflow_type === selectedWorkflow.value).map(p => p.id);
+    form.phase_ids = currentPhases;
 };
 
 const deselectAllPhases = () => {
@@ -264,6 +296,68 @@ watch(() => form.team_id, () => {
                             </div>
 
                             <div v-if="form.errors.phase_ids" class="text-xs text-rose-500 font-semibold mb-3">{{ form.errors.phase_ids }}</div>
+
+                            <!-- Search/Select Workflow Dropdown -->
+                            <div class="mb-4 relative">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Project Workflow</label>
+                                <div class="relative w-full md:w-72">
+                                    <!-- Trigger Button -->
+                                    <button
+                                        type="button"
+                                        @click="isWorkflowDropdownOpen = !isWorkflowDropdownOpen"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 border border-slate-200 rounded-lg shadow-sm bg-white text-left text-sm text-slate-700 focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488] transition hover:bg-slate-50/50"
+                                    >
+                                        <span class="truncate font-medium">
+                                            {{ selectedWorkflow || 'Select a workflow...' }}
+                                        </span>
+                                        <svg class="w-4 h-4 text-slate-400 shrink-0 transition" :class="{ 'rotate-180': isWorkflowDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Dropdown backdrop -->
+                                    <div v-if="isWorkflowDropdownOpen" class="fixed inset-0 z-40" @click="isWorkflowDropdownOpen = false"></div>
+
+                                    <!-- Dropdown menu -->
+                                    <div
+                                        v-if="isWorkflowDropdownOpen"
+                                        class="absolute left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-2 space-y-2 max-h-[280px] overflow-y-auto"
+                                    >
+                                        <!-- Search input inside dropdown -->
+                                        <div class="relative">
+                                            <input 
+                                                type="text" 
+                                                v-model="workflowSearchQuery"
+                                                placeholder="Search workflow..."
+                                                class="w-full rounded-lg border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] pl-8 py-1.5"
+                                                @click.stop
+                                            />
+                                            <div class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Workflow options list -->
+                                        <div class="space-y-0.5 max-h-40 overflow-y-auto">
+                                            <button
+                                                v-for="wf in filteredWorkflows"
+                                                :key="wf"
+                                                type="button"
+                                                @click="selectWorkflow(wf)"
+                                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition"
+                                                :class="selectedWorkflow === wf ? 'bg-[#E6F4F1] text-[#0D9488]' : 'text-slate-700 hover:bg-slate-50'"
+                                            >
+                                                {{ wf }}
+                                            </button>
+                                            <div v-if="filteredWorkflows.length === 0" class="text-xs text-slate-400 text-center py-2">
+                                                No workflows found
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="space-y-4">
                                 <div v-for="(phasesGroup, groupName) in groupedPhases" :key="groupName" class="bg-slate-50/50 border border-slate-100 rounded-xl p-4">

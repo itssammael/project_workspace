@@ -10,7 +10,7 @@ const props = defineProps({
     memberRoles: Array,
     membersList: Array,
     phases: Array,
-    developmentTypes: Array,
+    workflowTypes: Array,
 });
 
 // Active tab
@@ -30,13 +30,14 @@ const isSectionModalOpen = ref(false);
 const sectionModalMode = ref('create'); // 'create', 'edit'
 const isPhaseModalOpen = ref(false);
 const phaseModalMode = ref('create'); // 'create', 'edit'
-const isDevTypeModalOpen = ref(false);
-const devTypeModalMode = ref('create'); // 'create', 'edit'
+const isWorkflowTypeModalOpen = ref(false);
+const workflowTypeModalMode = ref('create'); // 'create', 'edit'
 const isRoleModalOpen = ref(false);
+const roleModalMode = ref('create'); // 'create', 'edit'
 
 // Bulk phase assignment selection
 const selectedPhaseIds = ref([]);
-const bulkDevTypeId = ref('');
+const bulkWorkflowTypeId = ref('');
 
 // User selection for bulk delete
 const selectedUserIds = ref([]);
@@ -70,15 +71,16 @@ const phaseForm = useForm({
     id: null,
     name: '',
     order: 0,
-    development_type_id: '',
+    workflow_type_id: '',
 });
 
-const devTypeForm = useForm({
+const workflowTypeForm = useForm({
     id: null,
     name: '',
 });
 
 const roleForm = useForm({
+    id: null,
     name: '',
 });
 
@@ -125,6 +127,32 @@ const filteredUsers = computed(() => {
     });
 });
 
+// Pagination state for users
+const userPerPage = 6;
+const userCurrentPage = ref(1);
+
+const paginatedUsers = computed(() => {
+    const start = (userCurrentPage.value - 1) * userPerPage;
+    const end = start + userPerPage;
+    return filteredUsers.value.slice(start, end);
+});
+
+const userTotalPages = computed(() => {
+    return Math.ceil(filteredUsers.value.length / userPerPage);
+});
+
+// Watch filters/search to reset page
+watch([userSearch, roleFilter], () => {
+    userCurrentPage.value = 1;
+});
+
+// Watch total pages to clamp current page if it becomes out of range (e.g. on deletion/filter)
+watch(userTotalPages, (newTotal) => {
+    if (userCurrentPage.value > newTotal) {
+        userCurrentPage.value = Math.max(1, newTotal);
+    }
+});
+
 // Filter sections
 const filteredSections = computed(() => {
     if (!sectionSearch.value) return props.sections;
@@ -138,16 +166,16 @@ const filteredSections = computed(() => {
 const filteredPhases = computed(() => {
     return props.phases.filter(p => {
         const nameMatch = p.name.toLowerCase().includes(phaseSearch.value.toLowerCase());
-        const typeSearchMatch = p.project_type && p.project_type.toLowerCase().includes(phaseSearch.value.toLowerCase());
+        const typeSearchMatch = p.workflow_type && p.workflow_type.toLowerCase().includes(phaseSearch.value.toLowerCase());
         return nameMatch || typeSearchMatch;
     });
 });
 
-// Group phases by development type
+// Group phases by workflow type
 const groupedPhases = computed(() => {
     const groups = {};
     filteredPhases.value.forEach(p => {
-        const typeName = p.project_type || 'General/Uncategorized';
+        const typeName = p.workflow_type || 'General/Uncategorized';
         if (!groups[typeName]) {
             groups[typeName] = [];
         }
@@ -195,10 +223,21 @@ const deleteUser = (user) => {
 };
 
 const toggleAllUsers = () => {
-    if (selectedUserIds.value.length === filteredUsers.value.length) {
-        selectedUserIds.value = [];
+    const paginatedIds = paginatedUsers.value.map(u => u.id);
+    const allSelectedOnPage = paginatedIds.every(id => selectedUserIds.value.includes(id));
+    
+    if (allSelectedOnPage) {
+        // Deselect only the paginated users of the current page
+        selectedUserIds.value = selectedUserIds.value.filter(id => !paginatedIds.includes(id));
     } else {
-        selectedUserIds.value = filteredUsers.value.map(u => u.id);
+        // Select all paginated users of the current page
+        const currentSelection = [...selectedUserIds.value];
+        paginatedIds.forEach(id => {
+            if (!currentSelection.includes(id)) {
+                currentSelection.push(id);
+            }
+        });
+        selectedUserIds.value = currentSelection;
     }
 };
 
@@ -217,20 +256,46 @@ const bulkDeleteUsers = () => {
 // Role Management Actions
 const openRoleModal = () => {
     roleForm.reset();
+    roleForm.id = null;
+    roleModalMode.value = 'create';
     isRoleModalOpen.value = true;
 };
 
 const closeRoleModal = () => {
     isRoleModalOpen.value = false;
     roleForm.reset();
+    roleForm.id = null;
+    roleModalMode.value = 'create';
+};
+
+const openEditRoleModal = (role) => {
+    roleForm.id = role.id;
+    roleForm.name = role.name;
+    roleModalMode.value = 'edit';
+};
+
+const cancelEditRoleMode = () => {
+    roleForm.reset();
+    roleForm.id = null;
+    roleModalMode.value = 'create';
 };
 
 const submitRoleForm = () => {
-    roleForm.post(route('admin.member-roles.store'), {
-        onSuccess: () => {
-            roleForm.reset();
-        }
-    });
+    if (roleModalMode.value === 'create') {
+        roleForm.post(route('admin.member-roles.store'), {
+            onSuccess: () => {
+                roleForm.reset();
+            }
+        });
+    } else {
+        roleForm.put(route('admin.member-roles.update', roleForm.id), {
+            onSuccess: () => {
+                roleForm.reset();
+                roleForm.id = null;
+                roleModalMode.value = 'create';
+            }
+        });
+    }
 };
 
 const deleteRole = (role) => {
@@ -309,7 +374,7 @@ const openEditPhaseModal = (phase) => {
     phaseForm.id = phase.id;
     phaseForm.name = phase.name;
     phaseForm.order = phase.order;
-    phaseForm.development_type_id = phase.development_type_id || '';
+    phaseForm.workflow_type_id = phase.workflow_type_id || '';
     phaseModalMode.value = 'edit';
     isPhaseModalOpen.value = true;
 };
@@ -337,42 +402,42 @@ const closePhaseModal = () => {
     phaseForm.reset();
 };
 
-// Development Type Actions
-const openAddDevTypeModal = () => {
-    devTypeForm.reset();
-    devTypeModalMode.value = 'create';
-    isDevTypeModalOpen.value = true;
+// Workflow Type Actions
+const openAddWorkflowTypeModal = () => {
+    workflowTypeForm.reset();
+    workflowTypeModalMode.value = 'create';
+    isWorkflowTypeModalOpen.value = true;
 };
 
-const openEditDevTypeModal = (type) => {
-    devTypeForm.reset();
-    devTypeForm.id = type.id;
-    devTypeForm.name = type.name;
-    devTypeModalMode.value = 'edit';
-    isDevTypeModalOpen.value = true;
+const openEditWorkflowTypeModal = (type) => {
+    workflowTypeForm.reset();
+    workflowTypeForm.id = type.id;
+    workflowTypeForm.name = type.name;
+    workflowTypeModalMode.value = 'edit';
+    isWorkflowTypeModalOpen.value = true;
 };
 
-const submitDevTypeForm = () => {
-    if (devTypeModalMode.value === 'create') {
-        devTypeForm.post(route('admin.dev-types.store'), {
-            onSuccess: () => closeDevTypeModal(),
+const submitWorkflowTypeForm = () => {
+    if (workflowTypeModalMode.value === 'create') {
+        workflowTypeForm.post(route('admin.workflow-types.store'), {
+            onSuccess: () => closeWorkflowTypeModal(),
         });
     } else {
-        devTypeForm.put(route('admin.dev-types.update', devTypeForm.id), {
-            onSuccess: () => closeDevTypeModal(),
+        workflowTypeForm.put(route('admin.workflow-types.update', workflowTypeForm.id), {
+            onSuccess: () => closeWorkflowTypeModal(),
         });
     }
 };
 
-const deleteDevType = (type) => {
-    if (confirm(`Are you sure you want to delete the development type "${type.name}"? This will unlink all associated phases.`)) {
-        devTypeForm.delete(route('admin.dev-types.destroy', type.id));
+const deleteWorkflowType = (type) => {
+    if (confirm(`Are you sure you want to delete the workflow type "${type.name}"? This will unlink all associated phases.`)) {
+        workflowTypeForm.delete(route('admin.workflow-types.destroy', type.id));
     }
 };
 
-const closeDevTypeModal = () => {
-    isDevTypeModalOpen.value = false;
-    devTypeForm.reset();
+const closeWorkflowTypeModal = () => {
+    isWorkflowTypeModalOpen.value = false;
+    workflowTypeForm.reset();
 };
 
 const submitBulkAssign = () => {
@@ -380,13 +445,13 @@ const submitBulkAssign = () => {
 
     const bulkForm = useForm({
         phase_ids: selectedPhaseIds.value,
-        development_type_id: bulkDevTypeId.value,
+        workflow_type_id: bulkWorkflowTypeId.value,
     });
 
     bulkForm.post(route('admin.phases.bulk-assign'), {
         onSuccess: () => {
             selectedPhaseIds.value = [];
-            bulkDevTypeId.value = '';
+            bulkWorkflowTypeId.value = '';
         },
     });
 };
@@ -574,7 +639,7 @@ const submitBulkAssign = () => {
                                 <thead>
                                     <tr class="bg-[#F0FDFA]/70 border-b border-teal-100 text-[#0f766e] font-bold uppercase text-[10px] tracking-wider">
                                         <th class="py-4 px-6 w-12 text-center">
-                                            <input type="checkbox" :checked="selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0" @change="toggleAllUsers" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
+                                            <input type="checkbox" :checked="paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUserIds.includes(u.id))" @change="toggleAllUsers" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
                                         </th>
                                         <th class="py-4 px-6">User details</th>
                                         <th class="py-4 px-6">System Role</th>
@@ -584,7 +649,7 @@ const submitBulkAssign = () => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
-                                    <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/50 transition even:bg-gray-200/50">
+                                    <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-slate-50/50 transition even:bg-gray-200/50">
                                         <td class="py-4 px-6 text-center">
                                             <input type="checkbox" v-model="selectedUserIds" :value="user.id" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
                                         </td>
@@ -657,10 +722,52 @@ const submitBulkAssign = () => {
                                         </td>
                                     </tr>
                                     <tr v-if="filteredUsers.length === 0">
-                                        <td colspan="5" class="py-8 text-center text-slate-400 italic">No users found matching your filters.</td>
+                                        <td colspan="6" class="py-8 text-center text-slate-400 italic">No users found matching your filters.</td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div v-if="userTotalPages > 1" class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div class="text-xs text-slate-500 font-medium">
+                                Showing <span class="font-semibold text-slate-700">{{ (userCurrentPage - 1) * userPerPage + 1 }}</span> to 
+                                <span class="font-semibold text-slate-700">{{ Math.min(userCurrentPage * userPerPage, filteredUsers.length) }}</span> of 
+                                <span class="font-semibold text-slate-700">{{ filteredUsers.length }}</span> users
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button 
+                                    @click="userCurrentPage--" 
+                                    :disabled="userCurrentPage === 1"
+                                    class="p-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    v-for="page in userTotalPages" 
+                                    :key="page"
+                                    @click="userCurrentPage = page"
+                                    :class="[
+                                        'px-3 py-1 text-xs font-bold rounded-lg transition-all',
+                                        userCurrentPage === page 
+                                            ? 'bg-[#0D9488] text-white shadow-sm' 
+                                            : 'border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                                    ]"
+                                >
+                                    {{ page }}
+                                </button>
+                                <button 
+                                    @click="userCurrentPage++" 
+                                    :disabled="userCurrentPage === userTotalPages"
+                                    class="p-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -761,10 +868,10 @@ const submitBulkAssign = () => {
                                 <!-- PM -->
                                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center gap-3">
                                     <div class="h-9 w-9 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-xs">
-                                        {{ section.project_manager ? getInitials(section.project_manager.name) : 'PM' }}
+                                        {{ section.project_manager ? getInitials(section.project_manager.name) : 'Section' }}
                                     </div>
                                     <div>
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Manager</p>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Section Head</p>
                                         <h4 class="font-bold text-slate-700 text-sm mt-0.5">
                                             {{ section.project_manager ? section.project_manager.name : 'Unassigned' }}
                                         </h4>
@@ -806,15 +913,15 @@ const submitBulkAssign = () => {
 
                 <!-- Tab: Phases -->
                 <div v-if="activeTab === 'phases'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Development Types management card -->
+                    <!-- Workflow Types management card -->
                     <div class="lg:col-span-1 space-y-4">
                         <div class="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 space-y-4">
                             <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-xs text-slate-400 uppercase tracking-wider">Development Types</h3>
+                                <h3 class="font-bold text-xs text-slate-400 uppercase tracking-wider">Workflow Types</h3>
                                 <button 
-                                    @click="openAddDevTypeModal"
+                                    @click="openAddWorkflowTypeModal"
                                     class="p-1.5 bg-[#F0FDFA] hover:bg-teal-100 text-[#0D9488] rounded-lg transition"
-                                    title="Add Development Type"
+                                    title="Add Workflow Type"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -823,11 +930,11 @@ const submitBulkAssign = () => {
                             </div>
                             
                             <div class="divide-y divide-slate-100 text-sm text-slate-600">
-                                <div v-for="type in props.developmentTypes" :key="type.id" class="py-3 flex items-center justify-between group">
+                                <div v-for="type in props.workflowTypes" :key="type.id" class="py-3 flex items-center justify-between group">
                                     <span class="font-semibold text-slate-700">{{ type.name }}</span>
                                     <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button 
-                                            @click="openEditDevTypeModal(type)"
+                                            @click="openEditWorkflowTypeModal(type)"
                                             class="p-1 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded"
                                             title="Edit Type"
                                         >
@@ -836,7 +943,7 @@ const submitBulkAssign = () => {
                                             </svg>
                                         </button>
                                         <button 
-                                            @click="deleteDevType(type)"
+                                            @click="deleteWorkflowType(type)"
                                             class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
                                             title="Delete Type"
                                         >
@@ -846,14 +953,14 @@ const submitBulkAssign = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <div v-if="props.developmentTypes.length === 0" class="py-4 text-center text-slate-400 italic">
-                                    No types configured.
+                                <div v-if="props.workflowTypes.length === 0" class="py-4 text-center text-slate-400 italic">
+                                    No workflow types configured.
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Development Phases grouped list -->
+                    <!-- Workflow Phases grouped list -->
                     <div class="lg:col-span-2 space-y-4">
                         <!-- Bulk Actions Bar -->
                         <div v-if="selectedPhaseIds.length > 0" class="bg-[#F0FDFA] border border-teal-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all shadow-sm">
@@ -863,12 +970,12 @@ const submitBulkAssign = () => {
                             </div>
                             <div class="flex items-center gap-3 w-full sm:w-auto">
                                 <select 
-                                    v-model="bulkDevTypeId" 
+                                    v-model="bulkWorkflowTypeId" 
                                     class="rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm bg-white min-w-[180px] py-1.5"
                                 >
-                                    <option value="" disabled selected>Assign to Type...</option>
+                                    <option value="" disabled selected>Assign to Workflow Type...</option>
                                     <option value="uncategorized">General / Uncategorized</option>
-                                    <option v-for="t in props.developmentTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                    <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
                                 </select>
                                 <button 
                                     @click="submitBulkAssign"
@@ -1102,7 +1209,7 @@ const submitBulkAssign = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Project Manager / Section Leader</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Section <Head></Head></label>
                         <select v-model="sectionForm.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                             <option value="">Unassigned</option>
                             <option v-for="m in membersList" :key="m.id" :value="m.id">
@@ -1193,12 +1300,12 @@ const submitBulkAssign = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Development Type</label>
-                        <select v-model="phaseForm.development_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Type</label>
+                        <select v-model="phaseForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                             <option value="">Uncategorized / General</option>
-                            <option v-for="t in props.developmentTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                            <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
                         </select>
-                        <div v-if="phaseForm.errors.development_type_id" class="text-rose-500 text-xs mt-1">{{ phaseForm.errors.development_type_id }}</div>
+                        <div v-if="phaseForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ phaseForm.errors.workflow_type_id }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
@@ -1221,40 +1328,40 @@ const submitBulkAssign = () => {
             </div>
         </div>
 
-        <!-- Development Type Create/Edit Modal -->
-        <div v-if="isDevTypeModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDevTypeModal"></div>
+        <!-- Workflow Type Create/Edit Modal -->
+        <div v-if="isWorkflowTypeModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWorkflowTypeModal"></div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        {{ devTypeModalMode === 'create' ? 'Add Development Type' : 'Edit Development Type' }}
+                        {{ workflowTypeModalMode === 'create' ? 'Add Workflow Type' : 'Edit Workflow Type' }}
                     </h3>
-                    <button @click="closeDevTypeModal" class="text-slate-400 hover:text-slate-600">
+                    <button @click="closeWorkflowTypeModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <form @submit.prevent="submitDevTypeForm" class="p-6 space-y-4">
+                <form @submit.prevent="submitWorkflowTypeForm" class="p-6 space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type Name</label>
-                        <input type="text" v-model="devTypeForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Software Development" />
-                        <div v-if="devTypeForm.errors.name" class="text-rose-500 text-xs mt-1">{{ devTypeForm.errors.name }}</div>
+                        <input type="text" v-model="workflowTypeForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Software Development" />
+                        <div v-if="workflowTypeForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowTypeForm.errors.name }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
                         <button 
                             type="button" 
-                            @click="closeDevTypeModal" 
+                            @click="closeWorkflowTypeModal" 
                             class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            :disabled="devTypeForm.processing"
+                            :disabled="workflowTypeForm.processing"
                             class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
                         >
                             Save Type
@@ -1283,7 +1390,9 @@ const submitBulkAssign = () => {
                 <div class="p-6 space-y-6">
                     <!-- Create Role Form -->
                     <form @submit.prevent="submitRoleForm" class="space-y-3">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Create New Functional Role</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            {{ roleModalMode === 'create' ? 'Create New Functional Role' : 'Edit Functional Role' }}
+                        </label>
                         <div class="flex gap-2">
                             <input 
                                 type="text" 
@@ -1297,7 +1406,15 @@ const submitBulkAssign = () => {
                                 :disabled="roleForm.processing"
                                 class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm"
                             >
-                                Add Role
+                                {{ roleModalMode === 'create' ? 'Add Role' : 'Update' }}
+                            </button>
+                            <button 
+                                v-if="roleModalMode === 'edit'"
+                                type="button" 
+                                @click="cancelEditRoleMode"
+                                class="px-3 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                            >
+                                Cancel
                             </button>
                         </div>
                         <div v-if="roleForm.errors.name" class="text-rose-500 text-xs">{{ roleForm.errors.name }}</div>
@@ -1309,15 +1426,26 @@ const submitBulkAssign = () => {
                         <div class="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-60 overflow-y-auto">
                             <div v-for="role in memberRoles" :key="role.id" class="px-4 py-3 flex items-center justify-between hover:bg-slate-50/50 transition">
                                 <span class="text-sm font-medium text-slate-700">{{ role.name }}</span>
-                                <button 
-                                    @click="deleteRole(role)"
-                                    class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                                    title="Delete Role"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                    </svg>
-                                </button>
+                                <div class="flex items-center gap-1.5">
+                                    <button 
+                                        @click="openEditRoleModal(role)"
+                                        class="p-1 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded transition"
+                                        title="Edit Role"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="deleteRole(role)"
+                                        class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                                        title="Delete Role"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

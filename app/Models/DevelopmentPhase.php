@@ -9,15 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DevelopmentPhase extends Model
 {
-    protected $fillable = ['name', 'order', 'development_type_id'];
+    protected $fillable = ['name', 'order', 'workflow_type_id'];
 
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
     }
 
-    public function developmentType(): BelongsTo
+    public function workflowType(): BelongsTo
     {
-        return $this->belongsTo(DevelopmentType::class, 'development_type_id');
+        return $this->belongsTo(WorkflowType::class, 'workflow_type_id');
     }
 }

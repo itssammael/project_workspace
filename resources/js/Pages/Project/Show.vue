@@ -722,7 +722,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
         <div v-if="isSectionModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeSectionModal"></div>
 
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-visible max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
                         Assign Section to Project
@@ -751,7 +751,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                     </div>
 
                     <!-- Selected Section Members & Roles Assignment -->
-                    <div v-if="sectionForm.section_id" class="mt-4 border-t border-slate-100 pt-4 max-h-[300px] overflow-y-auto">
+                    <div v-if="sectionForm.section_id" class="mt-4 border-t border-slate-100 pt-4 overflow-visible">
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section Members & Project Roles</label>
                         <div class="space-y-3">
                             <div 

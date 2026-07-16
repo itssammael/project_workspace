@@ -109,7 +109,7 @@ const attachRole = (roleId) => {
                         v-if="!hasRoleGlobally(role.id)" 
                         class="text-[9px] bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 font-bold shrink-0 uppercase tracking-wider scale-90"
                     >
-                        Unassigned
+                       
                     </span>
                 </div>
                 

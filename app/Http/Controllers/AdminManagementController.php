@@ -8,7 +8,7 @@ use App\Models\Section;
 use App\Models\Role;
 use App\Models\MemberRole;
 use App\Models\DevelopmentPhase;
-use App\Models\DevelopmentType;
+use App\Models\WorkflowType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -91,25 +91,25 @@ class AdminManagementController extends Controller
             });
 
         // Fetch phases
-        $phases = DevelopmentPhase::with('developmentType')->orderBy('order', 'asc')->get()->map(function ($phase) {
+        $phases = DevelopmentPhase::with('workflowType')->orderBy('order', 'asc')->get()->map(function ($phase) {
             return [
                 'id' => $phase->id,
                 'name' => $phase->name,
                 'order' => $phase->order,
-                'development_type_id' => $phase->development_type_id,
-                'project_type' => $phase->developmentType?->name ?? 'General',
+                'workflow_type_id' => $phase->workflow_type_id,
+                'workflow_type' => $phase->workflowType?->name ?? 'General',
             ];
         });
 
-        // Fetch development types
-        $developmentTypes = DevelopmentType::orderBy('name', 'asc')->get()->map(function ($dt) {
+        // Fetch workflow types
+        $workflowTypes = WorkflowType::orderBy('name', 'asc')->get()->map(function ($wt) {
             return [
-                'id' => $dt->id,
-                'name' => $dt->name,
+                'id' => $wt->id,
+                'name' => $wt->name,
             ];
         });
 
-        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'phases', 'developmentTypes'));
+        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'phases', 'workflowTypes'));
     }
 
     /**
@@ -275,7 +275,7 @@ class AdminManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:development_phases,name',
             'order' => 'required|integer|min:0',
-            'development_type_id' => 'nullable|exists:development_types,id',
+            'workflow_type_id' => 'nullable|exists:workflow_types,id',
         ]);
 
         DevelopmentPhase::create($validated);
@@ -293,7 +293,7 @@ class AdminManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:development_phases,name,' . $phase->id,
             'order' => 'required|integer|min:0',
-            'development_type_id' => 'nullable|exists:development_types,id',
+            'workflow_type_id' => 'nullable|exists:workflow_types,id',
         ]);
 
         $phase->update($validated);
@@ -314,51 +314,51 @@ class AdminManagementController extends Controller
     }
 
     /**
-     * Store a new Development Type.
+     * Store a new Workflow Type.
      */
-    public function storeDevelopmentType(Request $request): RedirectResponse
+    public function storeWorkflowType(Request $request): RedirectResponse
     {
         Gate::authorize('admin');
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:development_types,name',
+            'name' => 'required|string|max:255|unique:workflow_types,name',
         ]);
 
-        DevelopmentType::create($validated);
+        WorkflowType::create($validated);
 
-        return redirect()->back()->with('success', 'Development Type created successfully.');
+        return redirect()->back()->with('success', 'Workflow Type created successfully.');
     }
 
     /**
-     * Update an existing Development Type.
+     * Update an existing Workflow Type.
      */
-    public function updateDevelopmentType(Request $request, DevelopmentType $developmentType): RedirectResponse
+    public function updateWorkflowType(Request $request, WorkflowType $workflowType): RedirectResponse
     {
         Gate::authorize('admin');
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:development_types,name,' . $developmentType->id,
+            'name' => 'required|string|max:255|unique:workflow_types,name,' . $workflowType->id,
         ]);
 
-        $developmentType->update($validated);
+        $workflowType->update($validated);
 
-        return redirect()->back()->with('success', 'Development Type updated successfully.');
+        return redirect()->back()->with('success', 'Workflow Type updated successfully.');
     }
 
     /**
-     * Delete a Development Type.
+     * Delete a Workflow Type.
      */
-    public function destroyDevelopmentType(DevelopmentType $developmentType): RedirectResponse
+    public function destroyWorkflowType(WorkflowType $workflowType): RedirectResponse
     {
         Gate::authorize('admin');
 
-        $developmentType->delete();
+        $workflowType->delete();
 
-        return redirect()->back()->with('success', 'Development Type deleted successfully.');
+        return redirect()->back()->with('success', 'Workflow Type deleted successfully.');
     }
 
     /**
-     * Bulk assign Development Phases to a Development Type.
+     * Bulk assign Development Phases to a Workflow Type.
      */
     public function bulkAssignPhases(Request $request): RedirectResponse
     {
@@ -367,21 +367,21 @@ class AdminManagementController extends Controller
         $validated = $request->validate([
             'phase_ids' => 'required|array',
             'phase_ids.*' => 'exists:development_phases,id',
-            'development_type_id' => 'nullable|string',
+            'workflow_type_id' => 'nullable|string',
         ]);
 
-        $devTypeId = $validated['development_type_id'];
-        if ($devTypeId === 'uncategorized' || empty($devTypeId)) {
-            $devTypeId = null;
+        $workflowTypeId = $validated['workflow_type_id'];
+        if ($workflowTypeId === 'uncategorized' || empty($workflowTypeId)) {
+            $workflowTypeId = null;
         } else {
-            $exists = DB::table('development_types')->where('id', $devTypeId)->exists();
+            $exists = DB::table('workflow_types')->where('id', $workflowTypeId)->exists();
             if (!$exists) {
-                return redirect()->back()->withErrors(['development_type_id' => 'The selected development type is invalid.']);
+                return redirect()->back()->withErrors(['workflow_type_id' => 'The selected workflow type is invalid.']);
             }
         }
 
         DevelopmentPhase::whereIn('id', $validated['phase_ids'])->update([
-            'development_type_id' => $devTypeId
+            'workflow_type_id' => $workflowTypeId
         ]);
 
         return redirect()->back()->with('success', 'Development Phases updated successfully.');
@@ -404,6 +404,25 @@ class AdminManagementController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Functional Role created successfully.');
+    }
+
+    /**
+     * Update an existing Member Role.
+     */
+    public function updateMemberRole(Request $request, MemberRole $memberRole): RedirectResponse
+    {
+        Gate::authorize('admin');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:member_roles,name,' . $memberRole->id,
+        ]);
+
+        $memberRole->update([
+            'name' => $validated['name'],
+            'slug' => \Illuminate\Support\Str::slug($validated['name']),
+        ]);
+
+        return redirect()->back()->with('success', 'Functional Role updated successfully.');
     }
 
     /**

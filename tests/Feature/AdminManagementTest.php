@@ -158,6 +158,30 @@ class AdminManagementTest extends TestCase
     }
 
     /**
+     * Admin can update a functional role.
+     */
+    public function test_admin_can_update_functional_role(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $role = MemberRole::create([
+            'name' => 'Test Temporary Role',
+            'slug' => 'test-temporary-role',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.member-roles.update', $role->id), [
+                'name' => 'Updated Temporary Role',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('member_roles', [
+            'id' => $role->id,
+            'name' => 'Updated Temporary Role',
+            'slug' => 'updated-temporary-role',
+        ]);
+    }
+
+    /**
      * Admin can bulk delete users.
      */
     public function test_admin_can_bulk_delete_users(): void

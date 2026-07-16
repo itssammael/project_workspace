@@ -250,5 +250,41 @@ class ProjectTrackerTest extends TestCase
 
         $this->assertEquals($otherSection->id, $project->fresh()->section_id);
     }
+
+    /**
+     * Admin can create a project with phases.
+     */
+    public function test_admin_can_create_project_with_phases(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $this->assertNotNull($admin);
+
+        $section = \App\Models\Section::first();
+        $this->assertNotNull($section);
+
+        $phases = DevelopmentPhase::take(3)->pluck('id')->toArray();
+        $this->assertNotEmpty($phases);
+
+        $response = $this->actingAs($admin)->post(route('projects.store'), [
+            'name' => 'New Awesome Project',
+            'description' => 'A description',
+            'status' => 'planning',
+            'section_id' => $section->id,
+            'start_date' => '2026-07-16',
+            'end_date' => '2026-08-16',
+            'phase_ids' => $phases,
+        ]);
+
+        $response->assertRedirect(route('dashboard'));
+
+        $this->assertDatabaseHas('projects', [
+            'name' => 'New Awesome Project',
+            'section_id' => $section->id,
+        ]);
+
+        $project = Project::where('name', 'New Awesome Project')->first();
+        $this->assertNotNull($project);
+        $this->assertEquals(count($phases), $project->developmentPhases()->count());
+    }
 }
 

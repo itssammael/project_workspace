@@ -224,12 +224,12 @@ class ProjectController extends Controller
             ];
         });
         
-        $phases = DevelopmentPhase::with('developmentType')->orderBy('order', 'asc')->get()->map(function ($phase) {
+        $phases = DevelopmentPhase::with('workflowType')->orderBy('order', 'asc')->get()->map(function ($phase) {
             return [
                 'id' => $phase->id,
                 'name' => $phase->name,
                 'order' => $phase->order,
-                'project_type' => $phase->developmentType?->name ?? 'General',
+                'workflow_type' => $phase->workflowType?->name ?? 'General',
             ];
         });
         

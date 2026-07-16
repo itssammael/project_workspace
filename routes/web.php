@@ -44,6 +44,7 @@ Route::middleware([
     Route::put('/admin/users/{user}', [AdminManagementController::class, 'updateUser'])->name('admin.users.update');
     Route::delete('/admin/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('admin.users.destroy');
     Route::post('/admin/member-roles', [AdminManagementController::class, 'storeMemberRole'])->name('admin.member-roles.store');
+    Route::put('/admin/member-roles/{memberRole}', [AdminManagementController::class, 'updateMemberRole'])->name('admin.member-roles.update');
     Route::delete('/admin/member-roles/{memberRole}', [AdminManagementController::class, 'destroyMemberRole'])->name('admin.member-roles.destroy');
     Route::post('/admin/sections', [AdminManagementController::class, 'storeSection'])->name('admin.sections.store');
     Route::put('/admin/sections/{section}', [AdminManagementController::class, 'updateSection'])->name('admin.sections.update');
@@ -52,9 +53,9 @@ Route::middleware([
     Route::put('/admin/phases/{phase}', [AdminManagementController::class, 'updatePhase'])->name('admin.phases.update');
     Route::delete('/admin/phases/{phase}', [AdminManagementController::class, 'destroyPhase'])->name('admin.phases.destroy');
     Route::post('/admin/phases/bulk-assign', [AdminManagementController::class, 'bulkAssignPhases'])->name('admin.phases.bulk-assign');
-    Route::post('/admin/dev-types', [AdminManagementController::class, 'storeDevelopmentType'])->name('admin.dev-types.store');
-    Route::put('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'updateDevelopmentType'])->name('admin.dev-types.update');
-    Route::delete('/admin/dev-types/{developmentType}', [AdminManagementController::class, 'destroyDevelopmentType'])->name('admin.dev-types.destroy');
+    Route::post('/admin/workflow-types', [AdminManagementController::class, 'storeWorkflowType'])->name('admin.workflow-types.store');
+    Route::put('/admin/workflow-types/{workflowType}', [AdminManagementController::class, 'updateWorkflowType'])->name('admin.workflow-types.update');
+    Route::delete('/admin/workflow-types/{workflowType}', [AdminManagementController::class, 'destroyWorkflowType'])->name('admin.workflow-types.destroy');
 
     // Add role to member
     Route::post('/admin/members/{member}/attach-role', [AdminManagementController::class, 'attachRoleToMember'])->name('admin.members.attach-role');
