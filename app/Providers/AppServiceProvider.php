@@ -44,7 +44,17 @@ class AppServiceProvider extends ServiceProvider
 
         // Functional/Production Role Gates
         Gate::define('create-projects', function (User $user) {
+            if (!$user->hasRole('user') && !$user->hasRole('admin')) {
+                return false;
+            }
             return $user->member && $user->member->memberRoles()->where('slug', 'department_head')->exists();
+        });
+
+        Gate::define('update-project', function (User $user, Project $project) {
+            if (!$user->hasRole('user') && !$user->hasRole('admin')) {
+                return false;
+            }
+            return $user->member && $user->member->memberRoles()->whereIn('slug', ['project_manager', 'department_head'])->exists();
         });
 
         Gate::define('manage-tasks', function (User $user, Project $project) {

@@ -7,9 +7,10 @@ use App\Models\Role;
 use App\Models\RoleAccess;
 use App\Models\MemberRole;
 use App\Models\Member;
+use App\Models\Workflow;
+use App\Models\WorkflowType;
 use App\Models\Section;
 use App\Models\Project;
-use App\Models\DevelopmentPhase;
 use App\Models\Task;
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
@@ -111,14 +112,24 @@ class DatabaseSeeder extends Seeder
             'user_id' => $viewerUser->id,
         ]);
 
-        // 5. Create Development Phases
-        $phaseReq = DevelopmentPhase::create(['name' => 'Requirements', 'order' => 1]);
-        $phaseDesign = DevelopmentPhase::create(['name' => 'Design', 'order' => 2]);
-        $phaseDev = DevelopmentPhase::create(['name' => 'Development', 'order' => 3]);
-        $phaseTest = DevelopmentPhase::create(['name' => 'Testing', 'order' => 4]);
-        $phaseDeploy = DevelopmentPhase::create(['name' => 'Deployment', 'order' => 5]);
+        // 5. Create Workflow Types
+        $typeSoftware = WorkflowType::create(['name' => 'Software Development']);
+        $typeAdmin = WorkflowType::create(['name' => 'Administrative and Operational Support']);
+        $typeKanban = WorkflowType::create(['name' => 'Kanban']);
 
-        // 6. Create Sections & Pivot bindings
+        // 6. Create Workflows
+        $phaseReq = Workflow::create(['name' => 'Requirements', 'order' => 1, 'workflow_type_id' => $typeSoftware->id]);
+        $phaseDesign = Workflow::create(['name' => 'Design', 'order' => 2, 'workflow_type_id' => $typeSoftware->id]);
+        $phaseDev = Workflow::create(['name' => 'Development', 'order' => 3, 'workflow_type_id' => $typeSoftware->id]);
+        $phaseTest = Workflow::create(['name' => 'Testing', 'order' => 4, 'workflow_type_id' => $typeSoftware->id]);
+        $phaseDeploy = Workflow::create(['name' => 'Deployment', 'order' => 5, 'workflow_type_id' => $typeSoftware->id]);
+
+        $kanbanTodo = Workflow::create(['name' => 'To do', 'order' => 0, 'workflow_type_id' => $typeKanban->id]);
+        $kanbanDoing = Workflow::create(['name' => 'Doing', 'order' => 2, 'workflow_type_id' => $typeKanban->id]);
+        $kanbanSubmitted = Workflow::create(['name' => 'Submitted', 'order' => 3, 'workflow_type_id' => $typeKanban->id]);
+        $kanbanCompleted = Workflow::create(['name' => 'Completed', 'order' => 4, 'workflow_type_id' => $typeKanban->id]);
+
+        // 7. Create Sections & Pivot bindings
         $sectionAlpha = Section::create([
             'name' => 'Alpha Software Section',
             'member_id' => $pmMember->id, // PM is the Manager
@@ -130,7 +141,7 @@ class DatabaseSeeder extends Seeder
             $developerMember->id,
         ]);
 
-        // 7. Create Projects
+        // 8. Create Projects
         $projectEcommerce = Project::create([
             'name' => 'E-Commerce Platform Redesign',
             'description' => 'Upgrade the existing store layout, migrate products database, and optimize checkout flows.',
@@ -140,12 +151,16 @@ class DatabaseSeeder extends Seeder
             'end_date' => '2026-07-28',
         ]);
 
-        $projectEcommerce->developmentPhases()->attach([
+        $projectEcommerce->workflows()->attach([
             $phaseReq->id,
             $phaseDesign->id,
             $phaseDev->id,
             $phaseTest->id,
             $phaseDeploy->id,
+            $kanbanTodo->id,
+            $kanbanDoing->id,
+            $kanbanSubmitted->id,
+            $kanbanCompleted->id,
         ]);
 
         $projectEcommerce->members()->attach([
@@ -159,7 +174,7 @@ class DatabaseSeeder extends Seeder
         $t1 = Task::create([
             'name' => 'Define Scope & Requirements',
             'details' => 'Draft functional specification documents and list third-party APIs to integrate.',
-            'development_phase_id' => $phaseReq->id,
+            'workflow_id' => $phaseReq->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t1->subTasks()->create([
@@ -176,7 +191,7 @@ class DatabaseSeeder extends Seeder
         $t2 = Task::create([
             'name' => 'Design Database Architecture',
             'details' => 'Draft relational schemas and plan performance optimization/indexes.',
-            'development_phase_id' => $phaseReq->id,
+            'workflow_id' => $phaseReq->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t2->subTasks()->create([
@@ -193,7 +208,7 @@ class DatabaseSeeder extends Seeder
         $t3 = Task::create([
             'name' => 'Create High-Fidelity UI Mockups',
             'details' => 'Design interfaces for homepage, product detail page, and checkout process.',
-            'development_phase_id' => $phaseDesign->id,
+            'workflow_id' => $phaseDesign->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t3->subTasks()->create([
@@ -210,7 +225,7 @@ class DatabaseSeeder extends Seeder
         $t4 = Task::create([
             'name' => 'Frontend Assembly & Component Styling',
             'details' => 'Implement designs in Vue 3 with responsive layout structures.',
-            'development_phase_id' => $phaseDev->id,
+            'workflow_id' => $phaseDev->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t4->subTasks()->create([
@@ -227,7 +242,7 @@ class DatabaseSeeder extends Seeder
         $t5 = Task::create([
             'name' => 'Implement Backend Checkout API',
             'details' => 'Construct controller logic and integrate Stripe payment processing.',
-            'development_phase_id' => $phaseDev->id,
+            'workflow_id' => $phaseDev->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t5->subTasks()->create([
@@ -244,7 +259,7 @@ class DatabaseSeeder extends Seeder
         $t6 = Task::create([
             'name' => 'Perform Integration & QA Testing',
             'details' => 'Write end-to-end checkout flow automation tests and run security checks.',
-            'development_phase_id' => $phaseTest->id,
+            'workflow_id' => $phaseTest->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t6->subTasks()->create([
@@ -261,7 +276,7 @@ class DatabaseSeeder extends Seeder
         $t7 = Task::create([
             'name' => 'Staging & Production Deployment',
             'details' => 'Prepare environment configs and launch to production servers.',
-            'development_phase_id' => $phaseDeploy->id,
+            'workflow_id' => $phaseDeploy->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t7->subTasks()->create([
@@ -278,7 +293,7 @@ class DatabaseSeeder extends Seeder
         $t8 = Task::create([
             'name' => 'Final Brand Assets Package',
             'details' => 'Create SVG files for standard brand logo variations.',
-            'development_phase_id' => $phaseDesign->id,
+            'workflow_id' => $phaseDesign->id,
             'project_id' => $projectEcommerce->id,
         ]);
         $t8->subTasks()->create([
@@ -288,6 +303,74 @@ class DatabaseSeeder extends Seeder
             'duration' => 2,
             'member_id' => $designerMember->id,
             'start_date' => '2026-06-25', // Overdue since 2026-06-27 (relative to current date 2026-07-01)
+            'status' => 'pending',
+        ]);
+
+        // Task 9: Setup Git Repository (Completed Kanban)
+        $t9 = Task::create([
+            'name' => 'Setup Git Repository',
+            'details' => 'Initialize repo, setup main/dev branches, protect branches, and configure CI/CD starter templates.',
+            'workflow_id' => $kanbanCompleted->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t9->subTasks()->create([
+            'name' => 'Repository Setup Subtask',
+            'details' => 'Initialize repo, setup main/dev branches, protect branches, and configure CI/CD starter templates.',
+            'deliverables' => 'GitHub Repository Link, Branch Protection Rules',
+            'duration' => 2,
+            'member_id' => $developerMember->id,
+            'start_date' => '2026-07-01',
+            'status' => 'completed',
+        ]);
+
+        // Task 10: Configure Development Environment (Completed Kanban)
+        $t10 = Task::create([
+            'name' => 'Configure Dev Environment',
+            'details' => 'Install packages, setup vite plugins, and verify local development server.',
+            'workflow_id' => $kanbanCompleted->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t10->subTasks()->create([
+            'name' => 'Environment Setup Subtask',
+            'details' => 'Install packages, setup vite plugins, and verify local development server.',
+            'deliverables' => 'Working local dev environments',
+            'duration' => 1,
+            'member_id' => $developerMember->id,
+            'start_date' => '2026-07-03',
+            'status' => 'completed',
+        ]);
+
+        // Task 11: Draft Project Roadmap (Doing Kanban)
+        $t11 = Task::create([
+            'name' => 'Draft Project Roadmap',
+            'details' => 'List timeline phases, identify milestones, and draft subtask plans.',
+            'workflow_id' => $kanbanDoing->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t11->subTasks()->create([
+            'name' => 'Roadmap Drafting Subtask',
+            'details' => 'List timeline phases, identify milestones, and draft subtask plans.',
+            'deliverables' => 'Gantt Chart Setup Draft',
+            'duration' => 4,
+            'member_id' => $pmMember->id,
+            'start_date' => '2026-07-14',
+            'status' => 'in_progress',
+        ]);
+
+        // Task 12: Review Codebase Standards (To do Kanban)
+        $t12 = Task::create([
+            'name' => 'Review Codebase Standards',
+            'details' => 'Define styling rules, directory structure guidelines, and write template scripts.',
+            'workflow_id' => $kanbanTodo->id,
+            'project_id' => $projectEcommerce->id,
+        ]);
+        $t12->subTasks()->create([
+            'name' => 'Standards Drafting Subtask',
+            'details' => 'Define styling rules, directory structure guidelines, and write template scripts.',
+            'deliverables' => 'Style Guide MD File',
+            'duration' => 2,
+            'member_id' => $developerMember->id,
+            'start_date' => '2026-07-16',
             'status' => 'pending',
         ]);
     }

@@ -26,9 +26,9 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
-    public function developmentPhases(): BelongsToMany
+    public function workflows(): BelongsToMany
     {
-        return $this->belongsToMany(DevelopmentPhase::class, 'project_development_phase');
+        return $this->belongsToMany(Workflow::class, 'project_workflow');
     }
 
     public function members(): BelongsToMany

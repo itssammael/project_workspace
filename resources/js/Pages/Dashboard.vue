@@ -27,6 +27,8 @@ const getStatusClass = (status) => {
             return 'bg-green-50 text-green-700 border-green-200';
         case 'in_progress':
             return 'bg-slate-100 text-slate-700 border-slate-200';
+        case 'submitted':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
         default:
             return 'bg-orange-50 text-orange-700 border-orange-200';
     }
@@ -58,7 +60,7 @@ const getInitials = (name) => {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 mr-2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        New Project
+                        New Board
                     </Link>
                 </div>
             </div>
@@ -72,7 +74,7 @@ const getInitials = (name) => {
                     <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Projects</p>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Boards</p>
                                 <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ projects.length }}</h3>
                             </div>
                             <div class="bg-[#F0FDFA] p-2.5 rounded-lg text-[#0D9488]">
@@ -182,7 +184,7 @@ const getInitials = (name) => {
                                     </span>
                                 </div>
                                 <Link :href="route('projects.show', project.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">
-                                    Gantt Chart
+                                    Task Board
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                     </svg>
@@ -210,7 +212,7 @@ const getInitials = (name) => {
                                     <div class="space-y-1">
                                         <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
                                         <p class="text-xs text-slate-400">
-                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.development_phase?.name }}</span>
+                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
                                             &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Starts: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
@@ -225,6 +227,7 @@ const getInitials = (name) => {
                                         >
                                             <option value="pending">Pending</option>
                                             <option value="in_progress">In Progress</option>
+                                            <option value="submitted">Submitted</option>
                                             <option value="completed">Completed</option>
                                         </select>
                                     </div>
@@ -254,7 +257,7 @@ const getInitials = (name) => {
                                             </span>
                                         </div>
                                         <p class="text-xs text-slate-400">
-                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.development_phase?.name }}</span>
+                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
                                             &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Started: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
@@ -273,6 +276,7 @@ const getInitials = (name) => {
                                         >
                                             <option value="pending">Pending</option>
                                             <option value="in_progress">In Progress</option>
+                                            <option value="submitted">Submitted</option>
                                             <option value="completed">Completed</option>
                                         </select>
                                     </div>

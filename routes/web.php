@@ -32,6 +32,7 @@ Route::middleware([
     // Tasks
     Route::post('/projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::put('/tasks/{task}/move', [TaskController::class, 'moveKanbanCard'])->name('tasks.move');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
     // Subtasks
@@ -49,10 +50,10 @@ Route::middleware([
     Route::post('/admin/sections', [AdminManagementController::class, 'storeSection'])->name('admin.sections.store');
     Route::put('/admin/sections/{section}', [AdminManagementController::class, 'updateSection'])->name('admin.sections.update');
     Route::delete('/admin/sections/{section}', [AdminManagementController::class, 'destroySection'])->name('admin.sections.destroy');
-    Route::post('/admin/phases', [AdminManagementController::class, 'storePhase'])->name('admin.phases.store');
-    Route::put('/admin/phases/{phase}', [AdminManagementController::class, 'updatePhase'])->name('admin.phases.update');
-    Route::delete('/admin/phases/{phase}', [AdminManagementController::class, 'destroyPhase'])->name('admin.phases.destroy');
-    Route::post('/admin/phases/bulk-assign', [AdminManagementController::class, 'bulkAssignPhases'])->name('admin.phases.bulk-assign');
+    Route::post('/admin/workflows', [AdminManagementController::class, 'storeWorkflow'])->name('admin.workflows.store');
+    Route::put('/admin/workflows/{workflow}', [AdminManagementController::class, 'updateWorkflow'])->name('admin.workflows.update');
+    Route::delete('/admin/workflows/{workflow}', [AdminManagementController::class, 'destroyWorkflow'])->name('admin.workflows.destroy');
+    Route::post('/admin/workflows/bulk-assign', [AdminManagementController::class, 'bulkAssignWorkflows'])->name('admin.workflows.bulk-assign');
     Route::post('/admin/workflow-types', [AdminManagementController::class, 'storeWorkflowType'])->name('admin.workflow-types.store');
     Route::put('/admin/workflow-types/{workflowType}', [AdminManagementController::class, 'updateWorkflowType'])->name('admin.workflow-types.update');
     Route::delete('/admin/workflow-types/{workflowType}', [AdminManagementController::class, 'destroyWorkflowType'])->name('admin.workflow-types.destroy');

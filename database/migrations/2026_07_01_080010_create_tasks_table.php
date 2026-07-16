@@ -14,7 +14,7 @@ return new class extends Migration
             $table->text('details')->nullable();
             $table->text('deliverables')->nullable();
             $table->integer('duration'); // duration in days
-            $table->foreignId('development_phase_id')->constrained('development_phases')->onDelete('cascade');
+            $table->foreignId('workflow_id')->constrained('workflows')->onDelete('cascade');
             $table->foreignId('member_id')->nullable()->constrained('members')->onDelete('set null');
             $table->foreignId('project_id')->constrained('projects')->onDelete('cascade');
             $table->date('start_date')->nullable();

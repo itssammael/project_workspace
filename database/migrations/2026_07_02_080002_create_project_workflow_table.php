@@ -7,28 +7,25 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('project_development_phase', function (Blueprint $table) {
+        Schema::create('project_workflow', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
-            $table->foreignId('development_phase_id')->constrained()->onDelete('cascade');
+            $table->foreignId('workflow_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
 
         // Seed pivot bindings for existing projects
         $projects = DB::table('projects')->get();
-        $phases = DB::table('development_phases')->get();
+        $workflows = DB::table('workflows')->get();
         $pivotData = [];
 
         foreach ($projects as $project) {
-            foreach ($phases as $phase) {
+            foreach ($workflows as $workflow) {
                 $pivotData[] = [
                     'project_id' => $project->id,
-                    'development_phase_id' => $phase->id,
+                    'workflow_id' => $workflow->id,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -36,15 +33,12 @@ return new class extends Migration
         }
 
         if (!empty($pivotData)) {
-            DB::table('project_development_phase')->insert($pivotData);
+            DB::table('project_workflow')->insert($pivotData);
         }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('project_development_phase');
+        Schema::dropIfExists('project_workflow');
     }
 };

@@ -60,15 +60,42 @@ const formatDate = (dateString) => {
     });
 };
 
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
+
+const confirmModalState = ref({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+});
+
+const triggerConfirm = (title, message, callback) => {
+    confirmModalState.value = {
+        show: true,
+        title,
+        message,
+        onConfirm: () => {
+            callback();
+            confirmModalState.value.show = false;
+        }
+    };
+};
+
 const deleteProject = (project) => {
-    if (confirm(`Are you sure you want to delete the project "${project.name}"? This action is permanent and will delete all tasks and phase associations.`)) {
-        router.delete(route('projects.destroy', project.id));
-    }
+    triggerConfirm(
+        'Delete Project',
+        `Are you sure you want to delete the project "${project.name}"? This action is permanent and will delete all tasks and phase associations.`,
+        () => {
+            router.delete(route('projects.destroy', project.id));
+        }
+    );
 };
 </script>
 
 <template>
-    <AppLayout title="Projects Catalog">
+    <AppLayout title="Task Boards">
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div class="space-y-1">
@@ -78,7 +105,7 @@ const deleteProject = (project) => {
                         <span class="text-slate-400">Projects</span>
                     </div>
                     <h2 class="font-bold text-2xl text-slate-800 leading-tight">
-                        Projects Catalog
+                        Task Boards
                     </h2>
                 </div>
 
@@ -90,7 +117,7 @@ const deleteProject = (project) => {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        Create Project
+                        Create Board
                     </Link>
                 </div>
             </div>
@@ -109,7 +136,7 @@ const deleteProject = (project) => {
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Projects</p>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Boards</p>
                             <h3 class="text-2xl font-bold text-slate-800 mt-0.5">{{ stats.total }}</h3>
                         </div>
                     </div>
@@ -156,7 +183,7 @@ const deleteProject = (project) => {
                     <input 
                         type="text" 
                         v-model="search"
-                        placeholder="Search projects by name or details..."
+                        placeholder="Search boards by name or details..."
                         class="flex-1 rounded-xl border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm"
                     />
                     <select 
@@ -249,7 +276,7 @@ const deleteProject = (project) => {
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
                                 </svg>
-                                View Gantt Chart
+                                View Board Details
                             </Link>
                             <button 
                                 v-if="canDeleteProjects"
@@ -274,12 +301,35 @@ const deleteProject = (project) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h4 class="font-bold text-slate-700 text-sm">No projects found</h4>
-                        <p class="text-xs text-slate-400 max-w-sm mx-auto">We couldn't find any projects matching your filters. Try checking a different status or spelling.</p>
+                        <h4 class="font-bold text-slate-700 text-sm">No boards found</h4>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">We couldn't find any boards matching your filters. Try checking a different status or spelling.</p>
                     </div>
                 </div>
-
             </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <ConfirmationModal :show="confirmModalState.show" @close="confirmModalState.show = false">
+            <template #title>
+                {{ confirmModalState.title }}
+            </template>
+
+            <template #content>
+                {{ confirmModalState.message }}
+            </template>
+
+            <template #footer>
+                <SecondaryButton @click="confirmModalState.show = false">
+                    Cancel
+                </SecondaryButton>
+
+                <DangerButton
+                    class="ms-3"
+                    @click="confirmModalState.onConfirm"
+                >
+                    Confirm
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
     </AppLayout>
 </template>

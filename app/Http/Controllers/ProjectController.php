@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Section;
-use App\Models\DevelopmentPhase;
+use App\Models\Workflow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -67,101 +67,143 @@ class ProjectController extends Controller
         $project->completed_tasks = $completedTasks;
         $project->progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
 
-        // Aggregate development phases and tasks ordered by phase
-        $phases = $project->developmentPhases()->orderBy('order', 'asc')->get()->map(function ($phase) use ($project) {
-            $tasks = $project->tasks()
-                ->where('development_phase_id', $phase->id)
-                ->with(['subTasks.member.user'])
-                ->get();
+        // Fetch all tasks for the project with their subtasks up front
+        $allTasks = $project->tasks()->with(['subTasks.member.user'])->get();
 
-            // Populate task with subtasks details for frontend compatibility
-            $tasks->transform(function ($task) use ($project) {
-                $subTasks = $task->subTasks;
-                if ($subTasks->isNotEmpty()) {
-                    $task->deliverables = $subTasks->pluck('deliverables')->filter()->implode(', ');
-                    
-                    $earliestStart = null;
-                    $latestEnd = null;
-                    
-                    foreach ($subTasks as $st) {
-                        if ($st->start_date) {
-                            $stStart = \Carbon\Carbon::parse($st->start_date);
-                            $stEnd = $stStart->copy()->addDays($st->duration);
-                            
-                            if (is_null($earliestStart) || $stStart->lessThan($earliestStart)) {
-                                $earliestStart = $stStart;
-                            }
-                            if (is_null($latestEnd) || $stEnd->greaterThan($latestEnd)) {
-                                $latestEnd = $stEnd;
-                            }
+        // Populate tasks with computed attributes
+        $allTasks->transform(function ($task) use ($project) {
+            $subTasks = $task->subTasks;
+            if ($subTasks->isNotEmpty()) {
+                $task->deliverables = $subTasks->pluck('deliverables')->filter()->implode(', ');
+                
+                $earliestStart = null;
+                $latestEnd = null;
+                
+                foreach ($subTasks as $st) {
+                    if ($st->start_date) {
+                        $stStart = \Carbon\Carbon::parse($st->start_date);
+                        $stEnd = $stStart->copy()->addDays($st->duration);
+                        
+                        if (is_null($earliestStart) || $stStart->lessThan($earliestStart)) {
+                            $earliestStart = $stStart;
+                        }
+                        if (is_null($latestEnd) || $stEnd->greaterThan($latestEnd)) {
+                            $latestEnd = $stEnd;
                         }
                     }
-                    
-                    if ($earliestStart && $latestEnd) {
-                        $task->start_date = $earliestStart->format('Y-m-d');
-                        $task->duration = $earliestStart->diffInDays($latestEnd);
-                    } else {
-                        $task->start_date = $subTasks->min('start_date');
-                        $task->duration = $subTasks->sum('duration');
-                    }
-                    
-                    $firstSubTask = $subTasks->first();
-                    $task->member_id = $firstSubTask ? $firstSubTask->member_id : null;
-                    
-                    if ($subTasks->every(fn($st) => $st->status === 'completed')) {
-                        $task->status = 'completed';
-                    } else if ($subTasks->every(fn($st) => $st->status === 'pending')) {
-                        $task->status = 'pending';
-                    } else {
-                        $task->status = 'in_progress';
-                    }
-                    $task->member = $firstSubTask ? $firstSubTask->member : null;
-                } else {
-                    $task->deliverables = null;
-                    $task->duration = 0;
-                    $task->member_id = null;
-                    $task->start_date = null;
-                    $task->status = 'pending';
-                    $task->member = null;
                 }
                 
-                // Expose sub_tasks list to the frontend
-                $task->sub_tasks = $subTasks->map(function ($st) use ($project) {
-                    $projectMemberRole = \App\Models\MemberRole::find(
-                        \Illuminate\Support\Facades\DB::table('project_members')
-                            ->where('project_id', $project->id)
-                            ->where('member_id', $st->member_id)
-                            ->value('member_role_id')
-                    );
-                    return [
-                        'id' => $st->id,
-                        'name' => $st->name,
-                        'details' => $st->details,
-                        'deliverables' => $st->deliverables,
-                        'duration' => $st->duration,
-                        'member_id' => $st->member_id,
-                        'start_date' => $st->start_date ? $st->start_date->format('Y-m-d') : null,
-                        'status' => $st->status,
-                        'member' => $st->member ? [
-                            'id' => $st->member->id,
-                            'name' => $st->member->user->name,
-                            'role' => $projectMemberRole ? $projectMemberRole->name : 'Member',
-                        ] : null,
-                    ];
-                });
-                return $task;
+                if ($earliestStart && $latestEnd) {
+                    $task->start_date = $earliestStart->format('Y-m-d');
+                    $task->duration = $earliestStart->diffInDays($latestEnd);
+                } else {
+                    $task->start_date = $subTasks->min('start_date');
+                    $task->duration = $subTasks->sum('duration');
+                }
+                
+                $firstSubTask = $subTasks->first();
+                $task->member_id = $firstSubTask ? $firstSubTask->member_id : null;
+                
+                if ($subTasks->every(fn($st) => $st->status === 'completed')) {
+                    $task->status = 'completed';
+                } else if ($subTasks->every(fn($st) => $st->status === 'pending')) {
+                    $task->status = 'pending';
+                } else if ($subTasks->every(fn($st) => $st->status === 'completed' || $st->status === 'submitted')) {
+                    $task->status = 'submitted';
+                } else {
+                    $task->status = 'in_progress';
+                }
+                $task->member = $firstSubTask ? $firstSubTask->member : null;
+            } else {
+                $task->deliverables = null;
+                $task->duration = 0;
+                $task->member_id = null;
+                $task->start_date = null;
+                $task->status = 'pending';
+                $task->member = null;
+            }
+            
+            // Expose sub_tasks list to the frontend
+            $task->sub_tasks = $subTasks->map(function ($st) use ($project) {
+                $projectMemberRole = \App\Models\MemberRole::find(
+                    \Illuminate\Support\Facades\DB::table('project_members')
+                        ->where('project_id', $project->id)
+                        ->where('member_id', $st->member_id)
+                        ->value('member_role_id')
+                );
+                return [
+                    'id' => $st->id,
+                    'name' => $st->name,
+                    'details' => $st->details,
+                    'deliverables' => $st->deliverables,
+                    'duration' => $st->duration,
+                    'member_id' => $st->member_id,
+                    'start_date' => $st->start_date ? $st->start_date->format('Y-m-d') : null,
+                    'status' => $st->status,
+                    'member' => $st->member ? [
+                        'id' => $st->member->id,
+                        'name' => $st->member->user->name,
+                        'role' => $projectMemberRole ? $projectMemberRole->name : 'Member',
+                    ] : null,
+                ];
             });
-
-            $phase->tasks = $tasks;
-
-            $phaseTotal = $tasks->count();
-            $phaseCompleted = $tasks->where('status', 'completed')->count();
-            $phase->total_tasks = $phaseTotal;
-            $phase->completed_tasks = $phaseCompleted;
-            $phase->progress = $phaseTotal > 0 ? round(($phaseCompleted / $phaseTotal) * 100) : 0;
-
-            return $phase;
+            return $task;
         });
+
+        // Load the project's workflows and identify which ones belong to the "Kanban" workflow type
+        $workflowsList = $project->workflows()->with('workflowType')->orderBy('order', 'asc')->get();
+        $kanbanWorkflowIds = $workflowsList->filter(fn($w) => $w->workflowType?->name === 'Kanban')->pluck('id')->toArray();
+
+        $workflows = $workflowsList->map(function ($workflow) use ($project, $allTasks, $kanbanWorkflowIds) {
+            $isKanban = $workflow->workflowType?->name === 'Kanban';
+            
+            if ($isKanban) {
+                // Determine target status for this Kanban workflow stage
+                $nameLower = strtolower($workflow->name);
+                $targetStatus = 'pending';
+                if ($nameLower === 'to do' || $nameLower === 'to-do' || $nameLower === 'todo') {
+                    $targetStatus = 'pending';
+                } else if ($nameLower === 'doing') {
+                    $targetStatus = 'in_progress';
+                } else if ($nameLower === 'submitted') {
+                    $targetStatus = 'submitted';
+                } else if ($nameLower === 'completed' || $nameLower === 'done') {
+                    $targetStatus = 'completed';
+                }
+
+                // Filter tasks that:
+                // - are directly in this Kanban workflow
+                // - OR are in a user-selected (non-Kanban) workflow AND their status is $targetStatus
+                $tasks = $allTasks->filter(function ($task) use ($workflow, $kanbanWorkflowIds, $targetStatus) {
+                    $directlyInWorkflow = $task->workflow_id === $workflow->id;
+                    $isUserSelectedWorkflow = !in_array($task->workflow_id, $kanbanWorkflowIds);
+                    $matchesStatus = $task->status === $targetStatus;
+                    
+                    return $directlyInWorkflow || ($isUserSelectedWorkflow && $matchesStatus);
+                })->values();
+            } else {
+                // For non-Kanban (user-selected) workflows: Only show tasks directly in this workflow
+                $tasks = $allTasks->filter(function ($task) use ($workflow) {
+                    return $task->workflow_id === $workflow->id;
+                })->values();
+            }
+
+            $workflow->tasks = $tasks;
+
+            $workflowTotal = $tasks->count();
+            $workflowCompleted = $tasks->where('status', 'completed')->count();
+            $workflow->setAttribute('total_tasks', $workflowTotal);
+            $workflow->setAttribute('completed_tasks', $workflowCompleted);
+            $workflow->setAttribute('progress', $workflowTotal > 0 ? round(($workflowCompleted / $workflowTotal) * 100) : 0);
+            $workflow->setAttribute('workflow_type', $workflow->workflowType?->name ?? 'General');
+
+            return $workflow;
+        });
+
+        \Illuminate\Support\Facades\File::put(
+            base_path('workflows_debug.json'),
+            json_encode($workflows, JSON_PRETTY_PRINT)
+        );
 
         // Restrict assignable members to members assigned to this specific project
         $teamMembers = $project->members->map(function ($m) {
@@ -173,7 +215,7 @@ class ProjectController extends Controller
             ];
         });
 
-        $sections = $request->user()->hasRole('admin') 
+        $sections = Gate::allows('update-project', $project)
             ? Section::with(['members.user', 'members.memberRoles'])->get()->map(function ($t) {
                 return [
                     'id' => $t->id,
@@ -192,12 +234,14 @@ class ProjectController extends Controller
 
         return Inertia::render('Project/Show', [
             'project' => $project,
-            'phases' => $phases,
+            'workflows' => $workflows,
             'teamMembers' => $teamMembers,
             'canManageTasks' => Gate::allows('manage-tasks', $project),
             'canDeleteProject' => $request->user()->hasRole('admin'),
+            'canUpdateProject' => Gate::allows('update-project', $project),
             'sections' => $sections,
             'memberRoles' => \App\Models\MemberRole::all(),
+            'currentMemberId' => $request->user()->member?->id,
         ]);
     }
 
@@ -224,18 +268,18 @@ class ProjectController extends Controller
             ];
         });
         
-        $phases = DevelopmentPhase::with('workflowType')->orderBy('order', 'asc')->get()->map(function ($phase) {
+        $workflows = Workflow::with('workflowType')->orderBy('order', 'asc')->get()->map(function ($workflow) {
             return [
-                'id' => $phase->id,
-                'name' => $phase->name,
-                'order' => $phase->order,
-                'workflow_type' => $phase->workflowType?->name ?? 'General',
+                'id' => $workflow->id,
+                'name' => $workflow->name,
+                'order' => $workflow->order,
+                'workflow_type' => $workflow->workflowType?->name ?? 'General',
             ];
         });
         
         return Inertia::render('Project/Create', [
             'sections' => $sections,
-            'phases' => $phases,
+            'workflows' => $workflows,
             'memberRoles' => \App\Models\MemberRole::all(),
         ]);
     }
@@ -251,8 +295,8 @@ class ProjectController extends Controller
             'section_id' => 'required|exists:sections,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'phase_ids' => 'required|array|min:1',
-            'phase_ids.*' => 'exists:development_phases,id',
+            'workflow_ids' => 'required|array|min:1',
+            'workflow_ids.*' => 'exists:workflows,id',
             'members' => 'nullable|array',
             'members.*.id' => 'required|exists:members,id',
             'members.*.member_role_id' => 'required|exists:member_roles,id',
@@ -267,7 +311,7 @@ class ProjectController extends Controller
             'end_date' => $validated['end_date'],
         ]);
 
-        $project->developmentPhases()->sync($validated['phase_ids']);
+        $project->workflows()->sync($validated['workflow_ids']);
 
         if (!empty($validated['members'])) {
             $syncData = [];
@@ -282,7 +326,7 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('update-project', $project);
 
         $validated = $request->validate([
             'section_id' => 'required|exists:sections,id',
@@ -290,6 +334,10 @@ class ProjectController extends Controller
             'members.*.id' => 'required|exists:members,id',
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
+
+        if (!$request->user()->hasRole('admin') && (int)$validated['section_id'] !== (int)$project->section_id) {
+            abort(403, 'Only administrators can update the project section.');
+        }
 
         $project->update([
             'section_id' => $validated['section_id'],

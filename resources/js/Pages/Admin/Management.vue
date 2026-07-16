@@ -2,6 +2,9 @@
 import { ref, computed, watch } from 'vue';
 import { useForm, Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
     users: Array,
@@ -9,18 +12,18 @@ const props = defineProps({
     roles: Array,
     memberRoles: Array,
     membersList: Array,
-    phases: Array,
+    workflows: Array,
     workflowTypes: Array,
 });
 
 // Active tab
-const activeTab = ref('users'); // 'users', 'sections', or 'phases'
+const activeTab = ref('users'); // 'users', 'sections', or 'workflows'
 
 // Search & filter states
 const userSearch = ref('');
 const roleFilter = ref('');
 const sectionSearch = ref('');
-const phaseSearch = ref('');
+const workflowSearch = ref('');
 const projectTypeFilter = ref('');
 
 // Modals state
@@ -28,15 +31,15 @@ const isUserModalOpen = ref(false);
 const userModalMode = ref('create'); // 'create', 'edit'
 const isSectionModalOpen = ref(false);
 const sectionModalMode = ref('create'); // 'create', 'edit'
-const isPhaseModalOpen = ref(false);
-const phaseModalMode = ref('create'); // 'create', 'edit'
+const isWorkflowModalOpen = ref(false);
+const workflowModalMode = ref('create'); // 'create', 'edit'
 const isWorkflowTypeModalOpen = ref(false);
 const workflowTypeModalMode = ref('create'); // 'create', 'edit'
 const isRoleModalOpen = ref(false);
 const roleModalMode = ref('create'); // 'create', 'edit'
 
-// Bulk phase assignment selection
-const selectedPhaseIds = ref([]);
+// Bulk workflow assignment selection
+const selectedWorkflowIds = ref([]);
 const bulkWorkflowTypeId = ref('');
 
 // User selection for bulk delete
@@ -67,7 +70,7 @@ const sectionForm = useForm({
     member_ids: [], // Assigned members
 });
 
-const phaseForm = useForm({
+const workflowForm = useForm({
     id: null,
     name: '',
     order: 0,
@@ -162,24 +165,24 @@ const filteredSections = computed(() => {
     );
 });
 
-// Filter phases
-const filteredPhases = computed(() => {
-    return props.phases.filter(p => {
-        const nameMatch = p.name.toLowerCase().includes(phaseSearch.value.toLowerCase());
-        const typeSearchMatch = p.workflow_type && p.workflow_type.toLowerCase().includes(phaseSearch.value.toLowerCase());
+// Filter workflows
+const filteredWorkflows = computed(() => {
+    return props.workflows.filter(w => {
+        const nameMatch = w.name.toLowerCase().includes(workflowSearch.value.toLowerCase());
+        const typeSearchMatch = w.workflow_type && w.workflow_type.toLowerCase().includes(workflowSearch.value.toLowerCase());
         return nameMatch || typeSearchMatch;
     });
 });
 
-// Group phases by workflow type
-const groupedPhases = computed(() => {
+// Group workflows by workflow type
+const groupedWorkflows = computed(() => {
     const groups = {};
-    filteredPhases.value.forEach(p => {
-        const typeName = p.workflow_type || 'General/Uncategorized';
+    filteredWorkflows.value.forEach(w => {
+        const typeName = w.workflow_type || 'General/Uncategorized';
         if (!groups[typeName]) {
             groups[typeName] = [];
         }
-        groups[typeName].push(p);
+        groups[typeName].push(w);
     });
     return groups;
 });
@@ -216,10 +219,33 @@ const submitUserForm = () => {
     }
 };
 
+const confirmModalState = ref({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+});
+
+const triggerConfirm = (title, message, callback) => {
+    confirmModalState.value = {
+        show: true,
+        title,
+        message,
+        onConfirm: () => {
+            callback();
+            confirmModalState.value.show = false;
+        }
+    };
+};
+
 const deleteUser = (user) => {
-    if (confirm(`Are you sure you want to delete ${user.name}? This will also delete their member profile.`)) {
-        userForm.delete(route('admin.users.destroy', user.id));
-    }
+    triggerConfirm(
+        'Delete User',
+        `Are you sure you want to delete ${user.name}? This will also delete their member profile.`,
+        () => {
+            userForm.delete(route('admin.users.destroy', user.id));
+        }
+    );
 };
 
 const toggleAllUsers = () => {
@@ -243,14 +269,18 @@ const toggleAllUsers = () => {
 
 const bulkDeleteUsers = () => {
     if (selectedUserIds.value.length === 0) return;
-    if (confirm(`Are you sure you want to delete ${selectedUserIds.value.length} selected users? This will also delete their member profiles.`)) {
-        bulkDeleteForm.ids = selectedUserIds.value;
-        bulkDeleteForm.post(route('admin.users.bulk-destroy'), {
-            onSuccess: () => {
-                selectedUserIds.value = [];
-            }
-        });
-    }
+    triggerConfirm(
+        'Delete Selected Users',
+        `Are you sure you want to delete ${selectedUserIds.value.length} selected users? This will also delete their member profiles.`,
+        () => {
+            bulkDeleteForm.ids = selectedUserIds.value;
+            bulkDeleteForm.post(route('admin.users.bulk-destroy'), {
+                onSuccess: () => {
+                    selectedUserIds.value = [];
+                }
+            });
+        }
+    );
 };
 
 // Role Management Actions
@@ -299,9 +329,13 @@ const submitRoleForm = () => {
 };
 
 const deleteRole = (role) => {
-    if (confirm(`Are you sure you want to delete the functional role "${role.name}"?`)) {
-        roleForm.delete(route('admin.member-roles.destroy', role.id));
-    }
+    triggerConfirm(
+        'Delete Functional Role',
+        `Are you sure you want to delete the functional role "${role.name}"?`,
+        () => {
+            roleForm.delete(route('admin.member-roles.destroy', role.id));
+        }
+    );
 };
 
 const closeUserModal = () => {
@@ -339,9 +373,13 @@ const submitSectionForm = () => {
 };
 
 const deleteSection = (section) => {
-    if (confirm(`Are you sure you want to delete the section "${section.name}"?`)) {
-        sectionForm.delete(route('admin.sections.destroy', section.id));
-    }
+    triggerConfirm(
+        'Delete Section',
+        `Are you sure you want to delete the section "${section.name}"?`,
+        () => {
+            sectionForm.delete(route('admin.sections.destroy', section.id));
+        }
+    );
 };
 
 const closeSectionModal = () => {
@@ -362,44 +400,48 @@ const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 };
 
-// Phase Actions
-const openAddPhaseModal = () => {
-    phaseForm.reset();
-    phaseModalMode.value = 'create';
-    isPhaseModalOpen.value = true;
+// Workflow Actions
+const openAddWorkflowModal = () => {
+    workflowForm.reset();
+    workflowModalMode.value = 'create';
+    isWorkflowModalOpen.value = true;
 };
 
-const openEditPhaseModal = (phase) => {
-    phaseForm.reset();
-    phaseForm.id = phase.id;
-    phaseForm.name = phase.name;
-    phaseForm.order = phase.order;
-    phaseForm.workflow_type_id = phase.workflow_type_id || '';
-    phaseModalMode.value = 'edit';
-    isPhaseModalOpen.value = true;
+const openEditWorkflowModal = (workflow) => {
+    workflowForm.reset();
+    workflowForm.id = workflow.id;
+    workflowForm.name = workflow.name;
+    workflowForm.order = workflow.order;
+    workflowForm.workflow_type_id = workflow.workflow_type_id || '';
+    workflowModalMode.value = 'edit';
+    isWorkflowModalOpen.value = true;
 };
 
-const submitPhaseForm = () => {
-    if (phaseModalMode.value === 'create') {
-        phaseForm.post(route('admin.phases.store'), {
-            onSuccess: () => closePhaseModal(),
+const submitWorkflowForm = () => {
+    if (workflowModalMode.value === 'create') {
+        workflowForm.post(route('admin.workflows.store'), {
+            onSuccess: () => closeWorkflowModal(),
         });
     } else {
-        phaseForm.put(route('admin.phases.update', phaseForm.id), {
-            onSuccess: () => closePhaseModal(),
+        workflowForm.put(route('admin.workflows.update', workflowForm.id), {
+            onSuccess: () => closeWorkflowModal(),
         });
     }
 };
 
-const deletePhase = (phase) => {
-    if (confirm(`Are you sure you want to delete the phase "${phase.name}"? This could affect tasks currently in this phase.`)) {
-        phaseForm.delete(route('admin.phases.destroy', phase.id));
-    }
+const deleteWorkflow = (workflow) => {
+    triggerConfirm(
+        'Delete Workflow',
+        `Are you sure you want to delete the workflow "${workflow.name}"? This could affect tasks currently in this workflow.`,
+        () => {
+            workflowForm.delete(route('admin.workflows.destroy', workflow.id));
+        }
+    );
 };
 
-const closePhaseModal = () => {
-    isPhaseModalOpen.value = false;
-    phaseForm.reset();
+const closeWorkflowModal = () => {
+    isWorkflowModalOpen.value = false;
+    workflowForm.reset();
 };
 
 // Workflow Type Actions
@@ -430,9 +472,13 @@ const submitWorkflowTypeForm = () => {
 };
 
 const deleteWorkflowType = (type) => {
-    if (confirm(`Are you sure you want to delete the workflow type "${type.name}"? This will unlink all associated phases.`)) {
-        workflowTypeForm.delete(route('admin.workflow-types.destroy', type.id));
-    }
+    triggerConfirm(
+        'Delete Workflow Type',
+        `Are you sure you want to delete the workflow type "${type.name}"? This will unlink all associated phases.`,
+        () => {
+            workflowTypeForm.delete(route('admin.workflow-types.destroy', type.id));
+        }
+    );
 };
 
 const closeWorkflowTypeModal = () => {
@@ -441,16 +487,16 @@ const closeWorkflowTypeModal = () => {
 };
 
 const submitBulkAssign = () => {
-    if (selectedPhaseIds.value.length === 0) return;
+    if (selectedWorkflowIds.value.length === 0) return;
 
     const bulkForm = useForm({
-        phase_ids: selectedPhaseIds.value,
+        workflow_ids: selectedWorkflowIds.value,
         workflow_type_id: bulkWorkflowTypeId.value,
     });
 
-    bulkForm.post(route('admin.phases.bulk-assign'), {
+    bulkForm.post(route('admin.workflows.bulk-assign'), {
         onSuccess: () => {
-            selectedPhaseIds.value = [];
+            selectedWorkflowIds.value = [];
             bulkWorkflowTypeId.value = '';
         },
     });
@@ -499,15 +545,15 @@ const submitBulkAssign = () => {
                         Sections & Assignments
                     </button>
                     <button 
-                        @click="activeTab = 'phases'"
+                        @click="activeTab = 'workflows'"
                         :class="[
                              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
-                             activeTab === 'phases' 
+                             activeTab === 'workflows' 
                                  ? 'bg-white text-[#0D9488] shadow-sm border border-slate-200/20' 
                                  : 'text-slate-500 hover:text-slate-800'
-                         ]"
+                          ]"
                     >
-                        Project Development Phases
+                        Workflows
                     </button>
                 </div>
             </div>
@@ -911,8 +957,8 @@ const submitBulkAssign = () => {
                     </div>
                 </div>
 
-                <!-- Tab: Phases -->
-                <div v-if="activeTab === 'phases'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Tab: Workflows -->
+                <div v-if="activeTab === 'workflows'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Workflow Types management card -->
                     <div class="lg:col-span-1 space-y-4">
                         <div class="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 space-y-4">
@@ -960,13 +1006,13 @@ const submitBulkAssign = () => {
                         </div>
                     </div>
 
-                    <!-- Workflow Phases grouped list -->
+                    <!-- Workflows grouped list -->
                     <div class="lg:col-span-2 space-y-4">
                         <!-- Bulk Actions Bar -->
-                        <div v-if="selectedPhaseIds.length > 0" class="bg-[#F0FDFA] border border-teal-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all shadow-sm">
+                        <div v-if="selectedWorkflowIds.length > 0" class="bg-[#F0FDFA] border border-teal-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all shadow-sm">
                             <div class="flex items-center gap-3">
-                                <span class="h-6 w-6 rounded-lg bg-[#0D9488] text-white flex items-center justify-center text-xs font-bold shadow-sm">{{ selectedPhaseIds.length }}</span>
-                                <span class="text-xs font-bold text-teal-900 uppercase tracking-wider">Phase(s) Selected</span>
+                                <span class="h-6 w-6 rounded-lg bg-[#0D9488] text-white flex items-center justify-center text-xs font-bold shadow-sm">{{ selectedWorkflowIds.length }}</span>
+                                <span class="text-xs font-bold text-teal-900 uppercase tracking-wider">Workflow(s) Selected</span>
                             </div>
                             <div class="flex items-center gap-3 w-full sm:w-auto">
                                 <select 
@@ -984,7 +1030,7 @@ const submitBulkAssign = () => {
                                     Apply
                                 </button>
                                 <button 
-                                    @click="selectedPhaseIds = []"
+                                    @click="selectedWorkflowIds = []"
                                     class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl transition shadow-sm"
                                 >
                                     Cancel
@@ -995,25 +1041,25 @@ const submitBulkAssign = () => {
                         <div class="flex flex-col sm:flex-row justify-between gap-4 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
                             <input 
                                 type="text" 
-                                v-model="phaseSearch"
-                                placeholder="Search phases..."
+                                v-model="workflowSearch"
+                                placeholder="Search workflows..."
                                 class="max-w-xl flex-1 rounded-xl border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm"
                             />
                             <button 
-                                @click="openAddPhaseModal"
+                                @click="openAddWorkflowModal"
                                 class="px-4 py-2.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
-                                Add New Phase
+                                Add Workflow
                             </button>
                         </div>
 
-                        <!-- Grouped Phases Display -->
+                        <!-- Grouped Workflows Display -->
                         <div class="space-y-6">
                             <div 
-                                v-for="(phasesGroup, typeName) in groupedPhases" 
+                                v-for="(workflowsGroup, typeName) in groupedWorkflows" 
                                 :key="typeName" 
                                 class="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden"
                             >
@@ -1022,7 +1068,7 @@ const submitBulkAssign = () => {
                                         {{ typeName }}
                                     </span>
                                     <span class="px-2.5 py-0.5 text-[10px] font-bold rounded bg-[#F0FDFA] text-[#0D9488] uppercase tracking-wider">
-                                        {{ phasesGroup.length }} Phase(s)
+                                        {{ workflowsGroup.length }} Workflow(s)
                                     </span>
                                 </div>
 
@@ -1034,41 +1080,41 @@ const submitBulkAssign = () => {
                                                     <!-- Checkbox column -->
                                                 </th>
                                                 <th class="py-2.5 px-6 w-20">Order</th>
-                                                <th class="py-2.5 px-6">Phase Name</th>
+                                                <th class="py-2.5 px-6">Workflow Name</th>
                                                 <th class="py-2.5 px-6 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
-                                            <tr v-for="phase in phasesGroup" :key="phase.id" class="hover:bg-slate-50/30 transition">
+                                            <tr v-for="workflow in workflowsGroup" :key="workflow.id" class="hover:bg-slate-50/30 transition">
                                                 <td class="py-3 px-6 text-center w-12">
                                                     <input 
                                                         type="checkbox" 
-                                                        :value="phase.id"
-                                                        v-model="selectedPhaseIds"
+                                                        :value="workflow.id"
+                                                        v-model="selectedWorkflowIds"
                                                         class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
                                                     />
                                                 </td>
                                                 <td class="py-3 px-6 font-bold text-slate-500">
-                                                    #{{ phase.order }}
+                                                    #{{ workflow.order }}
                                                 </td>
                                                 <td class="py-3 px-6 font-bold text-slate-800">
-                                                    {{ phase.name }}
+                                                    {{ workflow.name }}
                                                 </td>
                                                 <td class="py-3 px-6 text-right">
                                                     <div class="flex items-center justify-end gap-2">
                                                         <button 
-                                                            @click="openEditPhaseModal(phase)"
+                                                            @click="openEditWorkflowModal(workflow)"
                                                             class="p-1.5 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded-lg transition"
-                                                            title="Edit Phase"
+                                                            title="Edit Workflow"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
                                                             </svg>
                                                         </button>
                                                         <button 
-                                                            @click="deletePhase(phase)"
+                                                            @click="deleteWorkflow(workflow)"
                                                             class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                                            title="Delete Phase"
+                                                            title="Delete Workflow"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -1081,9 +1127,9 @@ const submitBulkAssign = () => {
                                     </table>
                                 </div>
                             </div>
-                            
-                            <div v-if="Object.keys(groupedPhases).length === 0" class="bg-white border border-slate-100 p-8 text-center text-slate-400 italic rounded-2xl shadow-sm">
-                                No project development phases found.
+
+                            <div v-if="Object.keys(groupedWorkflows).length === 0" class="bg-white border border-slate-100 p-8 text-center text-slate-400 italic rounded-2xl shadow-sm">
+                                No workflows found.
                             </div>
                         </div>
                     </div>
@@ -1270,58 +1316,58 @@ const submitBulkAssign = () => {
                 </form>
             </div>
         </div>
-        <!-- Phase Create/Edit Modal -->
-        <div v-if="isPhaseModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closePhaseModal"></div>
+        <!-- Workflow Create/Edit Modal -->
+        <div v-if="isWorkflowModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWorkflowModal"></div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
                 <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h3 class="font-bold text-slate-800 text-lg">
-                        {{ phaseModalMode === 'create' ? 'Add Project Development Phase' : 'Edit Project Development Phase' }}
+                        {{ workflowModalMode === 'create' ? 'Add' : 'Edit' }} Workflow
                     </h3>
-                    <button @click="closePhaseModal" class="text-slate-400 hover:text-slate-600">
+                    <button @click="closeWorkflowModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <form @submit.prevent="submitPhaseForm" class="p-6 space-y-4">
+                <form @submit.prevent="submitWorkflowForm" class="p-6 space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phase Name</label>
-                        <input type="text" v-model="phaseForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Design & Prototype" />
-                        <div v-if="phaseForm.errors.name" class="text-rose-500 text-xs mt-1">{{ phaseForm.errors.name }}</div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Name</label>
+                        <input type="text" v-model="workflowForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Design & Prototype" />
+                        <div v-if="workflowForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.name }}</div>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Display Order</label>
-                        <input type="number" v-model="phaseForm.order" required min="0" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. 1" />
-                        <div v-if="phaseForm.errors.order" class="text-rose-500 text-xs mt-1">{{ phaseForm.errors.order }}</div>
+                        <input type="number" v-model="workflowForm.order" required min="0" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. 1" />
+                        <div v-if="workflowForm.errors.order" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.order }}</div>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Type</label>
-                        <select v-model="phaseForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                        <select v-model="workflowForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                             <option value="">Uncategorized / General</option>
                             <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
                         </select>
-                        <div v-if="phaseForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ phaseForm.errors.workflow_type_id }}</div>
+                        <div v-if="workflowForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.workflow_type_id }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
                         <button 
                             type="button" 
-                            @click="closePhaseModal" 
+                            @click="closeWorkflowModal" 
                             class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            :disabled="phaseForm.processing"
+                            :disabled="workflowForm.processing"
                             class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
                         >
-                            Save Phase
+                            Save Workflow
                         </button>
                     </div>
                 </form>
@@ -1462,5 +1508,29 @@ const submitBulkAssign = () => {
                 </div>
             </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <ConfirmationModal :show="confirmModalState.show" @close="confirmModalState.show = false">
+            <template #title>
+                {{ confirmModalState.title }}
+            </template>
+
+            <template #content>
+                {{ confirmModalState.message }}
+            </template>
+
+            <template #footer>
+                <SecondaryButton @click="confirmModalState.show = false">
+                    Cancel
+                </SecondaryButton>
+
+                <DangerButton
+                    class="ms-3"
+                    @click="confirmModalState.onConfirm"
+                >
+                    Confirm
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
     </AppLayout>
 </template>

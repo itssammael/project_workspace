@@ -1,18 +1,137 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm, Link, router } from '@inertiajs/vue3';
+import { useForm, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import KanbanBoard from '@/Components/KanbanBoard.vue';
 import GanttChart from '@/Components/GanttChart.vue';
 import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
     project: Object,
-    phases: Array,
+    workflows: Array,
     teamMembers: Array,
     canManageTasks: Boolean,
     canDeleteProject: Boolean,
+    canUpdateProject: Boolean,
     sections: Array,
     memberRoles: Array,
+});
+
+const page = usePage();
+
+const showAllTasks = ref(false);
+
+const canToggleAllTasks = computed(() => {
+    // Check system role: Admin
+    const systemRoleSlug = page.props.auth?.user?.role?.slug;
+    const systemRoleName = page.props.auth?.user?.role?.name;
+    const isAdmin = systemRoleSlug === 'admin' || systemRoleName?.toLowerCase() === 'administrator';
+    
+    // Check functional role: Project Manager or Department Head
+    const currentMember = props.teamMembers.find(m => m.email === page.props.auth?.user?.email);
+    const functionalRole = currentMember ? currentMember.role : null;
+    const isPMOrDeptHead = functionalRole === 'Project Manager' || functionalRole === 'Department Head';
+    
+    return isAdmin || isPMOrDeptHead;
+});
+
+const currentMemberId = computed(() => {
+    const userEmail = page.props.auth?.user?.email;
+    return props.teamMembers.find(m => m.email === userEmail)?.id;
+});
+
+const kanbanWorkflows = computed(() => {
+    // 1. Hide the board completely if the user has the system role 'Viewer'
+    const roleSlug = page.props.auth?.user?.role?.slug;
+    const roleName = page.props.auth?.user?.role?.name;
+    if (roleSlug === 'viewer' || roleName?.toLowerCase() === 'viewer') {
+        return [];
+    }
+
+    const memberId = currentMemberId.value;
+    const assignedTasks = [];
+
+    if (showAllTasks.value) {
+        // Retrieve all tasks from all workflows without any assignee or subtasks filtering
+        props.workflows.forEach(w => {
+            (w.tasks || []).forEach(t => {
+                if (!assignedTasks.some(existing => existing.id === t.id)) {
+                    assignedTasks.push({ ...t });
+                }
+            });
+        });
+    } else if (memberId) {
+        // Get all tasks in the project that have at least one subtask assigned to the current user
+        props.workflows.forEach(w => {
+            (w.tasks || []).forEach(t => {
+                const userSubTasks = (t.sub_tasks || []).filter(st => st.member_id === memberId);
+                if (userSubTasks.length > 0) {
+                    if (!assignedTasks.some(existing => existing.id === t.id)) {
+                        // Clone the task and set its sub_tasks and status based on user's assignment
+                        const taskClone = { ...t };
+                        taskClone.sub_tasks = userSubTasks;
+                        
+                        // Recalculate status based on current user's subtasks
+                        if (userSubTasks.every(st => st.status === 'completed')) {
+                            taskClone.status = 'completed';
+                        } else if (userSubTasks.every(st => st.status === 'pending')) {
+                            taskClone.status = 'pending';
+                        } else if (userSubTasks.every(st => st.status === 'completed' || st.status === 'submitted')) {
+                            taskClone.status = 'submitted';
+                        } else {
+                            taskClone.status = 'in_progress';
+                        }
+                        
+                        assignedTasks.push(taskClone);
+                    }
+                }
+            });
+        });
+    }
+
+    // 2. Map these assigned tasks into the 4 Kanban columns based on their recalculated status
+    const kanbanCols = props.workflows
+        .filter(w => {
+            const type = typeof w.workflow_type === 'object' && w.workflow_type !== null
+                ? w.workflow_type.name
+                : w.workflow_type;
+            return type === 'Kanban';
+        })
+        .map(w => {
+            const colClone = { ...w };
+            
+            // Determine which status corresponds to this Kanban column
+            const nameLower = w.name.toLowerCase();
+            let targetStatus = 'pending';
+            if (nameLower === 'to do' || nameLower === 'to-do' || nameLower === 'todo') {
+                targetStatus = 'pending';
+            } else if (nameLower === 'doing') {
+                targetStatus = 'in_progress';
+            } else if (nameLower === 'submitted') {
+                targetStatus = 'submitted';
+            } else if (nameLower === 'completed' || nameLower === 'done') {
+                targetStatus = 'completed';
+            }
+            
+            // Filter the assigned tasks that match this column's status
+            colClone.tasks = assignedTasks.filter(t => t.status === targetStatus);
+            
+            return colClone;
+        });
+
+    return kanbanCols;
+});
+
+const ganttWorkflows = computed(() => {
+    return props.workflows.filter(w => {
+        const type = typeof w.workflow_type === 'object' && w.workflow_type !== null
+            ? w.workflow_type.name
+            : w.workflow_type;
+        return type !== 'Kanban';
+    });
 });
 
 // Modal state
@@ -24,17 +143,17 @@ const form = useForm({
     id: null,
     name: '',
     details: '',
-    development_phase_id: '',
+    workflow_id: '',
     subtasks: [],
     status: 'pending', // Fallback for status_only mode
 });
 
 const collapsedSubtasks = ref({});
 
-const openAddTaskModal = (phaseId) => {
+const openAddTaskModal = (workflowId) => {
     form.reset();
     collapsedSubtasks.value = {};
-    form.development_phase_id = phaseId;
+    form.workflow_id = workflowId;
     form.subtasks = [
         {
             id: null,
@@ -58,7 +177,7 @@ const openEditTaskModal = (task) => {
     form.id = task.id;
     form.name = task.name;
     form.details = task.details || '';
-    form.development_phase_id = task.development_phase_id;
+    form.workflow_id = task.workflow_id;
     
     // Load subtasks
     form.subtasks = task.sub_tasks && task.sub_tasks.length > 0
@@ -243,12 +362,35 @@ const submitForm = () => {
     }
 };
 
+const confirmModalState = ref({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+});
+
+const triggerConfirm = (title, message, callback) => {
+    confirmModalState.value = {
+        show: true,
+        title,
+        message,
+        onConfirm: () => {
+            callback();
+            confirmModalState.value.show = false;
+        }
+    };
+};
+
 const deleteTask = () => {
-    if (confirm('Are you sure you want to delete this task?')) {
-        form.delete(route('tasks.destroy', form.id), {
-            onSuccess: () => closeModal(),
-        });
-    }
+    triggerConfirm(
+        'Delete Task',
+        'Are you sure you want to delete this task?',
+        () => {
+            form.delete(route('tasks.destroy', form.id), {
+                onSuccess: () => closeModal(),
+            });
+        }
+    );
 };
 
 const closeModal = () => {
@@ -258,9 +400,13 @@ const closeModal = () => {
 };
 
 const deleteProject = () => {
-    if (confirm(`Are you sure you want to delete the project "${props.project.name}"? This action is permanent and will delete all tasks and phase associations.`)) {
-        router.delete(route('projects.destroy', props.project.id));
-    }
+    triggerConfirm(
+        'Delete Project',
+        `Are you sure you want to delete the project "${props.project.name}"? This action is permanent and will delete all tasks and workflow associations.`,
+        () => {
+            router.delete(route('projects.destroy', props.project.id));
+        }
+    );
 };
 
 const isSectionModalOpen = ref(false);
@@ -348,6 +494,132 @@ watch(() => sectionForm.section_id, (newSectionId) => {
         }
     }
 });
+
+// --- Modal Collaborators Logic ---
+const isModalCollaboratorModalOpen = ref(false);
+const modalCollaboratorSearchQuery = ref('');
+const selectedModalCollaboratorId = ref('');
+const selectedModalCollaboratorRoleId = ref('');
+const isAttachingModalCollaboratorRole = ref(false);
+
+const allAvailableMembers = computed(() => {
+    const list = [];
+    const seen = new Set();
+    if (props.sections) {
+        props.sections.forEach(section => {
+            if (section.members) {
+                section.members.forEach(member => {
+                    if (!seen.has(member.id)) {
+                        seen.add(member.id);
+                        list.push({
+                            ...member,
+                            sectionName: section.name
+                        });
+                    }
+                });
+            }
+        });
+    }
+    return list;
+});
+
+const filteredModalCollaborators = computed(() => {
+    const query = modalCollaboratorSearchQuery.value.toLowerCase().trim();
+    return allAvailableMembers.value.filter(member => {
+        // Exclude members who belong to the currently selected section
+        if (modalSectionMembers.value.some(sm => sm.id === member.id)) {
+            return false;
+        }
+        // Exclude members already in sectionForm.members
+        if (sectionForm.members.some(m => m.id === member.id)) {
+            return false;
+        }
+        if (!query) return true;
+        return member.name.toLowerCase().includes(query) || 
+               (member.sectionName && member.sectionName.toLowerCase().includes(query));
+    });
+});
+
+const selectedModalCollaborators = computed(() => {
+    return sectionForm.members.filter(m => !modalSectionMembers.value.some(sm => sm.id === m.id)).map(m => {
+        const found = allAvailableMembers.value.find(sm => sm.id === m.id);
+        return found ? { ...found } : null;
+    }).filter(Boolean);
+});
+
+const hasRoleGlobally = (member, roleId) => {
+    if (member && member.member_roles) {
+        return member.member_roles.some(r => r.id === roleId);
+    }
+    return false;
+};
+
+const openModalCollaboratorModal = () => {
+    isModalCollaboratorModalOpen.value = true;
+    modalCollaboratorSearchQuery.value = '';
+    selectedModalCollaboratorId.value = '';
+    selectedModalCollaboratorRoleId.value = props.memberRoles && props.memberRoles.length > 0 
+        ? props.memberRoles[0].id 
+        : '';
+};
+
+const selectModalCollaboratorForAdding = (member) => {
+    selectedModalCollaboratorId.value = member.id;
+    const defaultRole = member.member_roles && member.member_roles.length > 0 
+        ? member.member_roles[0].id 
+        : (props.memberRoles && props.memberRoles.length > 0 ? props.memberRoles[0].id : '');
+    selectedModalCollaboratorRoleId.value = defaultRole;
+};
+
+const confirmAddModalCollaborator = () => {
+    if (!selectedModalCollaboratorId.value || !selectedModalCollaboratorRoleId.value) return;
+    
+    const member = allAvailableMembers.value.find(m => m.id === selectedModalCollaboratorId.value);
+    if (!member) return;
+
+    const roleId = Number(selectedModalCollaboratorRoleId.value);
+    
+    const addToFormMembers = () => {
+        if (!sectionForm.members.some(m => m.id === member.id)) {
+            sectionForm.members.push({
+                id: member.id,
+                member_role_id: roleId
+            });
+        }
+        isModalCollaboratorModalOpen.value = false;
+        selectedModalCollaboratorId.value = '';
+    };
+
+    if (!hasRoleGlobally(member, roleId)) {
+        isAttachingModalCollaboratorRole.value = true;
+        router.post(route('admin.members.attach-role', member.id), {
+            member_role_id: roleId
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                isAttachingModalCollaboratorRole.value = false;
+                const roleObj = props.memberRoles.find(r => r.id === roleId);
+                if (roleObj && member.member_roles) {
+                    member.member_roles.push({ id: roleObj.id, name: roleObj.name });
+                }
+                addToFormMembers();
+            },
+            onError: () => {
+                isAttachingModalCollaboratorRole.value = false;
+            }
+        });
+    } else {
+        addToFormMembers();
+    }
+};
+
+const removeModalCollaborator = (memberId) => {
+    const index = sectionForm.members.findIndex(m => m.id === memberId);
+    if (index > -1) {
+        sectionForm.members.splice(index, 1);
+    }
+};
 </script>
 
 <template>
@@ -358,7 +630,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                     <div class="flex items-center gap-2 text-xs font-semibold text-[#0D9488]">
                         <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                         <span>&bull;</span>
-                        <span class="text-slate-400">Projects</span>
+                        <span class="text-slate-400">Task Boards</span>
                     </div>
                     <h2 class="font-bold text-2xl text-slate-800 leading-tight">
                         {{ project.name }}
@@ -369,15 +641,15 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                         Section: {{ project.section?.name || 'Unassigned' }}
                     </span>
                     <button 
-                        v-if="canDeleteProject"
+                        v-if="canUpdateProject"
                         @click="openSectionModal"
                         class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
-                        title="Update Section"
+                        title="Update Team"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-500">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.003 9.003 0 0 0-12 0m12 0a9 9 0 0 0-3-2.24M18 18.72V17a4.907 4.907 0 0 0-1.815-3.815m1.815 5.535A9.003 9.003 0 0 0 20 17a9.003 9.003 0 0 0-3-2.24m0 0A9.003 9.003 0 0 0 12 10.75A9.003 9.003 0 0 0 7 14.76m5-3.01v-1.5a3 3 0 1 1 6 0v1.5m-6 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 7.72V17a4.907 4.907 0 0 1 1.815-3.815M1.815 18.72A9.003 9.003 0 0 1 4 17a9.003 9.003 0 0 1 3-2.24" />
                         </svg>
-                        Update Section
+                        Update Team
                     </button>
                     <button 
                         v-if="canDeleteProject"
@@ -450,10 +722,25 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                     </div>
                 </div>
                
+                <!-- Kanban Board Component -->
+                <KanbanBoard 
+                    v-if="kanbanWorkflows.length > 0"
+                    :project="project" 
+                    :workflows="kanbanWorkflows" 
+                    :can-manage-tasks="canManageTasks"
+                    :show-all-tasks="showAllTasks"
+                    :can-toggle-all-tasks="canToggleAllTasks"
+                    @toggle-all-tasks="showAllTasks = !showAllTasks"
+                    @add-task="openAddTaskModal"
+                    @edit-task="openEditTaskModal"
+                    class="mb-8"
+                />
+               
                 <!-- Gantt Chart Component -->
                 <GanttChart 
+                    v-if="ganttWorkflows.length > 0"
                     :project="project" 
-                    :phases="phases" 
+                    :workflows="ganttWorkflows" 
                     :can-manage-tasks="canManageTasks"
                     @add-task="openAddTaskModal"
                     @edit-task="openEditTaskModal"
@@ -499,7 +786,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                                 <div v-for="st in selectedTask?.sub_tasks" :key="st.id" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
                                     <div class="flex justify-between items-start gap-2">
                                         <h5 class="font-bold text-slate-800 text-sm">{{ st.name }}</h5>
-                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded uppercase border bg-white shrink-0" :class="st.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : st.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 border-slate-200'">
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded uppercase border bg-white shrink-0" :class="st.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : st.status === 'submitted' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : st.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 border-slate-200'">
                                             {{ st.status.replace('_', ' ') }}
                                         </span>
                                     </div>
@@ -507,7 +794,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-[11px] text-slate-400">
                                         <div><strong>Duration:</strong> {{ st.duration }} Days</div>
                                         <div><strong>Start:</strong> {{ st.start_date }}</div>
-                                        <div><strong>Assignee:</strong> {{ st.member?.name || 'Unassigned' }}</div>
+                                        <div><strong>Assignee:</strong> {{ st.member?.user?.name || st.member?.name || 'Unassigned' }}</div>
                                     </div>
                                     <div v-if="st.deliverables" class="text-[11px] text-slate-500 mt-1.5">
                                         <strong>Deliverables:</strong> {{ st.deliverables }}
@@ -528,6 +815,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                             <select v-model="form.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                                 <option value="pending">Pending</option>
                                 <option value="in_progress">In Progress</option>
+                                <option value="submitted">Submitted</option>
                                 <option value="completed">Completed</option>
                             </select>
                         </div>
@@ -673,6 +961,7 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                                                     <select v-model="subtask.status" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs">
                                                         <option value="pending">Pending</option>
                                                         <option value="in_progress">In Progress</option>
+                                                        <option value="submitted">Submitted</option>
                                                         <option value="completed">Completed</option>
                                                     </select>
                                                 </div>
@@ -752,7 +1041,19 @@ watch(() => sectionForm.section_id, (newSectionId) => {
 
                     <!-- Selected Section Members & Roles Assignment -->
                     <div v-if="sectionForm.section_id" class="mt-4 border-t border-slate-100 pt-4 overflow-visible">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section Members & Project Roles</label>
+                        <div class="flex justify-between items-center mb-2.5">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Project Roles</label>
+                            <button 
+                                type="button" 
+                                @click="openModalCollaboratorModal" 
+                                class="px-2 py-1 text-[10px] font-bold text-[#0D9488] hover:text-white hover:bg-[#0D9488] bg-white rounded border border-[#0D9488] transition flex items-center gap-0.5 shadow-sm"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Add Collaborator
+                            </button>
+                        </div>
                         <div class="space-y-3">
                             <div 
                                 v-for="member in modalSectionMembers" 
@@ -783,6 +1084,48 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                             </div>
                         </div>
                         <div v-if="sectionForm.errors.members" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.members }}</div>
+
+                        <!-- Collaborators Section inside modal -->
+                        <div v-if="selectedModalCollaborators.length > 0" class="mt-4 border-t border-slate-100 pt-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Project Collaborators (Other Sections)</label>
+                            <div class="space-y-3">
+                                <div 
+                                    v-for="collaborator in selectedModalCollaborators" 
+                                    :key="collaborator.id"
+                                    class="border border-teal-100 rounded-lg p-3 bg-[#F0FDFA]/40 relative space-y-2"
+                                >
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex flex-col min-w-0 pr-6">
+                                            <span class="text-xs font-bold text-slate-800 truncate">
+                                                {{ collaborator.name }}
+                                            </span>
+                                            <span class="text-[10px] text-slate-400 font-semibold truncate mt-0.5">
+                                                {{ collaborator.sectionName }}
+                                            </span>
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            @click="removeModalCollaborator(collaborator.id)"
+                                            class="absolute top-2.5 right-2.5 text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition"
+                                            title="Remove collaborator"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.24 9m4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="pl-0">
+                                        <RoleSelectDropdown
+                                            :member="collaborator"
+                                            :all-roles="memberRoles"
+                                            :model-value="getModalMemberProjectRoleId(collaborator.id)"
+                                            @update:model-value="updateModalMemberProjectRole(collaborator.id, $event)"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
@@ -889,6 +1232,146 @@ watch(() => sectionForm.section_id, (newSectionId) => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <ConfirmationModal :show="confirmModalState.show" @close="confirmModalState.show = false">
+            <template #title>
+                {{ confirmModalState.title }}
+            </template>
+
+            <template #content>
+                {{ confirmModalState.message }}
+            </template>
+
+            <template #footer>
+                <SecondaryButton @click="confirmModalState.show = false">
+                    Cancel
+                </SecondaryButton>
+
+                <DangerButton
+                    class="ms-3"
+                    @click="confirmModalState.onConfirm"
+                >
+                    Confirm
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
+        <!-- Collaborator Selection Modal inside Assign Section Modal -->
+        <div v-if="isModalCollaboratorModalOpen" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="isModalCollaboratorModalOpen = false"></div>
+
+            <!-- Modal Content -->
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 relative z-10 flex flex-col max-h-[80vh]">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-slate-150 flex items-center justify-between bg-slate-50/50">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Add Project Collaborator</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Find and assign section members to this project.</p>
+                    </div>
+                    <button 
+                        type="button" 
+                        @click="isModalCollaboratorModalOpen = false" 
+                        class="text-slate-400 hover:text-slate-500 p-1 hover:bg-slate-100 rounded-lg transition"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-5 flex-1 overflow-y-auto space-y-4">
+                    <!-- Search input -->
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            v-model="modalCollaboratorSearchQuery"
+                            placeholder="Search by name or section..."
+                            class="w-full rounded-lg border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] pl-8 py-1.5"
+                        />
+                        <div class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                        <button
+                            v-for="member in filteredModalCollaborators"
+                            :key="member.id"
+                            type="button"
+                            @click="selectModalCollaboratorForAdding(member)"
+                            class="w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition text-xs"
+                            :class="[
+                                selectedModalCollaboratorId === member.id 
+                                    ? 'bg-teal-50/50 border-teal-250 text-teal-905 shadow-sm ring-1 ring-teal-100'
+                                    : 'bg-white hover:bg-slate-50 border-slate-100 text-slate-705'
+                            ]"
+                        >
+                            <div class="min-w-0 pr-3">
+                                <p class="font-bold text-slate-800">{{ member.name }}</p>
+                                <p class="text-[9px] text-slate-400 font-semibold mt-0.5">{{ member.sectionName }}</p>
+                            </div>
+                            <div v-if="selectedModalCollaboratorId === member.id" class="text-[#0D9488] shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                            </div>
+                        </button>
+                        <div v-if="filteredModalCollaborators.length === 0" class="text-[11px] text-slate-400 text-center py-4">
+                            No eligible section members found
+                        </div>
+                    </div>
+
+                    <!-- Role selector (only if a collaborator is selected) -->
+                    <div 
+                        v-if="selectedModalCollaboratorId" 
+                        class="bg-slate-50/50 border border-slate-100 rounded-lg p-3 space-y-2 mt-3"
+                    >
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-700">Assign Project Role</span>
+                            <span class="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-bold">
+                                {{ allAvailableMembers.find(m => m.id === selectedModalCollaboratorId)?.name }}
+                            </span>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Project Functional Role</label>
+                            <select 
+                                v-model="selectedModalCollaboratorRoleId"
+                                class="w-full rounded-lg border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] py-1"
+                            >
+                                <option v-for="role in memberRoles" :key="role.id" :value="role.id">
+                                    {{ role.name }} {{ hasRoleGlobally(allAvailableMembers.find(m => m.id === selectedModalCollaboratorId), role.id) ? '' : '(attach globally)' }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex justify-end gap-2">
+                    <button 
+                        type="button" 
+                        @click="isModalCollaboratorModalOpen = false" 
+                        class="px-3 py-1.5 border border-slate-200 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-50 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="confirmAddModalCollaborator" 
+                        :disabled="!selectedModalCollaboratorId || isAttachingModalCollaboratorRole"
+                        class="px-3 py-1.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                        <span v-if="isAttachingModalCollaboratorRole" class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        {{ isAttachingModalCollaboratorRole ? 'Attaching...' : 'Add to Project' }}
+                    </button>
+                </div>
             </div>
         </div>
     </AppLayout>

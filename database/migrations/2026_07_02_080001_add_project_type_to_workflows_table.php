@@ -6,22 +6,16 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::table('development_phases', function (Blueprint $table) {
+        Schema::table('workflows', function (Blueprint $table) {
             $table->string('project_type')->nullable()->after('name');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('development_phases', function (Blueprint $table) {
+        Schema::table('workflows', function (Blueprint $table) {
             $table->dropColumn('project_type');
         });
     }

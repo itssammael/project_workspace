@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 const props = defineProps({
     project: Object,
-    phases: Array,
+    workflows: Array,
     canManageTasks: Boolean,
 });
 
@@ -103,6 +103,8 @@ const getTaskBarClass = (task) => {
             return 'from-[#16A34A] to-[#15803d] shadow-green-100/50 hover:shadow-green-200/50 text-white';
         case 'in_progress':
             return 'from-[#0D9488] to-[#0f766e] shadow-teal-100/50 hover:shadow-teal-200/50 text-white animate-pulse-subtle';
+        case 'submitted':
+            return 'from-[#6366F1] to-[#4F46E5] shadow-indigo-100/50 hover:shadow-indigo-200/50 text-white';
         default:
             return 'from-[#64748B] to-[#475569] shadow-slate-100/50 hover:shadow-slate-200/50 text-white';
     }
@@ -156,8 +158,8 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
     const horizClass = getTooltipPositionClass(date);
     
     let visibleRows = [];
-    props.phases.forEach(p => {
-        p.tasks.forEach(t => {
+    props.workflows.forEach(w => {
+        w.tasks.forEach(t => {
             visibleRows.push({ type: 'task', id: t.id });
             if (!isTaskCollapsed(t.id) && t.sub_tasks) {
                 t.sub_tasks.forEach(st => {
@@ -216,29 +218,29 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
                 <!-- Empty Header spacer -->
                 <div class="h-[60px] border-b border-slate-100 bg-slate-50/20"></div>
                 
-                <div v-for="phase in phases" :key="phase.id" class="border-b border-slate-100">
+                <div v-for="workflow in workflows" :key="workflow.id" class="border-b border-slate-100">
                     <div class="px-4 h-8 bg-gray-300/70 border-b border-slate-200/60 flex justify-between items-center font-bold text-[10px] text-slate-600 uppercase tracking-wider">
                         <div class="flex items-center gap-2">
-                            <span>{{ phase.name }}</span>
-                            <span v-if="phase.total_tasks > 0" class="text-[10px] text-slate-400 normal-case font-semibold">
-                                ({{ phase.progress }}%)
+                            <span>{{ workflow.name }}</span>
+                            <span v-if="workflow.total_tasks > 0" class="text-[10px] text-slate-400 normal-case font-semibold">
+                                ({{ workflow.progress }}%)
                             </span>
                         </div>
                         <button 
                             v-if="canManageTasks" 
-                            @click="emit('add-task', phase.id)"
+                            @click="emit('add-task', workflow.id)"
                             class="text-[#0D9488] hover:text-[#0f766e] normal-case font-bold flex items-center gap-0.5"
                         >
                             + Add
                         </button>
                     </div>
                     
-                    <!-- Phase Tasks -->
-                    <div v-if="phase.tasks.length === 0" class="px-4 h-10 flex items-center text-xs text-slate-400 italic bg-slate-50/30">
-                        No tasks in this phase.
+                    <!-- Workflow Tasks -->
+                    <div v-if="workflow.tasks.length === 0" class="px-4 h-10 flex items-center text-xs text-slate-400 italic bg-slate-50/30">
+                        No tasks in this workflow.
                     </div>
                     <div v-else>
-                        <template v-for="task in phase.tasks" :key="task.id">
+                        <template v-for="task in workflow.tasks" :key="task.id">
                             <!-- Main Task Row -->
                             <div 
                                 @click="toggleTask(task.id)"
@@ -333,14 +335,14 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
                 </div>
 
                 <!-- Timeline Rows for each task -->
-                <div v-for="phase in phases" :key="'tl-'+phase.id" class="border-b border-slate-100">
-                    <!-- Phase Spacer Row -->
+                <div v-for="workflow in workflows" :key="'tl-'+workflow.id" class="border-b border-slate-100">
+                    <!-- Workflow Spacer Row -->
                     <div class="h-8 bg-slate-50/10 border-b border-slate-200/60"></div>
                     
                     <!-- Tasks Rows -->
-                    <div v-if="phase.tasks.length === 0" class="h-10"></div>
+                    <div v-if="workflow.tasks.length === 0" class="h-10"></div>
                     <div v-else>
-                        <template v-for="task in phase.tasks" :key="'tl-group-'+task.id">
+                        <template v-for="task in workflow.tasks" :key="'tl-group-'+task.id">
                             <!-- Main Task Row -->
                             <div 
                                 class="h-[60px] relative grid items-center border-b border-slate-100 hover:z-30"
@@ -363,7 +365,7 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
                                     >
                                         <div class="flex justify-between items-start border-b border-slate-800 pb-1.5">
                                             <p class="font-bold text-white text-sm truncate max-w-[200px]">{{ task.name }}</p>
-                                            <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="task.status === 'completed' ? 'text-green-400' : task.status === 'in_progress' ? 'text-teal-400' : 'text-slate-400'">
+                                            <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="task.status === 'completed' ? 'text-green-400' : task.status === 'submitted' ? 'text-indigo-400' : task.status === 'in_progress' ? 'text-teal-400' : 'text-slate-400'">
                                                 {{ task.status.replace('_', ' ') }}
                                             </span>
                                         </div>
@@ -402,7 +404,7 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
                                         >
                                             <div class="flex justify-between items-start border-b border-slate-800 pb-1.5">
                                                 <p class="font-bold text-white text-sm truncate max-w-[200px]">{{ subtask.name }}</p>
-                                                <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="subtask.status === 'completed' ? 'text-green-400' : subtask.status === 'in_progress' ? 'text-teal-400' : 'text-slate-400'">
+                                                <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-800" :class="subtask.status === 'completed' ? 'text-green-400' : subtask.status === 'submitted' ? 'text-indigo-400' : subtask.status === 'in_progress' ? 'text-teal-400' : 'text-slate-400'">
                                                     {{ subtask.status.replace('_', ' ') }}
                                                 </span>
                                             </div>
@@ -490,7 +492,7 @@ const getTooltipClass = (task, isSubtask = false, subtaskId = null) => {
 
                         <div class="text-right">
                             <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</span>
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider border shrink-0" :class="selectedSubTask?.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : selectedSubTask?.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 bg-slate-50 border-slate-200'">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider border shrink-0" :class="selectedSubTask?.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : selectedSubTask?.status === 'submitted' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : selectedSubTask?.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 bg-slate-50 border-slate-200'">
                                 {{ selectedSubTask?.status?.replace('_', ' ') }}
                             </span>
                         </div>

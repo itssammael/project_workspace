@@ -37,11 +37,11 @@ class DashboardController extends Controller
         // 2. Pending/Assigned Tasks
         if ($user->hasRole('admin')) {
             $subTasksQuery = \App\Models\SubTask::where('status', '!=', 'completed')
-                ->with(['task.project', 'task.developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.workflow', 'member.user']);
         } else {
             $subTasksQuery = \App\Models\SubTask::where('member_id', $member?->id ?? 0)
                 ->where('status', '!=', 'completed')
-                ->with(['task.project', 'task.developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.workflow', 'member.user']);
         }
         $pendingTasks = $subTasksQuery->get()->map(function ($subTask) {
             return [
@@ -55,7 +55,7 @@ class DashboardController extends Controller
                 'status' => $subTask->status,
                 'parent_task_name' => $subTask->task?->name,
                 'project' => $subTask->task?->project,
-                'development_phase' => $subTask->task?->developmentPhase,
+                'workflow' => $subTask->task?->workflow,
             ];
         })->values();
 
@@ -64,11 +64,11 @@ class DashboardController extends Controller
         
         if ($user->hasRole('admin')) {
             $undeliveredSubQuery = \App\Models\SubTask::where('status', '!=', 'completed')
-                ->with(['task.project', 'task.developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.workflow', 'member.user']);
         } else {
             $undeliveredSubQuery = \App\Models\SubTask::where('member_id', $member?->id ?? 0)
                 ->where('status', '!=', 'completed')
-                ->with(['task.project', 'task.developmentPhase', 'member.user']);
+                ->with(['task.project', 'task.workflow', 'member.user']);
         }
 
         $undeliveredTasks = $undeliveredSubQuery->get()->filter(function ($subTask) use ($today) {
@@ -89,7 +89,7 @@ class DashboardController extends Controller
                 'status' => $subTask->status,
                 'parent_task_name' => $subTask->task?->name,
                 'project' => $subTask->task?->project,
-                'development_phase' => $subTask->task?->developmentPhase,
+                'workflow' => $subTask->task?->workflow,
             ];
         })->values();
 

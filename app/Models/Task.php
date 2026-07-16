@@ -10,7 +10,7 @@ class Task extends Model
     protected $fillable = [
         'name',
         'details',
-        'development_phase_id',
+        'workflow_id',
         'project_id',
     ];
 
@@ -21,9 +21,9 @@ class Task extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function developmentPhase(): BelongsTo
+    public function workflow(): BelongsTo
     {
-        return $this->belongsTo(DevelopmentPhase::class);
+        return $this->belongsTo(Workflow::class, 'workflow_id');
     }
 
     public function subTasks(): \Illuminate\Database\Eloquent\Relations\HasMany

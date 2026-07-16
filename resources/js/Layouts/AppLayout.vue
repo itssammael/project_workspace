@@ -55,7 +55,7 @@ const logout = () => {
                                     Dashboard
                                 </NavLink>
                                 <NavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
-                                    Projects
+                                    Task Boards
                                 </NavLink>
                                 <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
                                     Management
@@ -207,7 +207,7 @@ const logout = () => {
                             Dashboard
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
-                            Projects
+                            Task Boards
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
                             Management

@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Project;
-use App\Models\DevelopmentPhase;
+use App\Models\Workflow;
 use App\Models\Task;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -81,6 +81,184 @@ class ProjectTrackerTest extends TestCase
     }
 
     /**
+     * Test task updates: assignee can update status to submitted.
+     */
+    public function test_assignee_can_update_task_status_to_submitted(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $this->assertNotNull($designer);
+
+        // Find a task assigned to the designer via its subtask
+        $subTask = \App\Models\SubTask::where('member_id', $designer->member->id)->first();
+        $this->assertNotNull($subTask);
+        $task = $subTask->task;
+        $this->assertNotNull($task);
+
+        // Designer updates status to submitted
+        $response = $this->actingAs($designer)->put(route('tasks.update', $task->id), [
+            'status' => 'submitted',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertEquals('submitted', $subTask->fresh()->status);
+    }
+
+    /**
+     * Test that an assignee can move a task across non-completed stages.
+     */
+    public function test_assignee_can_move_kanban_card_to_non_completed_stages(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $doingStage = Workflow::where('name', 'Doing')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $initialWorkflowId = $task->workflow_id;
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id, 'status' => 'pending']);
+
+        $response = $this->actingAs($designer)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $doingStage->id,
+        ]);
+        
+        $response->assertRedirect();
+        $this->assertEquals($initialWorkflowId, $task->fresh()->workflow_id);
+        $this->assertEquals('in_progress', $subtask->fresh()->status);
+    }
+
+    /**
+     * Test that a designer (non-PM) cannot move a card to the completed stage.
+     */
+    public function test_designer_cannot_move_kanban_card_to_completed(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $completedStage = Workflow::where('name', 'Completed')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id, 'status' => 'submitted']);
+
+        $response = $this->actingAs($designer)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $completedStage->id,
+        ]);
+        
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that PM cannot move a task directly to completed unless it is in the submitted stage.
+     */
+    public function test_pm_cannot_move_kanban_card_to_completed_unless_submitted(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $completedStage = Workflow::where('name', 'Completed')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $task->subTasks()->update(['status' => 'in_progress']);
+
+        $response = $this->actingAs($pm)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $completedStage->id,
+        ]);
+        
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that PM can move a task from submitted to completed.
+     */
+    public function test_pm_can_move_submitted_kanban_card_to_completed(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $completedStage = Workflow::where('name', 'Completed')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $initialWorkflowId = $task->workflow_id;
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['status' => 'submitted']);
+
+        $response = $this->actingAs($pm)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $completedStage->id,
+        ]);
+        
+        $response->assertRedirect();
+        $this->assertEquals($initialWorkflowId, $task->fresh()->workflow_id);
+        $this->assertEquals('completed', $subtask->fresh()->status);
+    }
+
+    /**
+     * Test that a designer (non-PM) cannot move a completed card.
+     */
+    public function test_designer_cannot_move_completed_kanban_card(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $todoStage = Workflow::where('name', 'To do')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id, 'status' => 'completed']);
+
+        $response = $this->actingAs($designer)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $todoStage->id,
+        ]);
+        
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that PM cannot move a completed task to doing stage.
+     */
+    public function test_pm_cannot_move_completed_kanban_card_to_doing(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $doingStage = Workflow::where('name', 'Doing')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['status' => 'completed']);
+
+        $response = $this->actingAs($pm)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $doingStage->id,
+        ]);
+        
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that PM can move a completed task to Submitted stage.
+     */
+    public function test_pm_can_move_completed_kanban_card_to_submitted(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $submittedStage = Workflow::where('name', 'Submitted')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $initialWorkflowId = $task->workflow_id;
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['status' => 'completed']);
+
+        $response = $this->actingAs($pm)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $submittedStage->id,
+        ]);
+        
+        $response->assertRedirect();
+        $this->assertEquals($initialWorkflowId, $task->fresh()->workflow_id);
+        $this->assertEquals('submitted', $subtask->fresh()->status);
+    }
+
+    /**
      * Test task updates: other members cannot update status.
      */
     public function test_unauthorized_member_cannot_update_task(): void
@@ -128,7 +306,7 @@ class ProjectTrackerTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('Project/Show')
             ->has('project')
-            ->has('phases')
+            ->has('workflows')
         );
     }
 
@@ -252,9 +430,9 @@ class ProjectTrackerTest extends TestCase
     }
 
     /**
-     * Admin can create a project with phases.
+     * Admin can create a project with workflows.
      */
-    public function test_admin_can_create_project_with_phases(): void
+    public function test_admin_can_create_project_with_workflows(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
         $this->assertNotNull($admin);
@@ -262,8 +440,8 @@ class ProjectTrackerTest extends TestCase
         $section = \App\Models\Section::first();
         $this->assertNotNull($section);
 
-        $phases = DevelopmentPhase::take(3)->pluck('id')->toArray();
-        $this->assertNotEmpty($phases);
+        $workflows = Workflow::take(3)->pluck('id')->toArray();
+        $this->assertNotEmpty($workflows);
 
         $response = $this->actingAs($admin)->post(route('projects.store'), [
             'name' => 'New Awesome Project',
@@ -272,7 +450,7 @@ class ProjectTrackerTest extends TestCase
             'section_id' => $section->id,
             'start_date' => '2026-07-16',
             'end_date' => '2026-08-16',
-            'phase_ids' => $phases,
+            'workflow_ids' => $workflows,
         ]);
 
         $response->assertRedirect(route('dashboard'));
@@ -284,7 +462,7 @@ class ProjectTrackerTest extends TestCase
 
         $project = Project::where('name', 'New Awesome Project')->first();
         $this->assertNotNull($project);
-        $this->assertEquals(count($phases), $project->developmentPhases()->count());
+        $this->assertEquals(count($workflows), $project->workflows()->count());
     }
 }
 

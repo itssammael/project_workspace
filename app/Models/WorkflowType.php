@@ -14,8 +14,8 @@ class WorkflowType extends Model
 
     protected $fillable = ['name'];
 
-    public function developmentPhases(): HasMany
+    public function workflows(): HasMany
     {
-        return $this->hasMany(DevelopmentPhase::class, 'workflow_type_id');
+        return $this->hasMany(Workflow::class, 'workflow_type_id');
     }
 }
