@@ -14,10 +14,14 @@ const props = defineProps({
     membersList: Array,
     workflows: Array,
     workflowTypes: Array,
+    systemLogs: {
+        type: Array,
+        default: () => []
+    }
 });
 
 // Active tab
-const activeTab = ref('users'); // 'users', 'sections', or 'workflows'
+const activeTab = ref('users'); // 'users', 'sections', 'workflows', or 'system_logs'
 
 // Search & filter states
 const userSearch = ref('');
@@ -25,6 +29,7 @@ const roleFilter = ref('');
 const sectionSearch = ref('');
 const workflowSearch = ref('');
 const projectTypeFilter = ref('');
+const systemLogSearch = ref('');
 
 // Modals state
 const isUserModalOpen = ref(false);
@@ -186,6 +191,44 @@ const groupedWorkflows = computed(() => {
     });
     return groups;
 });
+
+// Filter system logs
+const filteredSystemLogs = computed(() => {
+    if (!systemLogSearch.value) return props.systemLogs;
+    const query = systemLogSearch.value.toLowerCase();
+    return props.systemLogs.filter(log => {
+        return (log.action && log.action.toLowerCase().includes(query)) ||
+               (log.description && log.description.toLowerCase().includes(query)) ||
+               (log.user_name && log.user_name.toLowerCase().includes(query)) ||
+               (log.ip_address && log.ip_address.toLowerCase().includes(query)) ||
+               (log.created_at && log.created_at.toLowerCase().includes(query));
+    });
+});
+
+// Pagination state for system logs
+const logsPerPage = 10;
+const logsCurrentPage = ref(1);
+
+const paginatedSystemLogs = computed(() => {
+    const start = (logsCurrentPage.value - 1) * logsPerPage;
+    const end = start + logsPerPage;
+    return filteredSystemLogs.value.slice(start, end);
+});
+
+const logsTotalPages = computed(() => {
+    return Math.ceil(filteredSystemLogs.value.length / logsPerPage);
+});
+
+// Watch logs search to reset page
+watch(systemLogSearch, () => {
+    logsCurrentPage.value = 1;
+});
+
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleString();
+};
 
 // User Actions
 const openAddUserModal = () => {
@@ -554,6 +597,17 @@ const submitBulkAssign = () => {
                           ]"
                     >
                         Workflows
+                    </button>
+                    <button 
+                        @click="activeTab = 'system_logs'"
+                        :class="[
+                             'px-4 py-2 text-xs font-bold rounded-lg transition-all',
+                             activeTab === 'system_logs' 
+                                 ? 'bg-white text-[#0D9488] shadow-sm border border-slate-200/20' 
+                                 : 'text-slate-500 hover:text-slate-800'
+                           ]"
+                    >
+                        System Logs
                     </button>
                 </div>
             </div>
@@ -1130,6 +1184,128 @@ const submitBulkAssign = () => {
 
                             <div v-if="Object.keys(groupedWorkflows).length === 0" class="bg-white border border-slate-100 p-8 text-center text-slate-400 italic rounded-2xl shadow-sm">
                                 No workflows found.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: System Logs -->
+                <div v-else-if="activeTab === 'system_logs'" class="space-y-6">
+                    <!-- Search Card -->
+                    <div class="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div class="relative flex-1 max-w-md">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
+                                </svg>
+                            </span>
+                            <input 
+                                type="text" 
+                                v-model="systemLogSearch" 
+                                class="w-full pl-9 rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs" 
+                                placeholder="Search logs by action, description, user, IP..." 
+                            />
+                        </div>
+                        <div class="text-xs font-semibold text-slate-400">
+                            Total Logs: {{ filteredSystemLogs.length }}
+                        </div>
+                    </div>
+
+                    <!-- Logs Table Card -->
+                    <div class="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50/75 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                        <th class="py-3.5 px-6">Timestamp</th>
+                                        <th class="py-3.5 px-6">User</th>
+                                        <th class="py-3.5 px-6">Action</th>
+                                        <th class="py-3.5 px-6">Description</th>
+                                        <th class="py-3.5 px-6">IP Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-600">
+                                    <tr v-for="log in paginatedSystemLogs" :key="log.id" class="hover:bg-slate-50/50 transition">
+                                        <td class="py-4 px-6 font-medium text-slate-700 whitespace-nowrap">
+                                            {{ formatDateTime(log.created_at) }}
+                                        </td>
+                                        <td class="py-4 px-6 whitespace-nowrap">
+                                            <div class="flex items-center gap-2">
+                                                <div class="h-6 w-6 rounded-full bg-slate-100 text-slate-650 flex items-center justify-center font-bold text-[9px] uppercase">
+                                                    {{ log.user_name ? log.user_name.slice(0, 2) : 'SY' }}
+                                                </div>
+                                                <span class="font-semibold text-slate-700">{{ log.user_name || 'System' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-6 whitespace-nowrap">
+                                            <span 
+                                                class="px-2 py-0.5 text-[10px] font-bold rounded-lg border uppercase whitespace-nowrap"
+                                                :class="[
+                                                    log.action.includes('Create') ? 'text-teal-700 border-teal-200 bg-teal-50' : 
+                                                    log.action.includes('Update') ? 'text-indigo-700 border-indigo-200 bg-indigo-50/50' : 
+                                                    log.action.includes('Delete') ? 'text-rose-700 border-rose-200 bg-rose-50' : 
+                                                    log.action.includes('Login') || log.action.includes('Logout') ? 'text-amber-700 border-amber-200 bg-amber-50' :
+                                                    'text-slate-700 border-slate-200 bg-slate-50'
+                                                ]"
+                                            >
+                                                {{ log.action }}
+                                            </span>
+                                        </td>
+                                        <td class="py-4 px-6 min-w-[280px]">
+                                            {{ log.description }}
+                                        </td>
+                                        <td class="py-4 px-6 text-slate-400 font-mono whitespace-nowrap">
+                                            {{ log.ip_address || 'N/A' }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="paginatedSystemLogs.length === 0">
+                                        <td colspan="5" class="py-8 px-6 text-center text-slate-400 italic">
+                                            No system logs found.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination Footer -->
+                        <div v-if="logsTotalPages > 1" class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/20">
+                            <div class="text-xs text-slate-400 font-semibold">
+                                Showing <span class="font-semibold text-slate-700">{{ (logsCurrentPage - 1) * logsPerPage + 1 }}</span> to 
+                                <span class="font-semibold text-slate-700">{{ Math.min(logsCurrentPage * logsPerPage, filteredSystemLogs.length) }}</span> of 
+                                <span class="font-semibold text-slate-700">{{ filteredSystemLogs.length }}</span> logs
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button 
+                                    @click="logsCurrentPage--" 
+                                    :disabled="logsCurrentPage === 1"
+                                    class="p-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    v-for="page in logsTotalPages" 
+                                    :key="page"
+                                    @click="logsCurrentPage = page"
+                                    :class="[
+                                        'px-3 py-1 text-xs font-bold rounded-lg transition-all',
+                                        logsCurrentPage === page 
+                                            ? 'bg-[#0D9488] text-white shadow-sm' 
+                                            : 'border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                                    ]"
+                                >
+                                    {{ page }}
+                                </button>
+                                <button 
+                                    @click="logsCurrentPage++" 
+                                    :disabled="logsCurrentPage === logsTotalPages"
+                                    class="p-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -18,6 +18,7 @@ const props = defineProps({
     canUpdateProject: Boolean,
     sections: Array,
     memberRoles: Array,
+    projectAttachments: Array,
 });
 
 const page = usePage();
@@ -190,7 +191,7 @@ const openEditTaskModal = (task) => {
             member_id: st.member_id || '',
             start_date: st.start_date ? st.start_date.split('T')[0] : '',
             status: st.status,
-            has_requirements: st.deliverables && (st.deliverables.includes('File Upload: ') || st.deliverables.includes('Commit ID: ') || st.deliverables.includes("PM's Approval")),
+            has_requirements: st.deliverables && (st.deliverables.includes('File Upload: ') || st.deliverables.includes('Commit ID: ') || st.deliverables.includes('Ticket Link: ') || st.deliverables.includes("PM's Approval")),
           }))
         : [
             {
@@ -270,6 +271,29 @@ const isRequirementsModalOpen = ref(false);
 const activeSubtaskIndex = ref(null);
 const modalRequirements = ref([]);
 
+// File Preview Modal state
+const isPreviewModalOpen = ref(false);
+const previewFileUrl = ref('');
+const previewFileName = ref('');
+
+const openPreviewModal = (filename) => {
+    previewFileName.value = filename;
+    previewFileUrl.value = '/attachments/' + filename;
+    isPreviewModalOpen.value = true;
+};
+
+const closePreviewModal = () => {
+    isPreviewModalOpen.value = false;
+    previewFileUrl.value = '';
+    previewFileName.value = '';
+};
+const getFileExtension = (filename) => {
+    if (!filename) return 'FILE';
+    const parts = filename.split('.');
+    if (parts.length < 2) return 'FILE';
+    return parts[parts.length - 1].toUpperCase();
+};
+
 const parseDeliverables = (str) => {
     if (!str) return [];
     return str.split(', ').map(item => {
@@ -277,12 +301,20 @@ const parseDeliverables = (str) => {
             return { type: 'File Upload', value: item.replace('File Upload: ', '') };
         } else if (item.startsWith('Commit ID: ')) {
             return { type: 'Commit ID', value: item.replace('Commit ID: ', '') };
+        } else if (item.startsWith('Ticket Link: ')) {
+            return { type: 'Ticket Link', value: item.replace('Ticket Link: ', '') };
         } else if (item === "PM's Approval") {
             return { type: 'Approval', value: "PM's Approval" };
         } else {
             return { type: 'File Upload', value: item };
         }
     });
+};
+
+const isViewableFile = (filename) => {
+    if (!filename) return false;
+    const nameLower = filename.toLowerCase();
+    return nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png') || nameLower.endsWith('.pdf');
 };
 
 const openRequirementsModal = (index) => {
@@ -312,7 +344,11 @@ const removeRequirementRow = (idx) => {
 const onRequirementTypeChange = (row) => {
     if (row.type === 'Approval') {
         row.value = "PM's Approval";
-    } else {
+    }else if (row.type === 'Commit ID') {
+        row.value = "Attach the Repository Commit ID";
+    }else if (row.type === 'Ticket Link') {
+        row.value = "Provide the Ticket Link";
+    }else {
         row.value = "";
     }
 };
@@ -338,6 +374,9 @@ const saveRequirements = () => {
         }
         if (r.type === 'Commit ID') {
             return 'Commit ID: ' + r.value;
+        }
+        if (r.type === 'Ticket Link') {
+            return 'Ticket Link: ' + r.value;
         }
         return 'File Upload: ' + r.value;
     }).join(', ');
@@ -397,6 +436,89 @@ const closeModal = () => {
     isModalOpen.value = false;
     form.reset();
     selectedTask.value = null;
+};
+
+const attachmentForms = ref({});
+const commentInputs = ref({});
+
+watch(() => selectedTask.value, (task) => {
+    if (task && task.sub_tasks) {
+        task.sub_tasks.forEach(st => {
+            if (!attachmentForms.value[st.id]) {
+                attachmentForms.value[st.id] = {
+                    type: 'File Upload',
+                    value: '',
+                    file: null
+                };
+            }
+            if (commentInputs.value[st.id] === undefined) {
+                commentInputs.value[st.id] = '';
+            }
+        });
+    }
+}, { immediate: true });
+
+watch(() => props.workflows, (newWorkflows) => {
+    if (selectedTask.value) {
+        for (const w of newWorkflows) {
+            const found = (w.tasks || []).find(t => t.id === selectedTask.value.id);
+            if (found) {
+                selectedTask.value = found;
+                break;
+            }
+        }
+    }
+}, { deep: true });
+
+const handleFileChange = (event, subTaskId) => {
+    if (!attachmentForms.value[subTaskId]) {
+        attachmentForms.value[subTaskId] = { type: 'File Upload', value: '', file: null };
+    }
+    attachmentForms.value[subTaskId].file = event.target.files[0];
+};
+
+const submitAttachment = (subTaskId) => {
+    const formState = attachmentForms.value[subTaskId];
+    if (!formState) return;
+
+    const formData = new FormData();
+    formData.append('attachment_type', formState.type);
+    
+    if (formState.type === 'File Upload') {
+        if (!formState.file) {
+            alert('Please select a file to upload.');
+            return;
+        }
+        formData.append('attachment', formState.file);
+    } else {
+        if (!formState.value || !formState.value.trim()) {
+            alert('Please enter a link or commit ID.');
+            return;
+        }
+        formData.append('attachment', formState.value);
+    }
+
+    router.post(route('subtasks.store-attachment', subTaskId), formData, {
+        preserveScroll: true,
+        onSuccess: () => {
+            formState.value = '';
+            formState.file = null;
+        }
+    });
+};
+
+const submitComment = (subTaskId) => {
+    const text = commentInputs.value[subTaskId];
+    if (!text || !text.trim()) return;
+
+    router.post(route('subtasks.store-comment', subTaskId), {
+        comment: text
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            commentInputs.value[subTaskId] = '';
+        }
+    });
 };
 
 const deleteProject = () => {
@@ -669,9 +791,51 @@ const removeModalCollaborator = (memberId) => {
             <div class="max-w-full mx-auto px-8 sm:px-6 lg:px-16 space-y-8 ">
                 <!-- Project Details Summary -->
                 <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between gap-8">
-                    <div class="space-y-4 max-w-3xl">
+                    <div class="space-y-4 max-w-3xl flex-1">
                         <h3 class="font-bold text-slate-800 text-lg">Task Board Summary</h3>
                         <p class="text-slate-600 text-sm leading-relaxed">{{ project.description || 'No description provided.' }}</p>
+                        
+                        <!-- Project Deliverables & Attachments list -->
+                        <div v-if="projectAttachments && projectAttachments.length > 0" class="border-t border-slate-100 pt-4 mt-4 space-y-3">
+                            <h4 class="font-bold text-slate-700 text-sm">Project Deliverables & Attachments</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto pr-1">
+                                <div v-for="att in projectAttachments" :key="att.id" class="flex items-center justify-between border border-slate-100 rounded-xl p-3 bg-slate-50/50 hover:bg-slate-50 transition">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-1.5 py-0.5 text-[8px] font-bold rounded uppercase border shrink-0 bg-white" :class="att.attachment_type === 'File Upload' ? 'text-teal-700 border-teal-200 bg-teal-55' : att.attachment_type === 'Commit ID' ? 'text-indigo-700 border-indigo-200 bg-indigo-55' : 'text-blue-700 border-blue-200 bg-blue-55'">
+                                                {{ att.attachment_type === 'File Upload' ? getFileExtension(att.attachment) : att.attachment_type }}
+                                            </span>
+                                            <span class="text-xs font-bold text-slate-700 truncate" :title="att.attachment">{{ att.attachment }}</span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 mt-1 truncate">
+                                            Subtask: {{ att.sub_task_name }} &bull; Task: {{ att.task_name }}
+                                        </div>
+                                    </div>
+                                    <div class="shrink-0 ml-2 flex items-center gap-1.5">
+                                        <button 
+                                            v-if="att.attachment_type === 'File Upload' && isViewableFile(att.attachment)" 
+                                            type="button"
+                                            @click="openPreviewModal(att.attachment)" 
+                                            class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold rounded-lg transition shadow-sm inline-block"
+                                        >
+                                            View
+                                        </button>
+                                        <a 
+                                            v-if="att.attachment_type === 'File Upload'" 
+                                            :href="'/attachments/' + att.attachment" 
+                                            download 
+                                            class="px-2.5 py-1.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-[10px] font-bold rounded-lg transition shadow-sm inline-block"
+                                        >
+                                            Download
+                                        </a>
+                                        <a v-else-if="att.attachment.startsWith('http')" :href="att.attachment" target="_blank" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition shadow-sm inline-block">
+                                            Go to Link
+                                        </a>
+                                        <span v-else class="text-slate-405 text-xs italic">Text Attachment</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
                     <h3 class="font-bold text-slate-800 text-lg">Task Board Team</h3>
@@ -762,11 +926,23 @@ const removeModalCollaborator = (memberId) => {
                     <h3 class="font-bold text-slate-800 text-lg">
                         {{ modalMode === 'create' ? 'Add New Task' : modalMode === 'edit' ? 'Edit Task Details' : modalMode === 'status_only' ? 'Update Task Status' : 'Task Details' }}
                     </h3>
-                    <button @click="closeModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    
+                    <div class="flex items-center gap-3">
+                        <button 
+                            v-if="canManageTasks && modalMode !== 'create'" 
+                            type="button" 
+                            @click="modalMode = modalMode === 'edit' ? 'view' : 'edit'"
+                            class="px-3 py-1.5 border border-slate-205 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm"
+                        >
+                            {{ modalMode === 'edit' ? 'Switch to View Details' : 'Switch to Edit Task' }}
+                        </button>
+                        
+                        <button type="button" @click="closeModal" class="text-slate-400 hover:text-slate-600 flex items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <form @submit.prevent="submitForm" class="p-6 space-y-4">
@@ -800,6 +976,110 @@ const removeModalCollaborator = (memberId) => {
                                     <div v-if="st.deliverables" class="text-[11px] text-slate-500 mt-1.5">
                                         <strong>Deliverables:</strong> {{ st.deliverables }}
                                     </div>
+
+                                    <!-- Deliverables Attachments & Comments Section -->
+                                    <div class="mt-4 pt-3 border-t border-slate-200/60 space-y-4">
+                                        <!-- Attachments -->
+                                        <div v-if="(st.attachments && st.attachments.length > 0) || (st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link')))">
+                                            <div class="text-[11px] font-bold text-slate-700 mb-1.5">Attachments & Deliverables</div>
+                                            <div v-if="st.attachments && st.attachments.length > 0" class="space-y-1">
+                                                <div v-for="att in st.attachments" :key="att.id" class="flex items-center justify-between bg-white border border-slate-100 rounded-xl p-2 text-xs">
+                                                    <div class="flex items-center gap-1.5 min-w-0">
+                                                        <span class="px-1.5 py-0.5 text-[8px] font-bold rounded uppercase border shrink-0 bg-slate-50 text-slate-500" :class="att.attachment_type === 'File Upload' ? 'text-teal-700 border-teal-200 bg-teal-50/50' : 'text-blue-700 border-blue-200 bg-blue-50/50'">
+                                                            {{ att.attachment_type === 'File Upload' ? getFileExtension(att.attachment) : att.attachment_type }}
+                                                        </span>
+                                                        <span class="text-slate-650 truncate max-w-[200px]" :title="att.attachment">{{ att.attachment }}</span>
+                                                    </div>
+                                                    <div class="shrink-0">
+                                                        <button 
+                                                            v-if="att.attachment_type === 'File Upload' && isViewableFile(att.attachment)" 
+                                                            type="button"
+                                                            @click="openPreviewModal(att.attachment)" 
+                                                            class="text-[#0D9488] hover:underline font-bold text-[10px] bg-transparent border-0 p-0"
+                                                        >
+                                                            View File
+                                                        </button>
+                                                        <a 
+                                                            v-else-if="att.attachment_type === 'File Upload'" 
+                                                            :href="'/attachments/' + att.attachment" 
+                                                            target="_blank" 
+                                                            class="text-[#0D9488] hover:underline font-bold text-[10px]"
+                                                        >
+                                                            View File
+                                                        </a>
+                                                        <a v-else-if="att.attachment.startsWith('http')" :href="att.attachment" target="_blank" class="text-blue-600 hover:underline font-bold text-[10px]">
+                                                            Open Link
+                                                        </a>
+                                                        <span v-else class="text-slate-450 text-[10px] italic">Text attached</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-[11px] text-slate-400 italic">No attachments yet.</div>
+                                        </div>
+
+                                        <!-- Attachment Form (Only for subtask assignee when deliverables specify attachments) -->
+                                        <div v-if="st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link'))" class="bg-slate-100/50 rounded-xl p-3 border border-slate-200/40 space-y-2">
+                                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Deliverable Attachment</div>
+                                            <div class="flex flex-col sm:flex-row gap-2">
+                                                <select v-model="attachmentForms[st.id].type" class="rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white">
+                                                    <option value="File Upload">File Upload</option>
+                                                    <option value="Commit ID">Commit ID</option>
+                                                    <option value="Ticket Link">Ticket Link</option>
+                                                </select>
+                                                
+                                                <div class="flex-1">
+                                                    <input 
+                                                        v-if="attachmentForms[st.id].type === 'File Upload'" 
+                                                        type="file" 
+                                                        @change="handleFileChange($event, st.id)" 
+                                                        class="block w-full text-xs text-slate-550 file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-teal-55 file:text-[#0d9488] hover:file:bg-teal-100"
+                                                    />
+                                                    <input 
+                                                        v-else 
+                                                        type="text" 
+                                                        v-model="attachmentForms[st.id].value" 
+                                                        class="w-full rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                        placeholder="Enter link, commit ID or text..."
+                                                    />
+                                                </div>
+                                                
+                                                <button type="button" @click="submitAttachment(st.id)" class="px-3 py-1 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm self-end sm:self-auto">
+                                                    Attach
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Comments Section -->
+                                        <div v-if="st.can_comment" class="space-y-2 mt-3 pt-3 border-t border-slate-200/40">
+                                            <div class="text-[11px] font-bold text-slate-700">Subtask Comments Thread</div>
+                                            
+                                            <!-- Comments list -->
+                                            <div v-if="st.comments && st.comments.length > 0" class="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                                                <div v-for="c in st.comments" :key="c.id" class="bg-white border border-slate-100 rounded-xl p-2.5 text-xs space-y-1.5 shadow-sm">
+                                                    <div class="flex justify-between items-center text-[9px] text-slate-400">
+                                                        <span class="font-bold text-slate-600">{{ c.member.name }}</span>
+                                                        <span>{{ new Date(c.created_at).toLocaleString() }}</span>
+                                                    </div>
+                                                    <p class="text-slate-700 leading-relaxed text-[11px]">{{ c.comment }}</p>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-[11px] text-slate-400 italic">No comments yet.</div>
+                                            
+                                            <!-- Comment input form -->
+                                            <div class="flex gap-2 mt-2">
+                                                <input 
+                                                    type="text" 
+                                                    v-model="commentInputs[st.id]" 
+                                                    class="flex-1 rounded-lg border-slate-200 text-xs py-1.5 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                    placeholder="Write a comment..."
+                                                    @keyup.enter="submitComment(st.id)"
+                                                />
+                                                <button type="button" @click="submitComment(st.id)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                                                    Send
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -819,6 +1099,132 @@ const removeModalCollaborator = (memberId) => {
                                 <option value="submitted">Submitted</option>
                                 <option value="completed">Completed</option>
                             </select>
+                        </div>
+                        <!-- List of assignee's subtasks with attachments & comments -->
+                        <div class="border-t border-slate-100 pt-4 mt-4">
+                            <h4 class="font-bold text-slate-800 text-sm mb-3">Your Subtasks & Comments</h4>
+                            <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                                <div 
+                                    v-for="st in selectedTask?.sub_tasks?.filter(s => s.member_id === currentMemberId)" 
+                                    :key="st.id" 
+                                    class="border border-slate-100 rounded-xl p-4 bg-slate-50/50"
+                                >
+                                    <div class="flex justify-between items-start gap-2">
+                                        <h5 class="font-bold text-slate-800 text-sm">{{ st.name }}</h5>
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded uppercase border bg-white shrink-0" :class="st.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : st.status === 'submitted' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : st.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 border-slate-200'">
+                                            {{ st.status.replace('_', ' ') }}
+                                        </span>
+                                    </div>
+                                    <p v-if="st.details" class="text-xs text-slate-500 mt-1">{{ st.details }}</p>
+                                    <div v-if="st.deliverables" class="text-[11px] text-slate-500 mt-1.5">
+                                        <strong>Deliverables:</strong> {{ st.deliverables }}
+                                    </div>
+                                    
+                                    <!-- Deliverables Attachments & Comments Section -->
+                                    <div class="mt-4 pt-3 border-t border-slate-200/60 space-y-4">
+                                        <!-- Attachments -->
+                                        <div v-if="(st.attachments && st.attachments.length > 0) || (st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link')))">
+                                            <div class="text-[11px] font-bold text-slate-700 mb-1.5">Attachments & Deliverables</div>
+                                            <div v-if="st.attachments && st.attachments.length > 0" class="space-y-1">
+                                                <div v-for="att in st.attachments" :key="att.id" class="flex items-center justify-between bg-white border border-slate-100 rounded-xl p-2 text-xs">
+                                                    <div class="flex items-center gap-1.5 min-w-0">
+                                                        <span class="px-1.5 py-0.5 text-[8px] font-bold rounded uppercase border shrink-0 bg-slate-50 text-slate-500" :class="att.attachment_type === 'File Upload' ? 'text-teal-700 border-teal-200 bg-teal-50/50' : 'text-blue-700 border-blue-200 bg-blue-50/50'">
+                                                            {{ att.attachment_type === 'File Upload' ? getFileExtension(att.attachment) : att.attachment_type }}
+                                                        </span>
+                                                        <span class="text-slate-650 truncate max-w-[200px]" :title="att.attachment">{{ att.attachment }}</span>
+                                                    </div>
+                                                    <div class="shrink-0">
+                                                        <button 
+                                                            v-if="att.attachment_type === 'File Upload' && isViewableFile(att.attachment)" 
+                                                            type="button"
+                                                            @click="openPreviewModal(att.attachment)" 
+                                                            class="text-[#0D9488] hover:underline font-bold text-[10px] bg-transparent border-0 p-0"
+                                                        >
+                                                            View File
+                                                        </button>
+                                                        <a 
+                                                            v-else-if="att.attachment_type === 'File Upload'" 
+                                                            :href="'/attachments/' + att.attachment" 
+                                                            target="_blank" 
+                                                            class="text-[#0D9488] hover:underline font-bold text-[10px]"
+                                                        >
+                                                            View File
+                                                        </a>
+                                                        <a v-else-if="att.attachment.startsWith('http')" :href="att.attachment" target="_blank" class="text-blue-600 hover:underline font-bold text-[10px]">
+                                                            Open Link
+                                                        </a>
+                                                        <span v-else class="text-slate-450 text-[10px] italic">Text attached</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-[11px] text-slate-400 italic">No attachments yet.</div>
+                                        </div>
+
+                                        <!-- Attachment Form (Only for subtask assignee when deliverables specify attachments) -->
+                                        <div v-if="st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link'))" class="bg-slate-100/50 rounded-xl p-3 border border-slate-200/40 space-y-2">
+                                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Deliverable Attachment</div>
+                                            <div class="flex flex-col sm:flex-row gap-2">
+                                                <select v-model="attachmentForms[st.id].type" class="rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white">
+                                                    <option value="File Upload">File Upload</option>
+                                                    <option value="Commit ID">Commit ID</option>
+                                                    <option value="Ticket Link">Ticket Link</option>
+                                                </select>
+                                                
+                                                <div class="flex-1">
+                                                    <input 
+                                                        v-if="attachmentForms[st.id].type === 'File Upload'" 
+                                                        type="file" 
+                                                        @change="handleFileChange($event, st.id)" 
+                                                        class="block w-full text-xs text-slate-555 file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-teal-55 file:text-[#0d9488] hover:file:bg-teal-100"
+                                                    />
+                                                    <input 
+                                                        v-else 
+                                                        type="text" 
+                                                        v-model="attachmentForms[st.id].value" 
+                                                        class="w-full rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                        placeholder="Enter link, commit ID or text..."
+                                                    />
+                                                </div>
+                                                
+                                                <button type="button" @click="submitAttachment(st.id)" class="px-3 py-1 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm self-end sm:self-auto">
+                                                    Attach
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Comments Section -->
+                                        <div v-if="st.can_comment" class="space-y-2 mt-3 pt-3 border-t border-slate-200/40">
+                                            <div class="text-[11px] font-bold text-slate-700">Subtask Comments Thread</div>
+                                            
+                                            <!-- Comments list -->
+                                            <div v-if="st.comments && st.comments.length > 0" class="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                                                <div v-for="c in st.comments" :key="c.id" class="bg-white border border-slate-100 rounded-xl p-2.5 text-xs space-y-1.5 shadow-sm">
+                                                    <div class="flex justify-between items-center text-[9px] text-slate-400">
+                                                        <span class="font-bold text-slate-600">{{ c.member.name }}</span>
+                                                        <span>{{ new Date(c.created_at).toLocaleString() }}</span>
+                                                    </div>
+                                                    <p class="text-slate-700 leading-relaxed text-[11px]">{{ c.comment }}</p>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-[11px] text-slate-400 italic">No comments yet.</div>
+                                            
+                                            <!-- Comment input form -->
+                                            <div class="flex gap-2 mt-2">
+                                                <input 
+                                                    type="text" 
+                                                    v-model="commentInputs[st.id]" 
+                                                    class="flex-1 rounded-lg border-slate-200 text-xs py-1.5 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                    placeholder="Write a comment..."
+                                                    @keyup.enter="submitComment(st.id)"
+                                                />
+                                                <button type="button" @click="submitComment(st.id)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                                                    Send
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -967,6 +1373,134 @@ const removeModalCollaborator = (memberId) => {
                                                     </select>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subtask Deliverables, Attachments & Comments (Edit Mode) -->
+                    <div v-if="modalMode === 'edit' && selectedTask?.sub_tasks && selectedTask.sub_tasks.length > 0" class="border-t border-slate-100 pt-4 mt-6">
+                        <h4 class="font-bold text-slate-800 text-sm mb-3">Subtasks Deliverables, Attachments & Comments</h4>
+                        <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                            <div v-for="st in selectedTask?.sub_tasks" :key="st.id" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+                                <div class="flex justify-between items-start gap-2">
+                                    <h5 class="font-bold text-slate-800 text-sm">{{ st.name }}</h5>
+                                    <span class="px-2 py-0.5 text-[9px] font-bold rounded uppercase border bg-white shrink-0" :class="st.status === 'completed' ? 'text-teal-700 bg-teal-50 border-teal-200' : st.status === 'submitted' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : st.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-slate-600 border-slate-200'">
+                                        {{ st.status.replace('_', ' ') }}
+                                    </span>
+                                </div>
+                                <p v-if="st.details" class="text-xs text-slate-500 mt-1">{{ st.details }}</p>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-[11px] text-slate-400">
+                                    <div><strong>Duration:</strong> {{ st.duration }} Days</div>
+                                    <div><strong>Start:</strong> {{ st.start_date }}</div>
+                                    <div><strong>Assignee:</strong> {{ st.member?.name || 'Unassigned' }}</div>
+                                </div>
+                                <div v-if="st.deliverables" class="text-[11px] text-slate-500 mt-1.5">
+                                    <strong>Deliverables:</strong> {{ st.deliverables }}
+                                </div>
+                                
+                                <!-- Deliverables Attachments & Comments Section -->
+                                <div class="mt-4 pt-3 border-t border-slate-200/60 space-y-4">
+                                    <!-- Attachments -->
+                                    <div v-if="(st.attachments && st.attachments.length > 0) || (st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link')))">
+                                        <div class="text-[11px] font-bold text-slate-700 mb-1.5">Attachments & Deliverables</div>
+                                        <div v-if="st.attachments && st.attachments.length > 0" class="space-y-1">
+                                            <div v-for="att in st.attachments" :key="att.id" class="flex items-center justify-between bg-white border border-slate-100 rounded-xl p-2 text-xs">
+                                                <div class="flex items-center gap-1.5 min-w-0">
+                                                    <span class="px-1.5 py-0.5 text-[8px] font-bold rounded uppercase border shrink-0 bg-slate-50 text-slate-500" :class="att.attachment_type === 'File Upload' ? 'text-teal-700 border-teal-200 bg-teal-50/50' : 'text-blue-700 border-blue-200 bg-blue-50/50'">
+                                                        {{ att.attachment_type === 'File Upload' ? getFileExtension(att.attachment) : att.attachment_type }}
+                                                    </span>
+                                                    <span class="text-slate-650 truncate max-w-[200px]" :title="att.attachment">{{ att.attachment }}</span>
+                                                </div>
+                                                <div class="shrink-0">
+                                                    <button 
+                                                        v-if="att.attachment_type === 'File Upload' && isViewableFile(att.attachment)" 
+                                                        type="button"
+                                                        @click="openPreviewModal(att.attachment)" 
+                                                        class="text-[#0D9488] hover:underline font-bold text-[10px] bg-transparent border-0 p-0"
+                                                    >
+                                                        View File
+                                                    </button>
+                                                    <a 
+                                                        v-else-if="att.attachment_type === 'File Upload'" 
+                                                        :href="'/attachments/' + att.attachment" 
+                                                        target="_blank" 
+                                                        class="text-[#0D9488] hover:underline font-bold text-[10px]"
+                                                    >
+                                                        View File
+                                                    </a>
+                                                    <a v-else-if="att.attachment.startsWith('http')" :href="att.attachment" target="_blank" class="text-blue-600 hover:underline font-bold text-[10px]">
+                                                        Open Link
+                                                    </a>
+                                                    <span v-else class="text-slate-450 text-[10px] italic">Text attached</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="text-[11px] text-slate-400 italic">No attachments yet.</div>
+                                    </div>
+
+                                    <!-- Attachment Form (Only for subtask assignee when deliverables specify attachments) -->
+                                    <div v-if="st.member_id === currentMemberId && st.deliverables && (st.deliverables.includes('File Upload') || st.deliverables.includes('Commit ID') || st.deliverables.includes('Ticket Link'))" class="bg-slate-100/50 rounded-xl p-3 border border-slate-200/40 space-y-2">
+                                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Deliverable Attachment</div>
+                                        <div class="flex flex-col sm:flex-row gap-2">
+                                            <select v-model="attachmentForms[st.id].type" class="rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white">
+                                                <option value="File Upload">File Upload</option>
+                                                <option value="Commit ID">Commit ID</option>
+                                                <option value="Ticket Link">Ticket Link</option>
+                                            </select>
+                                            
+                                            <div class="flex-1">
+                                                <input 
+                                                    v-if="attachmentForms[st.id].type === 'File Upload'" 
+                                                    type="file" 
+                                                    @change="handleFileChange($event, st.id)" 
+                                                    class="block w-full text-xs text-slate-555 file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-teal-55 file:text-[#0d9488] hover:file:bg-teal-100"
+                                                />
+                                                <input 
+                                                    v-else 
+                                                    type="text" 
+                                                    v-model="attachmentForms[st.id].value" 
+                                                    class="w-full rounded-lg border-slate-200 text-xs py-1 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                    placeholder="Enter link, commit ID or text..."
+                                                />
+                                            </div>
+                                            
+                                            <button type="button" @click="submitAttachment(st.id)" class="px-3 py-1 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm self-end sm:self-auto">
+                                                Attach
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Comments Section -->
+                                    <div v-if="st.can_comment" class="space-y-2 mt-3 pt-3 border-t border-slate-200/40">
+                                        <div class="text-[11px] font-bold text-slate-700">Subtask Comments Thread</div>
+                                        
+                                        <!-- Comments list -->
+                                        <div v-if="st.comments && st.comments.length > 0" class="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                                            <div v-for="c in st.comments" :key="c.id" class="bg-white border border-slate-100 rounded-xl p-2.5 text-xs space-y-1.5 shadow-sm">
+                                                <div class="flex justify-between items-center text-[9px] text-slate-400">
+                                                    <span class="font-bold text-slate-600">{{ c.member.name }}</span>
+                                                    <span>{{ new Date(c.created_at).toLocaleString() }}</span>
+                                                </div>
+                                                <p class="text-slate-700 leading-relaxed text-[11px]">{{ c.comment }}</p>
+                                            </div>
+                                        </div>
+                                        <div v-else class="text-[11px] text-slate-400 italic">No comments yet.</div>
+                                        
+                                        <!-- Comment input form -->
+                                        <div class="flex gap-2 mt-2">
+                                            <input 
+                                                type="text" 
+                                                v-model="commentInputs[st.id]" 
+                                                class="flex-1 rounded-lg border-slate-200 text-xs py-1.5 focus:border-[#0D9488] focus:ring-[#0D9488] bg-white" 
+                                                placeholder="Write a comment..."
+                                                @keyup.enter="submitComment(st.id)"
+                                            />
+                                            <button type="button" @click="submitComment(st.id)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                                                Send
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1186,6 +1720,7 @@ const removeModalCollaborator = (memberId) => {
                                 <option value="File Upload">File Upload</option>
                                 <option value="Approval">Approval</option>
                                 <option value="Commit ID">Commit ID</option>
+                                <option value="Ticket Link">Ticket Link</option>
                             </select>
 
                             <input 
@@ -1198,7 +1733,7 @@ const removeModalCollaborator = (memberId) => {
                                 :title="row.type === 'Commit ID' ? 'A 40-character hexadecimal Commit ID is required' : undefined"
                                 required
                                 class="rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-xs flex-1 bg-white disabled:bg-slate-50 disabled:opacity-80"
-                                :placeholder="row.type === 'Commit ID' ? 'Enter 40-char hex commit ID...' : 'Specify file description...'"
+                                :placeholder="row.type === 'Commit ID' ? 'Enter 40-char hex commit ID...' : (row.type === 'Ticket Link' ? 'Specify ticket link description...' : 'Specify file description...')"
                             />
 
                             <button 
@@ -1233,6 +1768,50 @@ const removeModalCollaborator = (memberId) => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- File Preview Modal -->
+        <div v-if="isPreviewModalOpen" class="fixed inset-0 overflow-y-auto z-[60] flex items-center justify-center p-4">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closePreviewModal"></div>
+
+            <!-- Modal Content -->
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-10 transform transition-all flex flex-col max-w-4xl w-full">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-lg truncate max-w-2xl" :title="previewFileName">
+                        Preview File: {{ previewFileName }}
+                    </h3>
+                    <button @click="closePreviewModal" class="text-slate-400 hover:text-slate-600 flex items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="p-6 bg-slate-50/50 flex items-center justify-center min-h-[300px]">
+                    <iframe 
+                        v-if="previewFileName.toLowerCase().endsWith('.pdf')" 
+                        :src="previewFileUrl" 
+                        class="w-full h-[70vh] border-0 rounded-xl shadow-sm bg-white"
+                    ></iframe>
+                    
+                    <img 
+                        v-else 
+                        :src="previewFileUrl" 
+                        class="max-w-full max-h-[70vh] object-contain rounded-xl shadow-sm border border-slate-100 bg-white"
+                        alt="Image Preview"
+                    />
+                </div>
+                
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end bg-slate-50/50 gap-3">
+                    <a :href="previewFileUrl" download class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm">
+                        Download
+                    </a>
+                    <button @click="closePreviewModal" class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition bg-white">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
 

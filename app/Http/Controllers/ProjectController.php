@@ -71,7 +71,7 @@ class ProjectController extends Controller
         $allTasks = $project->tasks()->with(['subTasks.member.user'])->get();
 
         // Populate tasks with computed attributes
-        $allTasks->transform(function ($task) use ($project) {
+        $allTasks->transform(function ($task) use ($project, $request) {
             $subTasks = $task->subTasks;
             if ($subTasks->isNotEmpty()) {
                 $task->deliverables = $subTasks->pluck('deliverables')->filter()->implode(', ');
@@ -124,13 +124,54 @@ class ProjectController extends Controller
             }
             
             // Expose sub_tasks list to the frontend
-            $task->sub_tasks = $subTasks->map(function ($st) use ($project) {
+            $mappedSubTasks = $subTasks->map(function ($st) use ($project, $request) {
                 $projectMemberRole = \App\Models\MemberRole::find(
                     \Illuminate\Support\Facades\DB::table('project_members')
                         ->where('project_id', $project->id)
                         ->where('member_id', $st->member_id)
                         ->value('member_role_id')
                 );
+
+                $user = $request->user();
+                $member = $user ? $user->member : null;
+                
+                $isAssignee = $member && $st->member_id === $member->id;
+                
+                $isPM = $member && $member->memberRoles()->where('slug', 'project_manager')->exists() && 
+                        $project->section && 
+                        $project->section->member_id === $member->id;
+
+                $isDeptHead = $member && $member->memberRoles()->where('slug', 'department_head')->exists();
+                
+                $isAdmin = $user && $user->role_id === 1;
+
+                $canComment = $isAssignee || $isPM || $isDeptHead || $isAdmin;
+
+                $attachments = \App\Models\SubTaskAttachment::where('sub_task_id', $st->id)
+                    ->latest()
+                    ->get()
+                    ->map(fn($att) => [
+                        'id' => $att->id,
+                        'attachment_type' => $att->attachment_type,
+                        'attachment' => $att->attachment,
+                    ]);
+
+                $comments = $canComment 
+                    ? \App\Models\SubTaskComment::where('sub_task_id', $st->id)
+                        ->with('member.user')
+                        ->latest()
+                        ->get()
+                        ->map(fn($c) => [
+                            'id' => $c->id,
+                            'comment' => $c->comment,
+                            'created_at' => $c->created_at->toIso8601String(),
+                            'member' => [
+                                'id' => $c->member->id,
+                                'name' => $c->member->user->name,
+                            ]
+                        ])
+                    : [];
+
                 return [
                     'id' => $st->id,
                     'name' => $st->name,
@@ -145,8 +186,13 @@ class ProjectController extends Controller
                         'name' => $st->member->user->name,
                         'role' => $projectMemberRole ? $projectMemberRole->name : 'Member',
                     ] : null,
+                    'can_comment' => $canComment,
+                    'attachments' => $attachments,
+                    'comments' => $comments,
                 ];
             });
+            $task->setRelation('subTasks', $mappedSubTasks);
+            $task->sub_tasks = $mappedSubTasks;
             return $task;
         });
 
@@ -232,6 +278,17 @@ class ProjectController extends Controller
             }) 
             : [];
 
+        $projectAttachments = \App\Models\SubTaskAttachment::whereIn('sub_task_id', function ($query) use ($taskIds) {
+            $query->select('id')->from('sub_tasks')->whereIn('task_id', $taskIds);
+        })->with('subTask.task')->latest()->get()->map(fn($att) => [
+            'id' => $att->id,
+            'attachment_type' => $att->attachment_type,
+            'attachment' => $att->attachment,
+            'sub_task_name' => $att->subTask->name,
+            'task_name' => $att->subTask->task->name,
+            'created_at' => $att->created_at->toIso8601String(),
+        ]);
+
         return Inertia::render('Project/Show', [
             'project' => $project,
             'workflows' => $workflows,
@@ -242,6 +299,7 @@ class ProjectController extends Controller
             'sections' => $sections,
             'memberRoles' => \App\Models\MemberRole::all(),
             'currentMemberId' => $request->user()->member?->id,
+            'projectAttachments' => $projectAttachments,
         ]);
     }
 
@@ -321,6 +379,8 @@ class ProjectController extends Controller
             $project->members()->sync($syncData);
         }
 
+        \App\Models\SystemLog::log('Create Project', "Project '{$project->name}' (Task Board) was created.");
+
         return redirect()->route('dashboard')->with('success', 'Project created successfully.');
     }
 
@@ -351,6 +411,8 @@ class ProjectController extends Controller
         }
         $project->members()->sync($syncData);
 
+        \App\Models\SystemLog::log('Update Project', "Project '{$project->name}' team and section assignments were updated.");
+
         return redirect()->back()->with('success', 'Project team updated successfully.');
     }
 
@@ -358,7 +420,10 @@ class ProjectController extends Controller
     {
         Gate::authorize('admin');
 
+        $projectName = $project->name;
         $project->delete();
+
+        \App\Models\SystemLog::log('Delete Project', "Project '{$projectName}' was deleted.");
 
         return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
     }

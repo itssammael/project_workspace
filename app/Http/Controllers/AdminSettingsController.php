@@ -54,6 +54,8 @@ class AdminSettingsController extends Controller
             Setting::set('logo', $logoData);
         }
 
+        \App\Models\SystemLog::log('Update Settings', "System settings updated (System Name: {$validated['system_name']}, Theme: {$validated['theme']}).");
+
         return redirect()->back()->with('success', 'System settings updated successfully.');
     }
 }

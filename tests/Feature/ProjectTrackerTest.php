@@ -398,10 +398,15 @@ class ProjectTrackerTest extends TestCase
         ]);
         $response->assertRedirect('/login');
 
+        // Create a new section so we try to change the section
+        $newSection = \App\Models\Section::create([
+            'name' => 'Another Section',
+        ]);
+
         // Non-admin (PM)
         $pm = User::where('email', 'manager@example.com')->first();
         $response = $this->actingAs($pm)->put(route('projects.update', $project->id), [
-            'section_id' => 1,
+            'section_id' => $newSection->id,
         ]);
         $response->assertStatus(403);
     }
@@ -492,6 +497,174 @@ class ProjectTrackerTest extends TestCase
         $response->assertRedirect();
         $this->assertEquals($initialWorkflowId, $task->fresh()->workflow_id);
         $this->assertEquals('in_progress', $subtask->fresh()->status);
+    }
+
+    /**
+     * Test that an assignee can upload a file or text/link to their assigned subtask.
+     */
+    public function test_assignee_can_store_subtask_attachments(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        // 1. Store text attachment (Commit ID)
+        $response = $this->actingAs($designer)->post(route('subtasks.store-attachment', $subtask->id), [
+            'attachment_type' => 'Commit ID',
+            'attachment' => 'abc123commit',
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('sub_task_attachments', [
+            'sub_task_id' => $subtask->id,
+            'attachment_type' => 'Commit ID',
+            'attachment' => 'abc123commit',
+        ]);
+
+        // 2. Store file upload attachment
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $file = \Illuminate\Http\UploadedFile::fake()->create('document.pdf', 100);
+
+        $response = $this->actingAs($designer)->post(route('subtasks.store-attachment', $subtask->id), [
+            'attachment_type' => 'File Upload',
+            'attachment' => $file,
+        ]);
+        $response->assertRedirect();
+        $this->assertEquals(2, \App\Models\SubTaskAttachment::where('sub_task_id', $subtask->id)->count());
+    }
+
+    /**
+     * Test that a non-assignee cannot attach deliverables.
+     */
+    public function test_non_assignee_cannot_store_subtask_attachments(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $otherUser = User::where('email', 'developer@example.com')->first();
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        $response = $this->actingAs($otherUser)->post(route('subtasks.store-attachment', $subtask->id), [
+            'attachment_type' => 'Commit ID',
+            'attachment' => 'shouldfail',
+        ]);
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that assignee can comment on subtask.
+     */
+    public function test_assignee_can_comment_on_subtask(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        $response = $this->actingAs($designer)->post(route('subtasks.store-comment', $subtask->id), [
+            'comment' => 'Assignee comment',
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('sub_task_comments', [
+            'sub_task_id' => $subtask->id,
+            'comment' => 'Assignee comment',
+            'member_id' => $designer->member->id,
+        ]);
+    }
+
+    /**
+     * Test that PM can comment on subtask.
+     */
+    public function test_pm_can_comment_on_subtask(): void
+    {
+        $pm = User::where('email', 'manager@example.com')->first();
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        $response = $this->actingAs($pm)->post(route('subtasks.store-comment', $subtask->id), [
+            'comment' => 'PM comment',
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('sub_task_comments', [
+            'sub_task_id' => $subtask->id,
+            'comment' => 'PM comment',
+            'member_id' => $pm->member->id,
+        ]);
+    }
+
+    /**
+     * Test that Dept Head can comment on subtask.
+     */
+    public function test_dept_head_can_comment_on_subtask(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        $response = $this->actingAs($admin)->post(route('subtasks.store-comment', $subtask->id), [
+            'comment' => 'Admin comment',
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('sub_task_comments', [
+            'sub_task_id' => $subtask->id,
+            'comment' => 'Admin comment',
+            'member_id' => $admin->member->id,
+        ]);
+    }
+
+    /**
+     * Test that unauthorized users cannot comment.
+     */
+    public function test_unauthorized_user_cannot_comment_on_subtask(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $unauthorizedUser = User::where('email', 'developer@example.com')->first();
+        
+        $task = Task::first();
+        $subtask = $task->subTasks()->first();
+        $subtask->update(['member_id' => $designer->member->id]);
+
+        $response = $this->actingAs($unauthorizedUser)->post(route('subtasks.store-comment', $subtask->id), [
+            'comment' => 'Unauthorized comment',
+        ]);
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that system activity is logged correctly.
+     */
+    public function test_system_activity_logging(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $section = \App\Models\Section::first();
+
+        // Log login
+        event(new \Illuminate\Auth\Events\Login('web', $admin, false));
+        $this->assertDatabaseHas('system_logs', [
+            'user_id' => $admin->id,
+            'action' => 'Login',
+        ]);
+
+        // Create project logging
+        $response = $this->actingAs($admin)->post(route('projects.store'), [
+            'name' => 'New Logging Project',
+            'description' => 'Test logging',
+            'status' => 'active',
+            'section_id' => $section->id,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(5)->toDateString(),
+            'workflow_ids' => [\App\Models\Workflow::first()->id],
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('system_logs', [
+            'user_id' => $admin->id,
+            'action' => 'Create Project',
+            'description' => "Project 'New Logging Project' (Task Board) was created.",
+        ]);
     }
 }
 

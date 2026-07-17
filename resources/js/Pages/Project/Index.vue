@@ -102,10 +102,10 @@ const deleteProject = (project) => {
                     <div class="flex items-center gap-2 text-xs font-semibold text-[#0D9488]">
                         <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                         <span>&bull;</span>
-                        <span class="text-slate-400">Projects</span>
+                        <span class="text-slate-400">Task Boards</span>
                     </div>
                     <h2 class="font-bold text-2xl text-slate-800 leading-tight">
-                        Task Boards
+                        My Task Boards
                     </h2>
                 </div>
 

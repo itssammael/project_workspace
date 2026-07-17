@@ -6,8 +6,94 @@
         "workflow_type_id": 3,
         "created_at": "2026-07-16T17:33:27.000000Z",
         "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
+        "tasks": [
+            {
+                "id": 13,
+                "name": "asdas",
+                "details": "asdasd",
+                "workflow_id": 1,
+                "project_id": 2,
+                "created_at": "2026-07-16T18:25:01.000000Z",
+                "updated_at": "2026-07-16T18:25:01.000000Z",
+                "deliverables": "File Upload: Upload nude images",
+                "start_date": "2026-07-10",
+                "duration": 1,
+                "member_id": 4,
+                "status": "pending",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-07-16T17:33:27.000000Z",
+                    "updated_at": "2026-07-16T17:33:27.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-07-16T17:33:27.000000Z",
+                        "updated_at": "2026-07-16T17:33:27.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 13,
+                        "name": "asdasd",
+                        "details": "asdasd",
+                        "deliverables": "File Upload: Upload nude images",
+                        "duration": 1,
+                        "member_id": 4,
+                        "start_date": "2026-07-10",
+                        "status": "pending",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": true,
+                        "attachments": [
+                            {
+                                "id": 4,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784260030_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 3,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784259941_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 2,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784259901_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 1,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784258747_river.png"
+                            }
+                        ],
+                        "comments": [
+                            {
+                                "id": 4,
+                                "comment": "Thats wrong devon you stowpied!",
+                                "created_at": "2026-07-17T03:46:48+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 1,
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
@@ -37,11 +123,11 @@
                 "project_id": 2,
                 "created_at": "2026-07-16T18:25:01.000000Z",
                 "updated_at": "2026-07-16T18:25:01.000000Z",
-                "deliverables": "dasd",
+                "deliverables": "File Upload: Upload nude images",
                 "start_date": "2026-07-10",
                 "duration": 1,
                 "member_id": 4,
-                "status": "submitted",
+                "status": "pending",
                 "member": {
                     "id": 4,
                     "user_id": 4,
@@ -67,34 +153,50 @@
                         "id": 13,
                         "name": "asdasd",
                         "details": "asdasd",
-                        "deliverables": "dasd",
+                        "deliverables": "File Upload: Upload nude images",
                         "duration": 1,
-                        "task_id": 13,
                         "member_id": 4,
-                        "start_date": "2026-07-10T00:00:00.000000Z",
-                        "status": "submitted",
-                        "created_at": "2026-07-16T18:25:01.000000Z",
-                        "updated_at": "2026-07-17T00:50:36.000000Z",
+                        "start_date": "2026-07-10",
+                        "status": "pending",
                         "member": {
                             "id": 4,
-                            "user_id": 4,
-                            "created_at": "2026-07-16T17:33:27.000000Z",
-                            "updated_at": "2026-07-16T17:33:27.000000Z",
-                            "user": {
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": true,
+                        "attachments": [
+                            {
                                 "id": 4,
-                                "name": "Devon Developer",
-                                "username": "developer",
-                                "email": "developer@example.com",
-                                "email_verified_at": null,
-                                "two_factor_confirmed_at": null,
-                                "current_team_id": null,
-                                "profile_photo_path": null,
-                                "created_at": "2026-07-16T17:33:27.000000Z",
-                                "updated_at": "2026-07-16T17:33:27.000000Z",
-                                "role_id": 2,
-                                "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                                "attachment_type": "File Upload",
+                                "attachment": "1784260030_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 3,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784259941_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 2,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784259901_namecheap-order-207896891.pdf"
+                            },
+                            {
+                                "id": 1,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784258747_river.png"
                             }
-                        }
+                        ],
+                        "comments": [
+                            {
+                                "id": 4,
+                                "comment": "Thats wrong devon you stowpied!",
+                                "created_at": "2026-07-17T03:46:48+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            }
+                        ]
                     }
                 ]
             }
@@ -151,11 +253,11 @@
                 "project_id": 2,
                 "created_at": "2026-07-16T18:34:45.000000Z",
                 "updated_at": "2026-07-16T18:34:45.000000Z",
-                "deliverables": "adsasd",
+                "deliverables": "Ticket Link: Provide the Ticket Link",
                 "start_date": "2026-07-10",
                 "duration": 1,
                 "member_id": 4,
-                "status": "submitted",
+                "status": "completed",
                 "member": {
                     "id": 4,
                     "user_id": 4,
@@ -181,41 +283,72 @@
                         "id": 14,
                         "name": "asdasd",
                         "details": "asdasd",
-                        "deliverables": "adsasd",
+                        "deliverables": "Ticket Link: Provide the Ticket Link",
                         "duration": 1,
-                        "task_id": 14,
                         "member_id": 4,
-                        "start_date": "2026-07-10T00:00:00.000000Z",
-                        "status": "submitted",
-                        "created_at": "2026-07-16T18:34:45.000000Z",
-                        "updated_at": "2026-07-17T00:51:46.000000Z",
+                        "start_date": "2026-07-10",
+                        "status": "completed",
                         "member": {
                             "id": 4,
-                            "user_id": 4,
-                            "created_at": "2026-07-16T17:33:27.000000Z",
-                            "updated_at": "2026-07-16T17:33:27.000000Z",
-                            "user": {
-                                "id": 4,
-                                "name": "Devon Developer",
-                                "username": "developer",
-                                "email": "developer@example.com",
-                                "email_verified_at": null,
-                                "two_factor_confirmed_at": null,
-                                "current_team_id": null,
-                                "profile_photo_path": null,
-                                "created_at": "2026-07-16T17:33:27.000000Z",
-                                "updated_at": "2026-07-16T17:33:27.000000Z",
-                                "role_id": 2,
-                                "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": [
+                            {
+                                "id": 6,
+                                "comment": "kai?",
+                                "created_at": "2026-07-17T04:01:36+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            },
+                            {
+                                "id": 5,
+                                "comment": "bai",
+                                "created_at": "2026-07-17T04:01:15+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
+                            },
+                            {
+                                "id": 3,
+                                "comment": "hello betch~!",
+                                "created_at": "2026-07-17T03:38:51+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            },
+                            {
+                                "id": 2,
+                                "comment": "Whats wrong my child?",
+                                "created_at": "2026-07-17T03:38:02+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
+                            },
+                            {
+                                "id": 1,
+                                "comment": "Hellp",
+                                "created_at": "2026-07-17T03:26:13+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
                             }
-                        }
+                        ]
                     }
                 ]
             }
         ],
         "total_tasks": 1,
-        "completed_tasks": 0,
-        "progress": 0,
+        "completed_tasks": 1,
+        "progress": 100,
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
@@ -234,147 +367,8 @@
         "workflow_type_id": 3,
         "created_at": "2026-07-16T17:33:27.000000Z",
         "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [
-            {
-                "id": 13,
-                "name": "asdas",
-                "details": "asdasd",
-                "workflow_id": 1,
-                "project_id": 2,
-                "created_at": "2026-07-16T18:25:01.000000Z",
-                "updated_at": "2026-07-16T18:25:01.000000Z",
-                "deliverables": "dasd",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "submitted",
-                "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
-                    "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
-                        "email_verified_at": null,
-                        "two_factor_confirmed_at": null,
-                        "current_team_id": null,
-                        "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
-                        "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                    }
-                },
-                "sub_tasks": [
-                    {
-                        "id": 13,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "dasd",
-                        "duration": 1,
-                        "task_id": 13,
-                        "member_id": 4,
-                        "start_date": "2026-07-10T00:00:00.000000Z",
-                        "status": "submitted",
-                        "created_at": "2026-07-16T18:25:01.000000Z",
-                        "updated_at": "2026-07-17T00:50:36.000000Z",
-                        "member": {
-                            "id": 4,
-                            "user_id": 4,
-                            "created_at": "2026-07-16T17:33:27.000000Z",
-                            "updated_at": "2026-07-16T17:33:27.000000Z",
-                            "user": {
-                                "id": 4,
-                                "name": "Devon Developer",
-                                "username": "developer",
-                                "email": "developer@example.com",
-                                "email_verified_at": null,
-                                "two_factor_confirmed_at": null,
-                                "current_team_id": null,
-                                "profile_photo_path": null,
-                                "created_at": "2026-07-16T17:33:27.000000Z",
-                                "updated_at": "2026-07-16T17:33:27.000000Z",
-                                "role_id": 2,
-                                "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                            }
-                        }
-                    }
-                ]
-            },
-            {
-                "id": 14,
-                "name": "asdasd",
-                "details": "asdasd",
-                "workflow_id": 2,
-                "project_id": 2,
-                "created_at": "2026-07-16T18:34:45.000000Z",
-                "updated_at": "2026-07-16T18:34:45.000000Z",
-                "deliverables": "adsasd",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "submitted",
-                "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
-                    "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
-                        "email_verified_at": null,
-                        "two_factor_confirmed_at": null,
-                        "current_team_id": null,
-                        "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
-                        "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                    }
-                },
-                "sub_tasks": [
-                    {
-                        "id": 14,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "adsasd",
-                        "duration": 1,
-                        "task_id": 14,
-                        "member_id": 4,
-                        "start_date": "2026-07-10T00:00:00.000000Z",
-                        "status": "submitted",
-                        "created_at": "2026-07-16T18:34:45.000000Z",
-                        "updated_at": "2026-07-17T00:51:46.000000Z",
-                        "member": {
-                            "id": 4,
-                            "user_id": 4,
-                            "created_at": "2026-07-16T17:33:27.000000Z",
-                            "updated_at": "2026-07-16T17:33:27.000000Z",
-                            "user": {
-                                "id": 4,
-                                "name": "Devon Developer",
-                                "username": "developer",
-                                "email": "developer@example.com",
-                                "email_verified_at": null,
-                                "two_factor_confirmed_at": null,
-                                "current_team_id": null,
-                                "profile_photo_path": null,
-                                "created_at": "2026-07-16T17:33:27.000000Z",
-                                "updated_at": "2026-07-16T17:33:27.000000Z",
-                                "role_id": 2,
-                                "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                            }
-                        }
-                    }
-                ]
-            }
-        ],
-        "total_tasks": 2,
+        "tasks": [],
+        "total_tasks": 0,
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
@@ -417,10 +411,111 @@
         "workflow_type_id": 3,
         "created_at": "2026-07-16T17:33:27.000000Z",
         "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
+        "tasks": [
+            {
+                "id": 14,
+                "name": "asdasd",
+                "details": "asdasd",
+                "workflow_id": 2,
+                "project_id": 2,
+                "created_at": "2026-07-16T18:34:45.000000Z",
+                "updated_at": "2026-07-16T18:34:45.000000Z",
+                "deliverables": "Ticket Link: Provide the Ticket Link",
+                "start_date": "2026-07-10",
+                "duration": 1,
+                "member_id": 4,
+                "status": "completed",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-07-16T17:33:27.000000Z",
+                    "updated_at": "2026-07-16T17:33:27.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-07-16T17:33:27.000000Z",
+                        "updated_at": "2026-07-16T17:33:27.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 14,
+                        "name": "asdasd",
+                        "details": "asdasd",
+                        "deliverables": "Ticket Link: Provide the Ticket Link",
+                        "duration": 1,
+                        "member_id": 4,
+                        "start_date": "2026-07-10",
+                        "status": "completed",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": [
+                            {
+                                "id": 6,
+                                "comment": "kai?",
+                                "created_at": "2026-07-17T04:01:36+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            },
+                            {
+                                "id": 5,
+                                "comment": "bai",
+                                "created_at": "2026-07-17T04:01:15+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
+                            },
+                            {
+                                "id": 3,
+                                "comment": "hello betch~!",
+                                "created_at": "2026-07-17T03:38:51+00:00",
+                                "member": {
+                                    "id": 2,
+                                    "name": "Paul Manager"
+                                }
+                            },
+                            {
+                                "id": 2,
+                                "comment": "Whats wrong my child?",
+                                "created_at": "2026-07-17T03:38:02+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
+                            },
+                            {
+                                "id": 1,
+                                "comment": "Hellp",
+                                "created_at": "2026-07-17T03:26:13+00:00",
+                                "member": {
+                                    "id": 4,
+                                    "name": "Devon Developer"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 1,
+        "completed_tasks": 1,
+        "progress": 100,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",

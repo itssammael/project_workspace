@@ -67,6 +67,35 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-project', function (User $user, Project $project) {
             return $user->member && $user->member->sections()->where('sections.id', $project->section_id)->exists();
         });
+
+        // Listen to login/logout events for activity logging
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Login::class,
+            function ($event) {
+                \App\Models\SystemLog::create([
+                    'user_id' => $event->user->id,
+                    'user_name' => $event->user->name,
+                    'action' => 'Login',
+                    'description' => "User {$event->user->name} ({$event->user->email}) logged in.",
+                    'ip_address' => request()->ip(),
+                ]);
+            }
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Logout::class,
+            function ($event) {
+                if ($event->user) {
+                    \App\Models\SystemLog::create([
+                        'user_id' => $event->user->id,
+                        'user_name' => $event->user->name,
+                        'action' => 'Logout',
+                        'description' => "User {$event->user->name} ({$event->user->email}) logged out.",
+                        'ip_address' => request()->ip(),
+                    ]);
+                }
+            }
+        );
     }
 }
 

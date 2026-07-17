@@ -33,4 +33,14 @@ class SubTask extends Model
     {
         return $this->belongsTo(Member::class);
     }
+
+    public function attachments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SubTaskAttachment::class, 'sub_task_id');
+    }
+
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SubTaskComment::class, 'sub_task_id');
+    }
 }

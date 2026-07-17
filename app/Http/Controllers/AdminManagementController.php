@@ -101,15 +101,25 @@ class AdminManagementController extends Controller
             ];
         });
 
-        // Fetch workflow types
-        $workflowTypes = WorkflowType::orderBy('name', 'asc')->get()->map(function ($wt) {
+        // Fetch system logs
+        $systemLogs = \App\Models\SystemLog::orderBy('created_at', 'desc')->get()->map(function ($log) {
             return [
-                'id' => $wt->id,
-                'name' => $wt->name,
+                'id' => $log->id,
+                'user_id' => $log->user_id,
+                'user_name' => $log->user_name,
+                'action' => $log->action,
+                'description' => $log->description,
+                'ip_address' => $log->ip_address,
+                'created_at' => $log->created_at->toIso8601String(),
             ];
         });
 
-        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'workflows', 'workflowTypes'));
+        $workflowTypes = WorkflowType::all()->map(fn($wt) => [
+            'id' => $wt->id,
+            'name' => $wt->name,
+        ]);
+
+        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'workflows', 'workflowTypes', 'systemLogs'));
     }
 
     /**
@@ -144,6 +154,8 @@ class AdminManagementController extends Controller
         ]);
         
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
+
+        \App\Models\SystemLog::log('Create User', "User '{$user->name}' was created with role '{$user->role->name}'.");
 
         return redirect()->back()->with('success', 'User and member profile created successfully.');
     }
@@ -182,6 +194,8 @@ class AdminManagementController extends Controller
         $member = Member::firstOrCreate(['user_id' => $user->id]);
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
 
+        \App\Models\SystemLog::log('Update User', "User '{$user->name}' profile/roles were updated.");
+
         return redirect()->back()->with('success', 'User updated successfully.');
     }
 
@@ -198,7 +212,10 @@ class AdminManagementController extends Controller
         }
 
         // Deleting the user will automatically cascade-delete the Member due to foreign key constraints
+        $userName = $user->name;
         $user->delete();
+
+        \App\Models\SystemLog::log('Delete User', "User '{$userName}' was deleted.");
 
         return redirect()->back()->with('success', 'User deleted successfully.');
     }
@@ -226,6 +243,8 @@ class AdminManagementController extends Controller
             $section->members()->sync($validated['member_ids']);
         }
 
+        \App\Models\SystemLog::log('Create Section', "Section '{$section->name}' was created.");
+
         return redirect()->back()->with('success', 'Section created successfully.');
     }
 
@@ -250,6 +269,8 @@ class AdminManagementController extends Controller
 
         $section->members()->sync($validated['member_ids'] ?? []);
 
+        \App\Models\SystemLog::log('Update Section', "Section '{$section->name}' details or members list were updated.");
+
         return redirect()->back()->with('success', 'Section updated successfully.');
     }
 
@@ -260,7 +281,10 @@ class AdminManagementController extends Controller
     {
         Gate::authorize('admin');
 
+        $sectionName = $section->name;
         $section->delete();
+
+        \App\Models\SystemLog::log('Delete Section', "Section '{$sectionName}' was deleted.");
 
         return redirect()->back()->with('success', 'Section deleted successfully.');
     }
@@ -278,7 +302,9 @@ class AdminManagementController extends Controller
             'workflow_type_id' => 'nullable|exists:workflow_types,id',
         ]);
 
-        Workflow::create($validated);
+        $workflow = Workflow::create($validated);
+
+        \App\Models\SystemLog::log('Create Workflow', "Development Phase '{$workflow->name}' was created.");
 
         return redirect()->back()->with('success', 'Workflow created successfully.');
     }
@@ -298,6 +324,8 @@ class AdminManagementController extends Controller
 
         $workflow->update($validated);
 
+        \App\Models\SystemLog::log('Update Workflow', "Development Phase '{$workflow->name}' was updated.");
+
         return redirect()->back()->with('success', 'Workflow updated successfully.');
     }
 
@@ -308,7 +336,10 @@ class AdminManagementController extends Controller
     {
         Gate::authorize('admin');
 
+        $workflowName = $workflow->name;
         $workflow->delete();
+
+        \App\Models\SystemLog::log('Delete Workflow', "Development Phase '{$workflowName}' was deleted.");
 
         return redirect()->back()->with('success', 'Workflow deleted successfully.');
     }
@@ -324,7 +355,9 @@ class AdminManagementController extends Controller
             'name' => 'required|string|max:255|unique:workflow_types,name',
         ]);
 
-        WorkflowType::create($validated);
+        $workflowType = WorkflowType::create($validated);
+
+        \App\Models\SystemLog::log('Create Workflow Type', "Workflow Type '{$workflowType->name}' was created.");
 
         return redirect()->back()->with('success', 'Workflow Type created successfully.');
     }
@@ -342,6 +375,8 @@ class AdminManagementController extends Controller
 
         $workflowType->update($validated);
 
+        \App\Models\SystemLog::log('Update Workflow Type', "Workflow Type '{$workflowType->name}' was updated.");
+
         return redirect()->back()->with('success', 'Workflow Type updated successfully.');
     }
 
@@ -352,7 +387,10 @@ class AdminManagementController extends Controller
     {
         Gate::authorize('admin');
 
+        $workflowTypeName = $workflowType->name;
         $workflowType->delete();
+
+        \App\Models\SystemLog::log('Delete Workflow Type', "Workflow Type '{$workflowTypeName}' was deleted.");
 
         return redirect()->back()->with('success', 'Workflow Type deleted successfully.');
     }
@@ -384,6 +422,8 @@ class AdminManagementController extends Controller
             'workflow_type_id' => $workflowTypeId
         ]);
 
+        \App\Models\SystemLog::log('Bulk Assign Workflows', "Assigned " . count($validated['workflow_ids']) . " workflows to category ID: " . ($workflowTypeId ?? 'Uncategorized') . ".");
+
         return redirect()->back()->with('success', 'Workflows updated successfully.');
     }
 
@@ -398,10 +438,12 @@ class AdminManagementController extends Controller
             'name' => 'required|string|max:255|unique:member_roles,name',
         ]);
 
-        MemberRole::create([
+        $memberRole = MemberRole::create([
             'name' => $validated['name'],
             'slug' => \Illuminate\Support\Str::slug($validated['name']),
         ]);
+
+        \App\Models\SystemLog::log('Create Member Role', "Functional Role '{$memberRole->name}' was created.");
 
         return redirect()->back()->with('success', 'Functional Role created successfully.');
     }
@@ -422,6 +464,8 @@ class AdminManagementController extends Controller
             'slug' => \Illuminate\Support\Str::slug($validated['name']),
         ]);
 
+        \App\Models\SystemLog::log('Update Member Role', "Functional Role '{$memberRole->name}' was updated.");
+
         return redirect()->back()->with('success', 'Functional Role updated successfully.');
     }
 
@@ -432,10 +476,13 @@ class AdminManagementController extends Controller
     {
         Gate::authorize('admin');
 
+        $memberRoleName = $memberRole->name;
         // Detach role from members using it
         $memberRole->members()->detach();
 
         $memberRole->delete();
+
+        \App\Models\SystemLog::log('Delete Member Role', "Functional Role '{$memberRoleName}' was deleted.");
 
         return redirect()->back()->with('success', 'Functional Role deleted successfully.');
     }
@@ -462,12 +509,15 @@ class AdminManagementController extends Controller
             return redirect()->back()->withErrors(['ids' => 'No valid users selected for deletion.']);
         }
 
+        $count = count($idsToDelete);
         DB::transaction(function () use ($idsToDelete) {
             // Delete associated member records
             Member::whereIn('user_id', $idsToDelete)->delete();
             // Delete users
             User::whereIn('id', $idsToDelete)->delete();
         });
+
+        \App\Models\SystemLog::log('Bulk Delete Users', "Bulk deleted {$count} users.");
 
         return redirect()->back()->with('success', 'Selected users deleted successfully.');
     }
@@ -487,6 +537,9 @@ class AdminManagementController extends Controller
         if (!$member->memberRoles()->where('member_roles.id', $validated['member_role_id'])->exists()) {
             $member->memberRoles()->attach($validated['member_role_id']);
         }
+
+        $roleName = \App\Models\MemberRole::find($validated['member_role_id'])->name;
+        \App\Models\SystemLog::log('Attach Role', "Attached functional role '{$roleName}' to member '{$member->user->name}'.");
 
         return redirect()->back()->with('success', 'Functional role added to member successfully.');
     }

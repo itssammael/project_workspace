@@ -66,6 +66,8 @@ class TaskController extends Controller
             ]);
         }
 
+        \App\Models\SystemLog::log('Create Task', "Task '{$task->name}' was created in project '{$project->name}'.");
+
         return redirect()->back()->with('success', 'Task created successfully.');
     }
 
@@ -162,12 +164,14 @@ class TaskController extends Controller
                     ]);
                 }
             }
+            \App\Models\SystemLog::log('Update Task', "Task '{$task->name}' and its subtasks were updated.");
         } else if ($member && $subTask = $task->subTasks()->where('member_id', $member->id)->first()) {
             // Assigned member: can only update status
             $validated = $request->validate([
                 'status' => 'required|string|in:pending,in_progress,submitted,completed',
             ]);
             $subTask->update(['status' => $validated['status']]);
+            \App\Models\SystemLog::log('Update Subtask Status', "Subtask '{$subTask->name}' (under task '{$task->name}') status updated to '{$validated['status']}'.");
         } else {
             abort(403, 'Unauthorized action.');
         }
@@ -178,7 +182,9 @@ class TaskController extends Controller
     public function destroy(Task $task): RedirectResponse
     {
         Gate::authorize('manage-tasks', $task->project);
+        $taskName = $task->name;
         $task->delete();
+        \App\Models\SystemLog::log('Delete Task', "Task '{$taskName}' was deleted.");
         return redirect()->back()->with('success', 'Task deleted successfully.');
     }
 
@@ -205,6 +211,8 @@ class TaskController extends Controller
         $subTask->update([
             'status' => $validated['status'],
         ]);
+
+        \App\Models\SystemLog::log('Update Subtask Status', "Subtask '{$subTask->name}' status updated to '{$validated['status']}'.");
 
         return redirect()->back()->with('success', 'Subtask status updated successfully.');
     }
@@ -288,6 +296,102 @@ class TaskController extends Controller
             'status' => $newStatus,
         ]);
 
+        \App\Models\SystemLog::log('Move Task Card', "Moved task '{$task->name}' to stage '{$targetWorkflow->name}' (status set to '{$newStatus}').");
+
         return redirect()->back()->with('success', 'Task moved successfully.');
+    }
+
+    /**
+     * Store a new subtask attachment.
+     */
+    public function storeAttachment(\Illuminate\Http\Request $request, \App\Models\SubTask $subTask): \Illuminate\Http\RedirectResponse
+    {
+        $user = $request->user();
+        $member = $user->member;
+        
+        if (!$member || $subTask->member_id !== $member->id) {
+            abort(403, 'Only the assignee can attach deliverables.');
+        }
+
+        $validated = $request->validate([
+            'attachment_type' => 'required|string|in:File Upload,Commit ID,Ticket Link',
+            'attachment' => 'required',
+        ]);
+
+        $attachmentValue = '';
+
+        if ($validated['attachment_type'] === 'File Upload') {
+            $request->validate([
+                'attachment' => 'required|file',
+            ]);
+            $file = $request->file('attachment');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            
+            // Ensure the attachments folder exists
+            if (!file_exists(public_path('attachments'))) {
+                mkdir(public_path('attachments'), 0755, true);
+            }
+            
+            $file->move(public_path('attachments'), $filename);
+            $attachmentValue = $filename;
+        } else {
+            $request->validate([
+                'attachment' => 'required|string',
+            ]);
+            $attachmentValue = $request->input('attachment');
+        }
+
+        \App\Models\SubTaskAttachment::create([
+            'sub_task_id' => $subTask->id,
+            'attachment_type' => $validated['attachment_type'],
+            'attachment' => $attachmentValue,
+        ]);
+
+        \App\Models\SystemLog::log('Add Attachment', "Added attachment of type '{$validated['attachment_type']}' to subtask '{$subTask->name}'.");
+
+        return redirect()->back()->with('success', 'Attachment submitted successfully.');
+    }
+
+    /**
+     * Store a new subtask comment.
+     */
+    public function storeComment(\Illuminate\Http\Request $request, \App\Models\SubTask $subTask): \Illuminate\Http\RedirectResponse
+    {
+        $user = $request->user();
+        $member = $user->member;
+
+        if (!$member) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $project = $subTask->task->project;
+
+        $isAssignee = $subTask->member_id === $member->id;
+        
+        $isPM = $member->memberRoles()->where('slug', 'project_manager')->exists() && 
+                $project->section && 
+                $project->section->member_id === $member->id;
+
+        $isDeptHead = $member->memberRoles()->where('slug', 'department_head')->exists();
+        
+        $isAdmin = $user->role_id === 1;
+
+        if (!$isAssignee && !$isPM && !$isDeptHead && !$isAdmin) {
+            abort(403, 'Unauthorized to view or comment on this subtask.');
+        }
+
+        $validated = $request->validate([
+            'comment' => 'required|string',
+        ]);
+
+        \App\Models\SubTaskComment::create([
+            'sub_task_id' => $subTask->id,
+            'member_id' => $member->id,
+            'comment' => $validated['comment'],
+        ]);
+
+        \App\Models\SystemLog::log('Add Comment', "Added comment to subtask '{$subTask->name}'.");
+
+        return redirect()->back()->with('success', 'Comment added successfully.');
     }
 }

@@ -37,6 +37,8 @@ Route::middleware([
 
     // Subtasks
     Route::put('/subtasks/{subTask}/status', [TaskController::class, 'updateSubtaskStatus'])->name('subtasks.update-status');
+    Route::post('/subtasks/{subTask}/attachments', [TaskController::class, 'storeAttachment'])->name('subtasks.store-attachment');
+    Route::post('/subtasks/{subTask}/comments', [TaskController::class, 'storeComment'])->name('subtasks.store-comment');
 
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');
