@@ -464,5 +464,34 @@ class ProjectTrackerTest extends TestCase
         $this->assertNotNull($project);
         $this->assertEquals(count($workflows), $project->workflows()->count());
     }
+
+    /**
+     * Test that an assignee can move an overdue task across non-completed stages.
+     */
+    public function test_assignee_can_move_overdue_task_to_non_completed_stages(): void
+    {
+        $designer = User::where('email', 'designer@example.com')->first();
+        $task = Task::first();
+        
+        $kanbanType = \App\Models\WorkflowType::where('name', 'Kanban')->first();
+        $doingStage = Workflow::where('name', 'Doing')->where('workflow_type_id', $kanbanType->id)->first();
+
+        $initialWorkflowId = $task->workflow_id;
+        $subtask = $task->subTasks()->first();
+        $subtask->update([
+            'member_id' => $designer->member->id, 
+            'status' => 'pending',
+            'start_date' => now()->subDays(10),
+            'duration' => 1,
+        ]);
+
+        $response = $this->actingAs($designer)->put(route('tasks.move', $task->id), [
+            'workflow_id' => $doingStage->id,
+        ]);
+        
+        $response->assertRedirect();
+        $this->assertEquals($initialWorkflowId, $task->fresh()->workflow_id);
+        $this->assertEquals('in_progress', $subtask->fresh()->status);
+    }
 }
 

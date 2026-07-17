@@ -670,11 +670,11 @@ const removeModalCollaborator = (memberId) => {
                 <!-- Project Details Summary -->
                 <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between gap-8">
                     <div class="space-y-4 max-w-3xl">
-                        <h3 class="font-bold text-slate-800 text-lg">Project Summary</h3>
+                        <h3 class="font-bold text-slate-800 text-lg">Task Board Summary</h3>
                         <p class="text-slate-600 text-sm leading-relaxed">{{ project.description || 'No description provided.' }}</p>
                     </div>
                     <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
-                    <h3 class="font-bold text-slate-800 text-lg">Project Section members</h3>
+                    <h3 class="font-bold text-slate-800 text-lg">Task Board Team</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" v-if="project.members && project.members.length">
                         <div v-for="member in project.members" :key="member.id" class="border border-slate-100 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-50 transition">
                             <div class="h-10 w-10 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-sm">
@@ -730,6 +730,7 @@ const removeModalCollaborator = (memberId) => {
                     :can-manage-tasks="canManageTasks"
                     :show-all-tasks="showAllTasks"
                     :can-toggle-all-tasks="canToggleAllTasks"
+                    :current-member-id="currentMemberId"
                     @toggle-all-tasks="showAllTasks = !showAllTasks"
                     @add-task="openAddTaskModal"
                     @edit-task="openEditTaskModal"

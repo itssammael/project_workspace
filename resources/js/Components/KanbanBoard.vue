@@ -8,11 +8,21 @@ const props = defineProps({
     canManageTasks: Boolean,
     showAllTasks: Boolean,
     canToggleAllTasks: Boolean,
+    currentMemberId: Number,
 });
+import ConfirmationModal from './ConfirmationModal.vue';
+import SecondaryButton from './SecondaryButton.vue';
 
 const emit = defineEmits(['add-task', 'edit-task', 'toggle-all-tasks']);
 
 const activeDropZoneId = ref(null);
+const showWarningModal = ref(false);
+const warningMessage = ref('');
+
+const showWarning = (message) => {
+    warningMessage.value = message;
+    showWarningModal.value = true;
+};
 
 const canDrag = (task) => {
     // If the task is completed, only PMs can drag it
@@ -79,11 +89,11 @@ const onDrop = (event, targetWorkflowId) => {
         // 1. Move FROM Completed: Only PM can move, and only to Submitted stage
         if (currentStatus === 'completed') {
             if (!props.canManageTasks) {
-                alert('Only Project Managers can move completed tasks.');
+                showWarning('Only Project Managers can move completed tasks.');
                 return;
             }
             if (targetName !== 'submitted') {
-                alert('Completed tasks can only be moved to the Submitted stage.');
+                showWarning('Completed tasks can only be moved to the Submitted stage.');
                 return;
             }
         }
@@ -92,11 +102,11 @@ const onDrop = (event, targetWorkflowId) => {
         const isTargetCompleted = targetName === 'completed' || targetName === 'done';
         if (isTargetCompleted) {
             if (!props.canManageTasks) {
-                alert('Only Project Managers can move tasks to Completed.');
+                showWarning('Only Project Managers can move tasks to Completed.');
                 return;
             }
             if (currentStatus !== 'submitted') {
-                alert('Tasks can only be moved to Completed from the Submitted stage.');
+                showWarning('Tasks can only be moved to Completed from the Submitted stage.');
                 return;
             }
         }
@@ -365,5 +375,22 @@ const getColumnBannerDetails = (workflowName) => {
                 </button>
             </div>
         </div>
+
+        <!-- Warning Modal -->
+        <ConfirmationModal :show="showWarningModal" @close="showWarningModal = false">
+            <template #title>
+                Action Restrained
+            </template>
+
+            <template #content>
+                {{ warningMessage }}
+            </template>
+
+            <template #footer>
+                <SecondaryButton @click="showWarningModal = false">
+                    OK
+                </SecondaryButton>
+            </template>
+        </ConfirmationModal>
     </div>
 </template>
