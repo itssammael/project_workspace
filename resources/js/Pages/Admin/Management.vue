@@ -759,7 +759,7 @@ const submitBulkAssign = () => {
                                         <th class="py-4 px-6">User details</th>
                                         <th class="py-4 px-6">System Role</th>
                                         <th class="py-4 px-6">Functional Role</th>
-                                        <th class="py-4 px-6">Assigned Teams</th>
+                                        <th class="py-4 px-6">Assigned Section</th>
                                         <th class="py-4 px-6 text-right">Actions</th>
                                     </tr>
                                 </thead>
