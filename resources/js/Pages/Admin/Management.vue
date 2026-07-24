@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm, Link, Head } from '@inertiajs/vue3';
+import { useForm, Link, Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -59,6 +59,7 @@ const userForm = useForm({
     password: '',
     role_id: '',
     member_role_ids: [],
+    section_ids: [],
 });
 
 // Sync email domain when creating a new user by default
@@ -122,6 +123,15 @@ const stats = computed(() => {
         assignedMembers,
         unassignedMembers
     };
+});
+
+const page = usePage();
+const availableSections = computed(() => {
+    const user = page.props.auth.user;
+    if (user.role?.slug === 'admin') {
+        return props.sections;
+    }
+    return user.member?.sections || [];
 });
 
 // Filter users
@@ -246,6 +256,7 @@ const openEditUserModal = (user) => {
     userForm.password = ''; // leave blank by default
     userForm.role_id = user.role_id;
     userForm.member_role_ids = user.member_role_ids || [];
+    userForm.section_ids = user.sections ? user.sections.map(s => s.id) : [];
     userModalMode.value = 'edit';
     isUserModalOpen.value = true;
 };
@@ -577,6 +588,7 @@ const submitBulkAssign = () => {
                         Users & Members
                     </button>
                     <button 
+                        v-if="$page.props.auth.user.role?.slug === 'admin'"
                         @click="activeTab = 'sections'"
                         :class="[
                              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
@@ -588,17 +600,19 @@ const submitBulkAssign = () => {
                         Sections & Assignments
                     </button>
                     <button 
+                        v-if="$page.props.auth.user.role?.slug === 'admin'"
                         @click="activeTab = 'workflows'"
                         :class="[
                              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
                              activeTab === 'workflows' 
                                  ? 'bg-white text-[#0D9488] shadow-sm border border-slate-200/20' 
                                  : 'text-slate-500 hover:text-slate-800'
-                          ]"
+                           ]"
                     >
                         Workflows
                     </button>
                     <button 
+                        v-if="$page.props.auth.user.role?.slug === 'admin'"
                         @click="activeTab = 'system_logs'"
                         :class="[
                              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
@@ -693,6 +707,7 @@ const submitBulkAssign = () => {
                         </div>
                         <div class="flex gap-2">
                             <button 
+                                v-if="$page.props.auth.user.role?.slug === 'admin'"
                                 @click="openRoleModal"
                                 class="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2"
                             >
@@ -715,7 +730,7 @@ const submitBulkAssign = () => {
                     </div>
 
                     <!-- Bulk Delete Toolbar -->
-                    <div v-if="selectedUserIds.length > 0" class="flex items-center justify-between bg-rose-50 border border-rose-100 p-4 rounded-2xl shadow-sm animate-fade-in transition-all">
+                    <div v-if="selectedUserIds.length > 0 && $page.props.auth.user.role?.slug === 'admin'" class="flex items-center justify-between bg-rose-50 border border-rose-100 p-4 rounded-2xl shadow-sm animate-fade-in transition-all">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold text-rose-700 uppercase tracking-wider">
                                 {{ selectedUserIds.length }} User(s) Selected
@@ -738,7 +753,7 @@ const submitBulkAssign = () => {
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="bg-[#F0FDFA]/70 border-b border-teal-100 text-[#0f766e] font-bold uppercase text-[10px] tracking-wider">
-                                        <th class="py-4 px-6 w-12 text-center">
+                                        <th v-if="$page.props.auth.user.role?.slug === 'admin'" class="py-4 px-6 w-12 text-center">
                                             <input type="checkbox" :checked="paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUserIds.includes(u.id))" @change="toggleAllUsers" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
                                         </th>
                                         <th class="py-4 px-6">User details</th>
@@ -750,7 +765,7 @@ const submitBulkAssign = () => {
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
                                     <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-slate-50/50 transition even:bg-gray-200/50">
-                                        <td class="py-4 px-6 text-center">
+                                        <td v-if="$page.props.auth.user.role?.slug === 'admin'" class="py-4 px-6 text-center">
                                             <input type="checkbox" v-model="selectedUserIds" :value="user.id" class="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]" />
                                         </td>
                                         <td class="py-4 px-6">
@@ -808,6 +823,7 @@ const submitBulkAssign = () => {
                                                     </svg>
                                                 </button>
                                                 <button 
+                                                    v-if="$page.props.auth.user.role?.slug === 'admin'"
                                                     @click="deleteUser(user)"
                                                     class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                                                     title="Delete User"
@@ -822,7 +838,7 @@ const submitBulkAssign = () => {
                                         </td>
                                     </tr>
                                     <tr v-if="filteredUsers.length === 0">
-                                        <td colspan="6" class="py-8 text-center text-slate-400 italic">No users found matching your filters.</td>
+                                        <td :colspan="$page.props.auth.user.role?.slug === 'admin' ? 6 : 5" class="py-8 text-center text-slate-400 italic">No users found matching your filters.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1385,6 +1401,28 @@ const submitBulkAssign = () => {
                             </div>
                             <div v-if="userForm.errors.member_role_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_ids }}</div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign to Section(s)</label>
+                        <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
+                            <div v-for="sec in availableSections" :key="sec.id" class="flex items-center">
+                                <input 
+                                    type="checkbox" 
+                                    :id="'user_sec_' + sec.id" 
+                                    :value="sec.id" 
+                                    v-model="userForm.section_ids" 
+                                    class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                />
+                                <label :for="'user_sec_' + sec.id" class="ms-2 text-xs font-medium text-slate-700 select-none cursor-pointer">
+                                    {{ sec.name }}
+                                </label>
+                            </div>
+                            <div v-if="availableSections.length === 0" class="text-xs text-slate-400 italic">
+                                No sections available.
+                            </div>
+                        </div>
+                        <div v-if="userForm.errors.section_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.section_ids }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">

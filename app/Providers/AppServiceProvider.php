@@ -42,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('viewer');
         });
 
+        Gate::define('manage-users', function (User $user) {
+            return $user->isAdminStaff();
+        });
+
         // Functional/Production Role Gates
         Gate::define('create-projects', function (User $user) {
             if (!$user->hasRole('user') && !$user->hasRole('admin')) {

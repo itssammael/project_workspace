@@ -4,103 +4,72 @@
         "name": "To do",
         "order": 0,
         "workflow_type_id": 3,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [
             {
-                "id": 13,
-                "name": "asdas",
-                "details": "asdasd",
-                "workflow_id": 1,
+                "id": 14,
+                "name": "MANG CHIXCK",
+                "details": "YIUY",
+                "workflow_id": 6,
                 "project_id": 2,
-                "created_at": "2026-07-16T18:25:01.000000Z",
-                "updated_at": "2026-07-16T18:25:01.000000Z",
-                "deliverables": "File Upload: Upload nude images",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "pending",
+                "created_at": "2026-07-17T07:52:30.000000Z",
+                "updated_at": "2026-07-17T07:52:30.000000Z",
+                "deliverables": "",
+                "start_date": "2026-02-03",
+                "duration": 5,
+                "member_id": 7,
+                "status": "completed",
                 "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
+                    "id": 7,
+                    "user_id": 7,
+                    "created_at": "2026-07-17T07:28:45.000000Z",
+                    "updated_at": "2026-07-17T07:28:45.000000Z",
                     "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
+                        "id": 7,
+                        "name": "Erick M. Zerna",
+                        "username": "emzerna",
+                        "email": "emzerna@bayawancity.gov.ph",
                         "email_verified_at": null,
                         "two_factor_confirmed_at": null,
                         "current_team_id": null,
                         "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
-                        "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                        "created_at": "2026-07-17T07:28:45.000000Z",
+                        "updated_at": "2026-07-17T07:35:09.000000Z",
+                        "role_id": 1,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=E+M+Z&color=7F9CF5&background=EBF4FF"
                     }
                 },
                 "sub_tasks": [
                     {
-                        "id": 13,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "File Upload: Upload nude images",
-                        "duration": 1,
-                        "member_id": 4,
-                        "start_date": "2026-07-10",
-                        "status": "pending",
+                        "id": 15,
+                        "name": "MANG CHIX",
+                        "details": null,
+                        "deliverables": null,
+                        "duration": 5,
+                        "member_id": 7,
+                        "start_date": "2026-02-03",
+                        "status": "completed",
                         "member": {
-                            "id": 4,
-                            "name": "Devon Developer",
-                            "role": "Lead Developer"
+                            "id": 7,
+                            "name": "Erick M. Zerna",
+                            "role": "Project Manager"
                         },
                         "can_comment": true,
-                        "attachments": [
-                            {
-                                "id": 4,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784260030_namecheap-order-207896891.pdf"
-                            },
-                            {
-                                "id": 3,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784259941_namecheap-order-207896891.pdf"
-                            },
-                            {
-                                "id": 2,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784259901_namecheap-order-207896891.pdf"
-                            },
-                            {
-                                "id": 1,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784258747_river.png"
-                            }
-                        ],
-                        "comments": [
-                            {
-                                "id": 4,
-                                "comment": "Thats wrong devon you stowpied!",
-                                "created_at": "2026-07-17T03:46:48+00:00",
-                                "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
-                                }
-                            }
-                        ]
+                        "attachments": [],
+                        "comments": []
                     }
                 ]
             }
         ],
         "total_tasks": 1,
-        "completed_tasks": 0,
-        "progress": 0,
+        "completed_tasks": 1,
+        "progress": 100,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
@@ -112,91 +81,112 @@
         "name": "Requirements",
         "order": 1,
         "workflow_type_id": 1,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [
             {
                 "id": 13,
-                "name": "asdas",
-                "details": "asdasd",
+                "name": "Database Design",
+                "details": null,
                 "workflow_id": 1,
                 "project_id": 2,
-                "created_at": "2026-07-16T18:25:01.000000Z",
-                "updated_at": "2026-07-16T18:25:01.000000Z",
-                "deliverables": "File Upload: Upload nude images",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "pending",
+                "created_at": "2026-07-17T07:48:42.000000Z",
+                "updated_at": "2026-07-17T07:48:42.000000Z",
+                "deliverables": "File Upload: ERD DIAGRAM, File Upload: DATATABLES",
+                "start_date": "2026-02-03",
+                "duration": 3,
+                "member_id": 8,
+                "status": "in_progress",
                 "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
+                    "id": 8,
+                    "user_id": 8,
+                    "created_at": "2026-07-17T07:33:07.000000Z",
+                    "updated_at": "2026-07-17T07:33:07.000000Z",
                     "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
+                        "id": 8,
+                        "name": "Lucille V. Marinda",
+                        "username": "lvmarinda",
+                        "email": "lvmarinda@bayawancity.gov.ph",
                         "email_verified_at": null,
                         "two_factor_confirmed_at": null,
                         "current_team_id": null,
                         "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
+                        "created_at": "2026-07-17T07:33:06.000000Z",
+                        "updated_at": "2026-07-17T07:33:06.000000Z",
                         "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=L+V+M&color=7F9CF5&background=EBF4FF"
                     }
                 },
                 "sub_tasks": [
                     {
                         "id": 13,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "File Upload: Upload nude images",
-                        "duration": 1,
-                        "member_id": 4,
-                        "start_date": "2026-07-10",
+                        "name": "ERD\/SCHEMA",
+                        "details": "KO",
+                        "deliverables": "File Upload: ERD DIAGRAM",
+                        "duration": 3,
+                        "member_id": 8,
+                        "start_date": "2026-02-03",
                         "status": "pending",
                         "member": {
-                            "id": 4,
-                            "name": "Devon Developer",
-                            "role": "Lead Developer"
+                            "id": 8,
+                            "name": "Lucille V. Marinda",
+                            "role": "System Analyst"
                         },
                         "can_comment": true,
                         "attachments": [
                             {
-                                "id": 4,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784260030_namecheap-order-207896891.pdf"
-                            },
-                            {
-                                "id": 3,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784259941_namecheap-order-207896891.pdf"
-                            },
-                            {
-                                "id": 2,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784259901_namecheap-order-207896891.pdf"
-                            },
-                            {
                                 "id": 1,
                                 "attachment_type": "File Upload",
-                                "attachment": "1784258747_river.png"
+                                "attachment": "1784274917_2026-ESIGN-ICT-00212.pdf"
                             }
                         ],
                         "comments": [
                             {
-                                "id": 4,
-                                "comment": "Thats wrong devon you stowpied!",
-                                "created_at": "2026-07-17T03:46:48+00:00",
+                                "id": 1,
+                                "comment": "Hi mama!",
+                                "created_at": "2026-07-17T07:54:11+00:00",
                                 "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
+                                    "id": 1,
+                                    "name": "Alamein Tabunda"
                                 }
                             }
                         ]
+                    },
+                    {
+                        "id": 14,
+                        "name": "DATATABLES",
+                        "details": null,
+                        "deliverables": "File Upload: DATATABLES",
+                        "duration": 1,
+                        "member_id": 10,
+                        "start_date": "2026-02-03",
+                        "status": "pending",
+                        "member": {
+                            "id": 10,
+                            "name": "Ma. Carmen T. Elnar",
+                            "role": "System Analyst"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    },
+                    {
+                        "id": 16,
+                        "name": "Table Relationships \/ Foreign Keys",
+                        "details": "Set table relationship and assign foreign keys.",
+                        "deliverables": null,
+                        "duration": 1,
+                        "member_id": 7,
+                        "start_date": "2026-02-05",
+                        "status": "completed",
+                        "member": {
+                            "id": 7,
+                            "name": "Erick M. Zerna",
+                            "role": "Project Manager"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
                     }
                 ]
             }
@@ -207,8 +197,8 @@
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
@@ -216,144 +206,21 @@
         }
     },
     {
-        "id": 7,
-        "name": "Doing",
+        "id": 2,
+        "name": "Design",
         "order": 2,
-        "workflow_type_id": 3,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "workflow_type_id": 1,
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [],
         "total_tasks": 0,
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
-            "id": 3,
-            "name": "Kanban",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
-        },
-        "pivot": {
-            "project_id": 2,
-            "workflow_id": 7
-        }
-    },
-    {
-        "id": 2,
-        "name": "Design",
-        "order": 2,
-        "workflow_type_id": 1,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [
-            {
-                "id": 14,
-                "name": "asdasd",
-                "details": "asdasd",
-                "workflow_id": 2,
-                "project_id": 2,
-                "created_at": "2026-07-16T18:34:45.000000Z",
-                "updated_at": "2026-07-16T18:34:45.000000Z",
-                "deliverables": "Ticket Link: Provide the Ticket Link",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "completed",
-                "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
-                    "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
-                        "email_verified_at": null,
-                        "two_factor_confirmed_at": null,
-                        "current_team_id": null,
-                        "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
-                        "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                    }
-                },
-                "sub_tasks": [
-                    {
-                        "id": 14,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "Ticket Link: Provide the Ticket Link",
-                        "duration": 1,
-                        "member_id": 4,
-                        "start_date": "2026-07-10",
-                        "status": "completed",
-                        "member": {
-                            "id": 4,
-                            "name": "Devon Developer",
-                            "role": "Lead Developer"
-                        },
-                        "can_comment": true,
-                        "attachments": [],
-                        "comments": [
-                            {
-                                "id": 6,
-                                "comment": "kai?",
-                                "created_at": "2026-07-17T04:01:36+00:00",
-                                "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
-                                }
-                            },
-                            {
-                                "id": 5,
-                                "comment": "bai",
-                                "created_at": "2026-07-17T04:01:15+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            },
-                            {
-                                "id": 3,
-                                "comment": "hello betch~!",
-                                "created_at": "2026-07-17T03:38:51+00:00",
-                                "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
-                                }
-                            },
-                            {
-                                "id": 2,
-                                "comment": "Whats wrong my child?",
-                                "created_at": "2026-07-17T03:38:02+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            },
-                            {
-                                "id": 1,
-                                "comment": "Hellp",
-                                "created_at": "2026-07-17T03:26:13+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }
-        ],
-        "total_tasks": 1,
-        "completed_tasks": 1,
-        "progress": 100,
-        "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
@@ -361,25 +228,132 @@
         }
     },
     {
-        "id": 8,
-        "name": "Submitted",
-        "order": 3,
+        "id": 7,
+        "name": "Doing",
+        "order": 2,
         "workflow_type_id": 3,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
+        "tasks": [
+            {
+                "id": 13,
+                "name": "Database Design",
+                "details": null,
+                "workflow_id": 1,
+                "project_id": 2,
+                "created_at": "2026-07-17T07:48:42.000000Z",
+                "updated_at": "2026-07-17T07:48:42.000000Z",
+                "deliverables": "File Upload: ERD DIAGRAM, File Upload: DATATABLES",
+                "start_date": "2026-02-03",
+                "duration": 3,
+                "member_id": 8,
+                "status": "in_progress",
+                "member": {
+                    "id": 8,
+                    "user_id": 8,
+                    "created_at": "2026-07-17T07:33:07.000000Z",
+                    "updated_at": "2026-07-17T07:33:07.000000Z",
+                    "user": {
+                        "id": 8,
+                        "name": "Lucille V. Marinda",
+                        "username": "lvmarinda",
+                        "email": "lvmarinda@bayawancity.gov.ph",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-07-17T07:33:06.000000Z",
+                        "updated_at": "2026-07-17T07:33:06.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=L+V+M&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 13,
+                        "name": "ERD\/SCHEMA",
+                        "details": "KO",
+                        "deliverables": "File Upload: ERD DIAGRAM",
+                        "duration": 3,
+                        "member_id": 8,
+                        "start_date": "2026-02-03",
+                        "status": "pending",
+                        "member": {
+                            "id": 8,
+                            "name": "Lucille V. Marinda",
+                            "role": "System Analyst"
+                        },
+                        "can_comment": true,
+                        "attachments": [
+                            {
+                                "id": 1,
+                                "attachment_type": "File Upload",
+                                "attachment": "1784274917_2026-ESIGN-ICT-00212.pdf"
+                            }
+                        ],
+                        "comments": [
+                            {
+                                "id": 1,
+                                "comment": "Hi mama!",
+                                "created_at": "2026-07-17T07:54:11+00:00",
+                                "member": {
+                                    "id": 1,
+                                    "name": "Alamein Tabunda"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "id": 14,
+                        "name": "DATATABLES",
+                        "details": null,
+                        "deliverables": "File Upload: DATATABLES",
+                        "duration": 1,
+                        "member_id": 10,
+                        "start_date": "2026-02-03",
+                        "status": "pending",
+                        "member": {
+                            "id": 10,
+                            "name": "Ma. Carmen T. Elnar",
+                            "role": "System Analyst"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    },
+                    {
+                        "id": 16,
+                        "name": "Table Relationships \/ Foreign Keys",
+                        "details": "Set table relationship and assign foreign keys.",
+                        "deliverables": null,
+                        "duration": 1,
+                        "member_id": 7,
+                        "start_date": "2026-02-05",
+                        "status": "completed",
+                        "member": {
+                            "id": 7,
+                            "name": "Erick M. Zerna",
+                            "role": "Project Manager"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 1,
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
-            "workflow_id": 8
+            "workflow_id": 7
         }
     },
     {
@@ -387,8 +361,8 @@
         "name": "Development",
         "order": 3,
         "workflow_type_id": 1,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [],
         "total_tasks": 0,
         "completed_tasks": 0,
@@ -396,8 +370,8 @@
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
@@ -405,126 +379,25 @@
         }
     },
     {
-        "id": 9,
-        "name": "Completed",
-        "order": 4,
+        "id": 8,
+        "name": "Submitted",
+        "order": 3,
         "workflow_type_id": 3,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
-        "tasks": [
-            {
-                "id": 14,
-                "name": "asdasd",
-                "details": "asdasd",
-                "workflow_id": 2,
-                "project_id": 2,
-                "created_at": "2026-07-16T18:34:45.000000Z",
-                "updated_at": "2026-07-16T18:34:45.000000Z",
-                "deliverables": "Ticket Link: Provide the Ticket Link",
-                "start_date": "2026-07-10",
-                "duration": 1,
-                "member_id": 4,
-                "status": "completed",
-                "member": {
-                    "id": 4,
-                    "user_id": 4,
-                    "created_at": "2026-07-16T17:33:27.000000Z",
-                    "updated_at": "2026-07-16T17:33:27.000000Z",
-                    "user": {
-                        "id": 4,
-                        "name": "Devon Developer",
-                        "username": "developer",
-                        "email": "developer@example.com",
-                        "email_verified_at": null,
-                        "two_factor_confirmed_at": null,
-                        "current_team_id": null,
-                        "profile_photo_path": null,
-                        "created_at": "2026-07-16T17:33:27.000000Z",
-                        "updated_at": "2026-07-16T17:33:27.000000Z",
-                        "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
-                    }
-                },
-                "sub_tasks": [
-                    {
-                        "id": 14,
-                        "name": "asdasd",
-                        "details": "asdasd",
-                        "deliverables": "Ticket Link: Provide the Ticket Link",
-                        "duration": 1,
-                        "member_id": 4,
-                        "start_date": "2026-07-10",
-                        "status": "completed",
-                        "member": {
-                            "id": 4,
-                            "name": "Devon Developer",
-                            "role": "Lead Developer"
-                        },
-                        "can_comment": true,
-                        "attachments": [],
-                        "comments": [
-                            {
-                                "id": 6,
-                                "comment": "kai?",
-                                "created_at": "2026-07-17T04:01:36+00:00",
-                                "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
-                                }
-                            },
-                            {
-                                "id": 5,
-                                "comment": "bai",
-                                "created_at": "2026-07-17T04:01:15+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            },
-                            {
-                                "id": 3,
-                                "comment": "hello betch~!",
-                                "created_at": "2026-07-17T03:38:51+00:00",
-                                "member": {
-                                    "id": 2,
-                                    "name": "Paul Manager"
-                                }
-                            },
-                            {
-                                "id": 2,
-                                "comment": "Whats wrong my child?",
-                                "created_at": "2026-07-17T03:38:02+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            },
-                            {
-                                "id": 1,
-                                "comment": "Hellp",
-                                "created_at": "2026-07-17T03:26:13+00:00",
-                                "member": {
-                                    "id": 4,
-                                    "name": "Devon Developer"
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }
-        ],
-        "total_tasks": 1,
-        "completed_tasks": 1,
-        "progress": 100,
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
+        "tasks": [],
+        "total_tasks": 0,
+        "completed_tasks": 0,
+        "progress": 0,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
-            "workflow_id": 9
+            "workflow_id": 8
         }
     },
     {
@@ -532,8 +405,8 @@
         "name": "Testing",
         "order": 4,
         "workflow_type_id": 1,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [],
         "total_tasks": 0,
         "completed_tasks": 0,
@@ -541,8 +414,8 @@
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,
@@ -550,12 +423,34 @@
         }
     },
     {
+        "id": 9,
+        "name": "Completed",
+        "order": 4,
+        "workflow_type_id": 3,
+        "created_at": "2026-07-17T07:12:32.000000Z",
+        "updated_at": "2026-07-17T07:12:32.000000Z",
+        "tasks": [],
+        "total_tasks": 0,
+        "completed_tasks": 0,
+        "progress": 0,
+        "workflow_type": {
+            "id": 3,
+            "name": "Kanban",
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
+        },
+        "pivot": {
+            "project_id": 2,
+            "workflow_id": 9
+        }
+    },
+    {
         "id": 5,
         "name": "Deployment",
         "order": 5,
         "workflow_type_id": 1,
-        "created_at": "2026-07-16T17:33:27.000000Z",
-        "updated_at": "2026-07-16T17:33:27.000000Z",
+        "created_at": "2026-07-17T07:12:31.000000Z",
+        "updated_at": "2026-07-17T07:12:31.000000Z",
         "tasks": [],
         "total_tasks": 0,
         "completed_tasks": 0,
@@ -563,8 +458,8 @@
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-16T17:33:27.000000Z",
-            "updated_at": "2026-07-16T17:33:27.000000Z"
+            "created_at": "2026-07-17T07:12:30.000000Z",
+            "updated_at": "2026-07-17T07:12:30.000000Z"
         },
         "pivot": {
             "project_id": 2,

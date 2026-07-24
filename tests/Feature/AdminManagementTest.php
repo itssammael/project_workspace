@@ -214,4 +214,103 @@ class AdminManagementTest extends TestCase
             'user_id' => $user2->id,
         ]);
     }
+
+    /**
+     * Admin Staff can access the admin management dashboard.
+     */
+    public function test_admin_staff_can_access_admin_management(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        if (!$staff) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->get(route('admin.management'));
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('Admin/Management'));
+    }
+
+    /**
+     * Admin Staff can create a new user and assign them to a section they belong to.
+     */
+    public function test_admin_staff_can_create_user_and_assign_to_own_section(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $userRole = Role::where('slug', 'user')->first();
+        $devRole = MemberRole::where('slug', 'developer')->first();
+        
+        if (!$staff || !$userRole) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        // Get the section Sarah Staff belongs to (Alpha Software Section)
+        $section = $staff->member->sections->first();
+        $this->assertNotNull($section);
+
+        $response = $this->actingAs($staff)->post(route('admin.users.store'), [
+            'name' => 'Sarah Junior',
+            'username' => 'sarahjr',
+            'email' => 'sarahjr@example.com',
+            'password' => 'secret123',
+            'role_id' => $userRole->id,
+            'member_role_ids' => $devRole ? [$devRole->id] : [],
+            'section_ids' => [$section->id],
+        ]);
+
+        $response->assertRedirect();
+
+        $user = User::where('email', 'sarahjr@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('Sarah Junior', $user->name);
+        
+        $this->assertNotNull($user->member);
+        $this->assertTrue($user->member->sections->contains($section->id));
+    }
+
+    /**
+     * Admin Staff cannot assign a user to a section they do not belong to.
+     */
+    public function test_admin_staff_cannot_assign_user_to_other_section(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $userRole = Role::where('slug', 'user')->first();
+        
+        if (!$staff || !$userRole) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        // Create another section Sarah Staff does not belong to
+        $otherSection = Section::create(['name' => 'Other Section']);
+
+        $response = $this->actingAs($staff)->post(route('admin.users.store'), [
+            'name' => 'Sarah Blocked',
+            'username' => 'sarahblocked',
+            'email' => 'sarahblocked@example.com',
+            'password' => 'secret123',
+            'role_id' => $userRole->id,
+            'member_role_ids' => [],
+            'section_ids' => [$otherSection->id],
+        ]);
+
+        $response->assertSessionHasErrors('section_ids');
+        $this->assertDatabaseMissing('users', ['email' => 'sarahblocked@example.com']);
+    }
+
+    /**
+     * Admin Staff cannot delete users.
+     */
+    public function test_admin_staff_cannot_delete_users(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $developer = User::where('email', 'developer@example.com')->first();
+        
+        if (!$staff || !$developer) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->delete(route('admin.users.destroy', $developer->id));
+        $response->assertStatus(403);
+        
+        $this->assertDatabaseHas('users', ['id' => $developer->id]);
+    }
 }

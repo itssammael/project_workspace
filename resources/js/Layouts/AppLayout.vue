@@ -57,7 +57,7 @@ const logout = () => {
                                 <NavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
                                     Task Boards
                                 </NavLink>
-                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
+                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin' || ($page.props.auth.user.member && $page.props.auth.user.member.member_roles?.some(r => r.slug === 'admin_staff'))" :href="route('admin.management')" :active="route().current('admin.management')">
                                     Management
                                 </NavLink>
                                 <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">
@@ -209,7 +209,7 @@ const logout = () => {
                         <ResponsiveNavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
                             Task Boards
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.management')" :active="route().current('admin.management')">
+                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin' || ($page.props.auth.user.member && $page.props.auth.user.member.member_roles?.some(r => r.slug === 'admin_staff'))" :href="route('admin.management')" :active="route().current('admin.management')">
                             Management
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">

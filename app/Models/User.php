@@ -94,4 +94,9 @@ class User extends Authenticatable
         }
         return $this->role ? $this->role->permissions()->where('permission', $permission)->exists() : false;
     }
+
+    public function isAdminStaff(): bool
+    {
+        return $this->member && $this->member->memberRoles()->where('slug', 'admin_staff')->exists();
+    }
 }

@@ -136,12 +136,12 @@ const getInitials = (name) => {
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center">
                             <span class="w-1 h-5 bg-[#0D9488] rounded-full mr-2"></span>
-                            Assigned Projects
+                            Assigned Task Board
                         </h3>
                     </div>
 
                     <div v-if="projects.length === 0" class="bg-white border border-slate-100 rounded-xl p-8 text-center text-slate-400">
-                        No projects assigned to your sections yet.
+                        No Task Boards assigned to your sections yet.
                     </div>
 
                     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -24,7 +24,7 @@ class AdminManagementController extends Controller
      */
     public function index(Request $request): Response
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-users');
 
         // Fetch users with roles, member, and section relations
         $users = User::with(['role', 'member.memberRoles', 'member.sections'])
@@ -127,7 +127,7 @@ class AdminManagementController extends Controller
      */
     public function storeUser(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-users');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -137,7 +137,21 @@ class AdminManagementController extends Controller
             'role_id' => 'required|exists:roles,id',
             'member_role_ids' => 'nullable|array',
             'member_role_ids.*' => 'exists:member_roles,id',
+            'section_ids' => 'nullable|array',
+            'section_ids.*' => 'exists:sections,id',
         ]);
+
+        $loggedInUser = $request->user();
+        if (!$loggedInUser->hasRole('admin')) {
+            // Admin Staff check
+            $allowedSectionIds = $loggedInUser->member ? $loggedInUser->member->sections->pluck('id')->toArray() : [];
+            $requestedSectionIds = $validated['section_ids'] ?? [];
+            foreach ($requestedSectionIds as $secId) {
+                if (!in_array($secId, $allowedSectionIds)) {
+                    return redirect()->back()->withErrors(['section_ids' => 'You can only assign users to sections you belong to.']);
+                }
+            }
+        }
 
         // Create the user
         $user = User::create([
@@ -155,6 +169,9 @@ class AdminManagementController extends Controller
         
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
 
+        // Sync sections
+        $member->sections()->sync($validated['section_ids'] ?? []);
+
         \App\Models\SystemLog::log('Create User', "User '{$user->name}' was created with role '{$user->role->name}'.");
 
         return redirect()->back()->with('success', 'User and member profile created successfully.');
@@ -165,7 +182,7 @@ class AdminManagementController extends Controller
      */
     public function updateUser(Request $request, User $user): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-users');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -175,6 +192,8 @@ class AdminManagementController extends Controller
             'role_id' => 'required|exists:roles,id',
             'member_role_ids' => 'nullable|array',
             'member_role_ids.*' => 'exists:member_roles,id',
+            'section_ids' => 'nullable|array',
+            'section_ids.*' => 'exists:sections,id',
         ]);
 
         $userData = [
@@ -193,6 +212,28 @@ class AdminManagementController extends Controller
         // Update or create associated member
         $member = Member::firstOrCreate(['user_id' => $user->id]);
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
+
+        $loggedInUser = $request->user();
+        if ($loggedInUser->hasRole('admin')) {
+            $member->sections()->sync($validated['section_ids'] ?? []);
+        } else {
+            // Admin Staff section sync preserving non-owned sections
+            $staffSectionIds = $loggedInUser->member ? $loggedInUser->member->sections->pluck('id')->toArray() : [];
+            $requestedSectionIds = $validated['section_ids'] ?? [];
+            
+            // Get all sections this user currently belongs to
+            $currentUserSectionIds = $member->sections->pluck('id')->toArray();
+            
+            // Keep sections the current user has that the logged-in staff has NO control over
+            $preservedSectionIds = array_diff($currentUserSectionIds, $staffSectionIds);
+            
+            // Merge preserved sections with the allowed requested ones
+            $validRequestedSectionIds = array_intersect($requestedSectionIds, $staffSectionIds);
+            
+            $finalSectionIds = array_unique(array_merge($preservedSectionIds, $validRequestedSectionIds));
+            
+            $member->sections()->sync($finalSectionIds);
+        }
 
         \App\Models\SystemLog::log('Update User', "User '{$user->name}' profile/roles were updated.");
 

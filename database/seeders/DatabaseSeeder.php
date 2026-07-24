@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
         $uiUxDesigner = MemberRole::create(['name' => 'UI/UX Designer', 'slug' => 'ui_ux_designer']);
         $leadDeveloper = MemberRole::create(['name' => 'Lead Developer', 'slug' => 'lead_developer']);
         $developer = MemberRole::create(['name' => 'Developer', 'slug' => 'developer']);
+        $adminStaff = MemberRole::create(['name' => 'Admin Staff', 'slug' => 'admin_staff']);
 
         // 4. Create Users & Members
         // Admin / Department Head
@@ -112,6 +113,19 @@ class DatabaseSeeder extends Seeder
             'user_id' => $viewerUser->id,
         ]);
 
+        // Admin Staff
+        $staffUser = User::create([
+            'name' => 'Sarah Staff',
+            'email' => 'staff@example.com',
+            'username' => 'staff',
+            'password' => Hash::make('password'),
+            'role_id' => $userRole->id,
+        ]);
+        $staffMember = Member::create([
+            'user_id' => $staffUser->id,
+        ]);
+        $staffMember->memberRoles()->attach($adminStaff->id);
+
         // 5. Create Workflow Types
         $typeSoftware = WorkflowType::create(['name' => 'Software Development']);
         $typeAdmin = WorkflowType::create(['name' => 'Administrative and Operational Support']);
@@ -139,6 +153,7 @@ class DatabaseSeeder extends Seeder
             $pmMember->id,
             $designerMember->id,
             $developerMember->id,
+            $staffMember->id,
         ]);
 
         // 8. Create Projects

@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         if ($user = $request->user()) {
-            $user->loadMissing('role');
+            $user->loadMissing(['role', 'member.sections', 'member.memberRoles']);
         }
 
         return [
