@@ -240,14 +240,43 @@ const formatDateTime = (dateStr) => {
     return date.toLocaleString();
 };
 
+const availableSystemRolesForForm = computed(() => {
+    if (page.props.auth.user.role?.slug !== 'admin') {
+        return props.roles.filter(r => r.slug === 'user');
+    }
+    return props.roles;
+});
+
+const canEditUser = (user) => {
+    const loggedInUser = page.props.auth.user;
+    if (loggedInUser.role?.slug === 'admin') {
+        return true;
+    }
+    // Admin Staff cannot update details of users with System Role "Administrator" or Functional Role "Department Head"
+    const isTargetAdmin = user.system_role_slug === 'admin';
+    const isTargetDeptHead = (user.member_role_slugs && user.member_role_slugs.includes('department_head')) ||
+                             (user.member_role && user.member_role.toLowerCase().includes('department head'));
+    
+    return !isTargetAdmin && !isTargetDeptHead;
+};
+
 // User Actions
 const openAddUserModal = () => {
     userForm.reset();
     userModalMode.value = 'create';
+    if (page.props.auth.user.role?.slug !== 'admin') {
+        const userRole = props.roles.find(r => r.slug === 'user');
+        if (userRole) {
+            userForm.role_id = userRole.id;
+        }
+    }
     isUserModalOpen.value = true;
 };
 
 const openEditUserModal = (user) => {
+    if (!canEditUser(user)) {
+        return;
+    }
     userForm.reset();
     userForm.id = user.id;
     userForm.name = user.name;
@@ -815,8 +844,14 @@ const submitBulkAssign = () => {
                                             <div class="flex items-center justify-end gap-2">
                                                 <button 
                                                     @click="openEditUserModal(user)"
-                                                    class="p-1.5 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded-lg transition"
-                                                    title="Edit User"
+                                                    :disabled="!canEditUser(user)"
+                                                    :class="[
+                                                        'p-1.5 rounded-lg transition',
+                                                        canEditUser(user) 
+                                                            ? 'text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA]' 
+                                                            : 'text-slate-300 opacity-40 cursor-not-allowed'
+                                                    ]"
+                                                    :title="canEditUser(user) ? 'Edit User' : 'Admin Staff cannot update details of Administrators or Department Heads'"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
@@ -1378,7 +1413,7 @@ const submitBulkAssign = () => {
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">System Role</label>
                             <select v-model="userForm.role_id" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                                 <option value="">Select Role</option>
-                                <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+                                <option v-for="r in availableSystemRolesForForm" :key="r.id" :value="r.id">{{ r.name }}</option>
                             </select>
                             <div v-if="userForm.errors.role_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.role_id }}</div>
                         </div>

@@ -13,6 +13,7 @@ use App\Models\Section;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Setting;
+use App\Models\SystemRule;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -388,5 +389,8 @@ class DatabaseSeeder extends Seeder
             'start_date' => '2026-07-16',
             'status' => 'pending',
         ]);
+
+        // 8. Seed System Rules
+        $this->call(SystemRuleSeeder::class);
     }
 }

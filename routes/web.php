@@ -66,4 +66,10 @@ Route::middleware([
     // Admin Settings
     Route::get('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'index'])->name('admin.settings');
     Route::post('/admin/settings', [\App\Http\Controllers\AdminSettingsController::class, 'update'])->name('admin.settings.update');
+    Route::post('/admin/settings/rules', [\App\Http\Controllers\AdminSettingsController::class, 'storeRule'])->name('admin.rules.store');
+    Route::put('/admin/settings/rules/{rule}', [\App\Http\Controllers\AdminSettingsController::class, 'updateRule'])->name('admin.rules.update');
+    Route::post('/admin/settings/rules/{rule}/toggle', [\App\Http\Controllers\AdminSettingsController::class, 'toggleRule'])->name('admin.rules.toggle');
+    Route::post('/admin/settings/rules/{rule}/clone', [\App\Http\Controllers\AdminSettingsController::class, 'cloneRule'])->name('admin.rules.clone');
+    Route::delete('/admin/settings/rules/{rule}', [\App\Http\Controllers\AdminSettingsController::class, 'destroyRule'])->name('admin.rules.destroy');
+    Route::post('/admin/settings/rules/import', [\App\Http\Controllers\AdminSettingsController::class, 'importRules'])->name('admin.rules.import');
 });

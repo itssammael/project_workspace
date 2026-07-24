@@ -40,6 +40,7 @@ class AdminManagementController extends Controller
                     'system_role_slug' => $u->role?->slug ?? 'user',
                     'member_id' => $u->member?->id,
                     'member_role_ids' => $u->member ? $u->member->memberRoles->pluck('id')->toArray() : [],
+                    'member_role_slugs' => $u->member ? $u->member->memberRoles->pluck('slug')->toArray() : [],
                     'member_role' => $u->member && $u->member->memberRoles->isNotEmpty() ? $u->member->memberRoles->pluck('name')->implode(', ') : 'None',
                     'sections' => $u->member ? $u->member->sections->map(fn($t) => [
                         'id' => $t->id,
@@ -143,6 +144,12 @@ class AdminManagementController extends Controller
 
         $loggedInUser = $request->user();
         if (!$loggedInUser->hasRole('admin')) {
+            // Admin Staff check: can only create users with System Role "user" (slug 'user')
+            $targetRole = Role::find($validated['role_id']);
+            if ($targetRole && $targetRole->slug !== 'user') {
+                return redirect()->back()->withErrors(['role_id' => 'Admin Staff can only create users with System Role "User".']);
+            }
+
             // Admin Staff check
             $allowedSectionIds = $loggedInUser->member ? $loggedInUser->member->sections->pluck('id')->toArray() : [];
             $requestedSectionIds = $validated['section_ids'] ?? [];
@@ -195,6 +202,23 @@ class AdminManagementController extends Controller
             'section_ids' => 'nullable|array',
             'section_ids.*' => 'exists:sections,id',
         ]);
+
+        $loggedInUser = $request->user();
+        if (!$loggedInUser->hasRole('admin')) {
+            // Admin Staff check: cannot update details of users with system role "Administrator" or functional role "Department Head"
+            $isTargetAdmin = $user->hasRole('admin');
+            $isTargetDeptHead = $user->member && $user->member->memberRoles()->where('slug', 'department_head')->exists();
+
+            if ($isTargetAdmin || $isTargetDeptHead) {
+                return redirect()->back()->withErrors(['user' => 'Admin Staff cannot update details of users with System Role "Administrator" or Functional Role "Department Head".']);
+            }
+
+            // Admin Staff check: can only assign System Role "User" (slug 'user')
+            $targetRole = Role::find($validated['role_id']);
+            if ($targetRole && $targetRole->slug !== 'user') {
+                return redirect()->back()->withErrors(['role_id' => 'Admin Staff can only assign System Role "User".']);
+            }
+        }
 
         $userData = [
             'name' => $validated['name'],

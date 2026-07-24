@@ -313,4 +313,120 @@ class AdminManagementTest extends TestCase
         
         $this->assertDatabaseHas('users', ['id' => $developer->id]);
     }
+
+    /**
+     * Admin Staff cannot create a new user with System Role Administrator.
+     */
+    public function test_admin_staff_cannot_create_user_with_admin_role(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $adminRole = Role::where('slug', 'admin')->first();
+
+        if (!$staff || !$adminRole) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->post(route('admin.users.store'), [
+            'name' => 'Fake Admin',
+            'username' => 'fakeadmin',
+            'email' => 'fakeadmin@example.com',
+            'password' => 'secret123',
+            'role_id' => $adminRole->id,
+            'member_role_ids' => [],
+            'section_ids' => [],
+        ]);
+
+        $response->assertSessionHasErrors('role_id');
+        $this->assertDatabaseMissing('users', ['email' => 'fakeadmin@example.com']);
+    }
+
+    /**
+     * Admin Staff cannot update details of users with System Role Administrator.
+     */
+    public function test_admin_staff_cannot_update_administrator_user(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $adminUser = User::where('email', 'admin@example.com')->first();
+
+        if (!$staff || !$adminUser) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->put(route('admin.users.update', $adminUser->id), [
+            'name' => 'Attempted Edit Admin',
+            'username' => $adminUser->username,
+            'email' => $adminUser->email,
+            'role_id' => $adminUser->role_id,
+            'member_role_ids' => [],
+            'section_ids' => [],
+        ]);
+
+        $response->assertSessionHasErrors('user');
+        $this->assertDatabaseHas('users', [
+            'id' => $adminUser->id,
+            'name' => $adminUser->name,
+        ]);
+    }
+
+    /**
+     * Admin Staff cannot update details of users with Functional Role Department Head.
+     */
+    public function test_admin_staff_cannot_update_department_head_user(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $deptHeadRole = MemberRole::where('slug', 'department_head')->first();
+        
+        // Find a user who is a Department Head
+        $deptHeadUser = User::whereHas('member.memberRoles', function ($q) {
+            $q->where('slug', 'department_head');
+        })->first();
+
+        if (!$staff || !$deptHeadUser) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->put(route('admin.users.update', $deptHeadUser->id), [
+            'name' => 'Attempted Edit Dept Head',
+            'username' => $deptHeadUser->username,
+            'email' => $deptHeadUser->email,
+            'role_id' => $deptHeadUser->role_id,
+            'member_role_ids' => [$deptHeadRole->id],
+            'section_ids' => [],
+        ]);
+
+        $response->assertSessionHasErrors('user');
+        $this->assertDatabaseHas('users', [
+            'id' => $deptHeadUser->id,
+            'name' => $deptHeadUser->name,
+        ]);
+    }
+
+    /**
+     * Admin Staff can update details of regular users.
+     */
+    public function test_admin_staff_can_update_regular_user(): void
+    {
+        $staff = User::where('email', 'staff@example.com')->first();
+        $devUser = User::where('email', 'developer@example.com')->first();
+        $userRole = Role::where('slug', 'user')->first();
+
+        if (!$staff || !$devUser || !$userRole) {
+            $this->markTestSkipped('Seed data not available.');
+        }
+
+        $response = $this->actingAs($staff)->put(route('admin.users.update', $devUser->id), [
+            'name' => 'Updated Developer Name',
+            'username' => $devUser->username,
+            'email' => $devUser->email,
+            'role_id' => $userRole->id,
+            'member_role_ids' => [],
+            'section_ids' => [],
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('users', [
+            'id' => $devUser->id,
+            'name' => 'Updated Developer Name',
+        ]);
+    }
 }

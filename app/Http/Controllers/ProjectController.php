@@ -360,6 +360,26 @@ class ProjectController extends Controller
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
 
+        // Evaluate active System Rules for Project validation
+        $validationRules = \App\Models\SystemRule::where('enabled', true)
+            ->where('type', 'validation_rule')
+            ->get();
+
+        foreach ($validationRules as $rule) {
+            $logic = $rule->rule_logic ?? [];
+            if (($logic['field'] ?? '') === 'name' && isset($logic['min_length'])) {
+                $minLength = (int)$logic['min_length'];
+                if (mb_strlen($validated['name']) < $minLength) {
+                    $msg = str_replace(
+                        ['[Project Name]', '[Field Name]'],
+                        [$validated['name'], 'Project Name'],
+                        $logic['error_message'] ?? "Project Name must be at least {$minLength} characters long."
+                    );
+                    return redirect()->back()->withErrors(['name' => $msg]);
+                }
+            }
+        }
+
         $project = Project::create([
             'name' => $validated['name'],
             'description' => $validated['description'],
