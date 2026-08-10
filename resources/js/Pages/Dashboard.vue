@@ -1,10 +1,11 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
-    projects: Array,
+    taskBoards: Array,
+    projects: Array, // fallback prop
     pendingTasks: Array,
     undeliveredTasks: Array,
     isDeptHead: Boolean,
@@ -12,6 +13,8 @@ const props = defineProps({
     memberRole: String,
     systemRole: String,
 });
+
+const boardsList = computed(() => props.taskBoards || props.projects || []);
 
 const updateTaskStatus = (subtask, newStatus) => {
     router.put(route('subtasks.update-status', subtask.id), {
@@ -25,27 +28,33 @@ const getStatusClass = (status) => {
     switch (status) {
         case 'completed':
             return 'bg-green-50 text-green-700 border-green-200';
-        case 'in_progress':
-            return 'bg-slate-100 text-slate-700 border-slate-200';
         case 'submitted':
-            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            return 'bg-teal-50 text-[#0D9488] border-teal-200';
+        case 'in_progress':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'pending':
         default:
-            return 'bg-orange-50 text-orange-700 border-orange-200';
+            return 'bg-slate-100 text-slate-700 border-slate-200';
     }
 };
 
 const getInitials = (name) => {
-    return name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??';
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
 };
 </script>
 
 <template>
-    <AppLayout title="Project Dashboard">
+    <AppLayout title="Task Board Dashboard">
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 class="font-bold text-2xl text-slate-800 leading-tight">
-                        Project Workspace
+                        Task Board Workspace
                     </h2>
                     <p class="text-slate-500 text-sm mt-1">
                         System Role: <span class="font-medium text-slate-700">{{ systemRole }}</span> &bull; 
@@ -54,7 +63,7 @@ const getInitials = (name) => {
                 </div>
                 <div v-if="isDeptHead" class="flex items-center">
                     <Link
-                        :href="route('projects.create')"
+                        :href="route('task-boards.create')"
                         class="inline-flex items-center px-4 py-2 bg-[#0D9488] border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#0f766e] active:bg-[#115e59] focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 mr-2">
@@ -67,15 +76,15 @@ const getInitials = (name) => {
         </template>
 
         <div class="py-8 bg-slate-50/50 min-h-[calc(100vh-140px)]">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            <div class="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                 <!-- Metrics Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Projects Count Card -->
+                    <!-- Task Boards Count Card -->
                     <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Boards</p>
-                                <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ projects.length }}</h3>
+                                <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ boardsList.length }}</h3>
                             </div>
                             <div class="bg-[#F0FDFA] p-2.5 rounded-lg text-[#0D9488]">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
@@ -131,44 +140,44 @@ const getInitials = (name) => {
                     </div>
                 </div>
 
-                <!-- Section 1: Assigned Projects Grid -->
+                <!-- Section 1: Assigned Task Boards Grid -->
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center">
                             <span class="w-1 h-5 bg-[#0D9488] rounded-full mr-2"></span>
-                            Assigned Task Board
+                            Assigned Task Boards
                         </h3>
                     </div>
 
-                    <div v-if="projects.length === 0" class="bg-white border border-slate-100 rounded-xl p-8 text-center text-slate-400">
+                    <div v-if="boardsList.length === 0" class="bg-white border border-slate-100 rounded-xl p-8 text-center text-slate-400">
                         No Task Boards assigned to your sections yet.
                     </div>
 
                     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="project in projects" :key="project.id" class="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between overflow-hidden">
+                        <div v-for="board in boardsList" :key="board.id" class="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between overflow-hidden">
                             <div class="p-6 space-y-4">
                                 <div class="flex justify-between items-start gap-4">
                                     <h4 class="font-bold text-slate-800 text-lg hover:text-[#0D9488] transition">
-                                        <Link :href="route('projects.show', project.id)">{{ project.name }}</Link>
+                                        <Link :href="route('task-boards.show', board.id)">{{ board.name }}</Link>
                                     </h4>
                                     <span class="px-2.5 py-1 text-[10px] font-bold uppercase rounded-full border"
-                                        :class="project.status === 'active' || project.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : (project.status === 'planning' || project.status === 'on_hold' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-slate-100 text-slate-700 border-slate-200')">
-                                        {{ project.status }}
+                                        :class="board.status === 'active' || board.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : (board.status === 'planning' || board.status === 'on_hold' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-slate-100 text-slate-700 border-slate-200')">
+                                        {{ board.status }}
                                     </span>
                                 </div>
-                                <p class="text-slate-500 text-sm line-clamp-2">{{ project.description || 'No description provided.' }}</p>
+                                <p class="text-slate-500 text-sm line-clamp-2">{{ board.description || 'No description provided.' }}</p>
                                 
                                 <!-- Progress Bar -->
                                 <div class="space-y-1.5">
                                     <div class="flex justify-between text-xs font-semibold text-slate-500">
                                         <span>Progress</span>
-                                        <span>{{ project.progress }}%</span>
+                                        <span>{{ board.progress }}%</span>
                                     </div>
                                     <div class="w-full bg-slate-100 rounded-full h-2">
-                                        <div class="bg-[#0D9488] h-2 rounded-full transition-all duration-500" :style="`width: ${project.progress}%`"></div>
+                                        <div class="bg-[#0D9488] h-2 rounded-full transition-all duration-500" :style="`width: ${board.progress}%`"></div>
                                     </div>
                                     <div class="flex justify-between text-[11px] text-slate-400">
-                                        <span>{{ project.completed_tasks }} / {{ project.total_tasks }} tasks</span>
+                                        <span>{{ board.completed_tasks }} / {{ board.total_tasks }} tasks</span>
                                     </div>
                                 </div>
                             </div>
@@ -176,14 +185,14 @@ const getInitials = (name) => {
                             <!-- Footer -->
                             <div class="bg-slate-50/50 border-t border-slate-100 px-6 py-4 flex items-center justify-between text-xs text-slate-500">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="project.section?.project_manager">
-                                        {{ getInitials(project.section.project_manager.user.name) }}
+                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="board.section?.project_manager">
+                                        {{ getInitials(board.section.project_manager.user.name) }}
                                     </div>
-                                    <span class="font-medium" v-if="project.section?.project_manager">
-                                        PM: {{ project.section.project_manager.user.name.split(' ')[0] }}
+                                    <span class="font-medium" v-if="board.section?.project_manager">
+                                        PM: {{ board.section.project_manager.user.name.split(' ')[0] }}
                                     </span>
                                 </div>
-                                <Link :href="route('projects.show', project.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">
+                                <Link :href="route('task-boards.show', board.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">
                                     Task Board
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -212,7 +221,7 @@ const getInitials = (name) => {
                                     <div class="space-y-1">
                                         <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
                                         <p class="text-xs text-slate-400">
-                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
+                                            {{ (task.task_board || task.project)?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
                                             &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Starts: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
@@ -257,7 +266,7 @@ const getInitials = (name) => {
                                             </span>
                                         </div>
                                         <p class="text-xs text-slate-400">
-                                            {{ task.project?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
+                                            {{ (task.task_board || task.project)?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
                                             &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
                                         </p>
                                         <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Started: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>

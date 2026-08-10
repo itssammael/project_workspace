@@ -252,9 +252,32 @@ const showSuccess = (msg) => {
     }, 3500);
 };
 
+// Collapsible Cards State (Default view: collapsed)
+const expandedRulesMap = ref({});
+
+const isRuleExpanded = (ruleId) => Boolean(expandedRulesMap.value[ruleId]);
+
+const toggleRuleCollapse = (ruleId) => {
+    expandedRulesMap.value[ruleId] = !expandedRulesMap.value[ruleId];
+};
+
+const expandAllRules = () => {
+    filteredRules.value.forEach(r => {
+        expandedRulesMap.value[r.id] = true;
+    });
+};
+
+const collapseAllRules = () => {
+    expandedRulesMap.value = {};
+};
+
 const openAddRuleModal = () => {
     ruleForm.reset();
     ruleForm.id = null;
+    ruleForm.rule_logic = {
+        allowed_system_roles: ['admin'],
+        allowed_functional_roles: ['department_head'],
+    };
     ruleModalMode.value = 'create';
     isRuleModalOpen.value = true;
 };
@@ -269,7 +292,15 @@ const openEditRuleModal = (rule) => {
     ruleForm.description = rule.description || '';
     ruleForm.scope = rule.scope || ['Projects'];
     ruleForm.actions = rule.actions || ['show_field'];
-    ruleForm.rule_logic = rule.rule_logic || {};
+    ruleForm.rule_logic = rule.rule_logic ? JSON.parse(JSON.stringify(rule.rule_logic)) : {};
+    
+    if (!Array.isArray(ruleForm.rule_logic.allowed_system_roles)) {
+        ruleForm.rule_logic.allowed_system_roles = ['admin'];
+    }
+    if (!Array.isArray(ruleForm.rule_logic.allowed_functional_roles)) {
+        ruleForm.rule_logic.allowed_functional_roles = ['department_head'];
+    }
+
     ruleForm.reason_for_change = '';
     ruleModalMode.value = 'edit';
     isRuleModalOpen.value = true;
@@ -546,7 +577,31 @@ const insertErrorMessageVar = (varName) => {
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button 
+                                type="button"
+                                @click="expandAllRules"
+                                class="px-2.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1"
+                                title="Expand all system rule cards"
+                            >
+                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                                Expand All
+                            </button>
+
+                            <button 
+                                type="button"
+                                @click="collapseAllRules"
+                                class="px-2.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1"
+                                title="Collapse all system rule cards"
+                            >
+                                <svg class="w-3.5 h-3.5 text-slate-500 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                                Collapse All
+                            </button>
+
                             <button 
                                 @click="exportAllRulesJSON"
                                 class="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5"
@@ -591,19 +646,37 @@ const insertErrorMessageVar = (varName) => {
                                 rule.enabled ? 'border-slate-200' : 'border-slate-200 bg-slate-50/40 opacity-80'
                             ]"
                         >
-                            <!-- Card Header -->
-                            <div :class="[
-                                'px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3',
-                                ['page_access_rule', 'role_permission_rule', 'data_integrity_rule'].includes(rule.type) ? 'bg-sky-50/70 border-sky-100' : 'bg-slate-50/80 border-slate-100'
-                            ]">
+                            <!-- Card Header (Clickable to Expand/Collapse) -->
+                            <div 
+                                @click="toggleRuleCollapse(rule.id)"
+                                :class="[
+                                    'px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 cursor-pointer select-none transition-colors duration-150 hover:bg-slate-100/70',
+                                    ['page_access_rule', 'role_permission_rule', 'data_integrity_rule'].includes(rule.type) ? 'bg-sky-50/70 border-sky-100' : 'bg-slate-50/80 border-slate-100'
+                                ]"
+                            >
                                 <div class="flex items-center gap-3">
-                                    <span class="text-xs font-bold text-slate-400">#{{ rule.id }}</span>
+                                    <button 
+                                        type="button"
+                                        class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
+                                        :title="isRuleExpanded(rule.id) ? 'Collapse rule' : 'Expand rule'"
+                                    >
+                                        <svg 
+                                            class="w-4 h-4 transition-transform duration-200" 
+                                            :class="{ 'rotate-180': isRuleExpanded(rule.id) }" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <!-- <span class="text-xs font-bold text-slate-400">#{{ rule.id }}</span> -->
                                     <h4 class="text-base font-bold text-slate-800 leading-snug">
-                                        System Rule: <span class="text-[#0D9488]">{{ rule.name }}</span>
+                                        <span class="text-[#0D9488]">{{ rule.name }}</span>
                                     </h4>
                                 </div>
 
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-3" @click.stop>
                                     <!-- Domain Tag -->
                                     <span :class="[
                                         'px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg border',
@@ -615,14 +688,14 @@ const insertErrorMessageVar = (varName) => {
                                     </span>
 
                                     <!-- Status Badge -->
-                                    <span :class="[
+                                    <!-- <span :class="[
                                         'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border',
                                         rule.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                         rule.status === 'draft' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                         'bg-slate-100 text-slate-500 border-slate-200'
                                     ]">
                                         Status: {{ rule.status }}
-                                    </span>
+                                    </span> -->
 
                                     <!-- Type Badge -->
                                     <span :class="['px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border', getTypeBadgeStyle(rule.type)]">
@@ -630,7 +703,7 @@ const insertErrorMessageVar = (varName) => {
                                     </span>
 
                                     <!-- Quick Enable Toggle Switch -->
-                                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                                    <label class="relative inline-flex items-center cursor-pointer select-none" @click.stop>
                                         <input type="checkbox" :checked="rule.enabled" @change="toggleRuleState(rule)" class="sr-only peer">
                                         <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0D9488]"></div>
                                         <span class="ms-2 text-xs font-semibold text-slate-700">{{ rule.enabled ? 'Enabled ✓' : 'Disabled' }}</span>
@@ -638,233 +711,236 @@ const insertErrorMessageVar = (varName) => {
                                 </div>
                             </div>
 
-                            <!-- Card Body: Rule Logic Visualization -->
-                            <div class="p-6 space-y-4 flex-1">
-                                
-                                <!-- PAGE ACCESS RULE VISUALIZER -->
-                                <div v-if="rule.type === 'page_access_rule'" class="bg-sky-50/70 border border-sky-200 p-4 rounded-xl text-xs space-y-2">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px]">Restricted Page Route:</span>
-                                        <span class="font-mono bg-white px-2.5 py-1 border border-sky-300 text-sky-800 font-bold rounded-md text-xs">
-                                            {{ rule.rule_logic?.target_route || '/admin/settings' }}
-                                        </span>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                                        <div>
-                                            <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px] block mb-1">Permitted System Roles:</span>
-                                            <div class="flex flex-wrap gap-1">
-                                                <span v-for="r in (rule.rule_logic?.allowed_system_roles || ['admin'])" :key="r" class="px-2 py-0.5 bg-sky-200 text-sky-900 font-bold rounded uppercase text-[10px]">{{ r }}</span>
-                                            </div>
+                            <!-- Collapsible Content Wrapper -->
+                            <div v-show="isRuleExpanded(rule.id)" class="border-t border-slate-100 flex-1 flex flex-col transition-all duration-300">
+                                <!-- Card Body: Rule Logic Visualization -->
+                                <div class="p-6 space-y-4 flex-1">
+                                    
+                                    <!-- PAGE ACCESS RULE VISUALIZER -->
+                                    <div v-if="rule.type === 'page_access_rule'" class="bg-sky-50/70 border border-sky-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px]">Restricted Page Route:</span>
+                                            <span class="font-mono bg-white px-2.5 py-1 border border-sky-300 text-sky-800 font-bold rounded-md text-xs">
+                                                {{ rule.rule_logic?.target_route || '/admin/settings' }}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px] block mb-1">Permitted Functional Roles:</span>
-                                            <div class="flex flex-wrap gap-1">
-                                                <span v-for="r in (rule.rule_logic?.allowed_functional_roles || ['admin_staff'])" :key="r" class="px-2 py-0.5 bg-white border border-sky-300 text-sky-800 font-semibold rounded text-[10px]">{{ r }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- ROLE PERMISSION RULE VISUALIZER -->
-                                <div v-else-if="rule.type === 'role_permission_rule'" class="bg-indigo-50/70 border border-indigo-200 p-4 rounded-xl text-xs space-y-2">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-bold text-indigo-900 uppercase tracking-wider text-[10px]">Operational Action:</span>
-                                        <span class="font-mono bg-indigo-100 text-indigo-900 px-2.5 py-0.5 font-bold rounded uppercase">
-                                            {{ rule.rule_logic?.operation || 'Role Operational Rule' }}
-                                        </span>
-                                    </div>
-                                    <p class="text-indigo-800 font-medium mt-1">
-                                        {{ rule.rule_logic?.error_message || 'Enforces System & Functional Role operational permissions.' }}
-                                    </p>
-                                </div>
-
-                                <!-- CONDITIONAL LOGIC VISUALIZER -->
-                                <div v-else-if="rule.type === 'conditional_logic' && rule.rule_logic" class="space-y-3">
-                                    <div class="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs border border-slate-800 space-y-2">
-                                        <div class="text-teal-400 font-bold tracking-wider uppercase">IF CONDITIONS:</div>
-                                        <div v-if="rule.rule_logic.conditions" class="pl-4 space-y-1.5 border-l-2 border-teal-500/50">
-                                            <div v-for="(cond, idx) in rule.rule_logic.conditions" :key="idx">
-                                                <div v-if="cond.field" class="flex items-center gap-2">
-                                                    <span class="text-amber-300 font-semibold">[{{ cond.field }}]</span>
-                                                    <span class="text-sky-300">{{ cond.operator }}</span>
-                                                    <span class="text-emerald-300">[{{ cond.value }}]</span>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                            <div>
+                                                <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px] block mb-1">Permitted System Roles:</span>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <span v-for="r in (rule.rule_logic?.allowed_system_roles || ['admin'])" :key="r" class="px-2 py-0.5 bg-sky-200 text-sky-900 font-bold rounded uppercase text-[10px]">{{ r }}</span>
                                                 </div>
-                                                <div v-else-if="cond.conditions" class="pl-3 py-1 bg-slate-800/80 rounded border border-slate-700 space-y-1">
-                                                    <span class="text-teal-300 font-bold uppercase text-[10px]">{{ cond.operator || 'AND' }}</span>
-                                                    <div v-for="(nc, nidx) in cond.conditions" :key="nidx" class="flex items-center gap-2">
-                                                        <span class="text-amber-300 font-semibold">[{{ nc.field }}]</span>
-                                                        <span class="text-sky-300">{{ nc.operator }}</span>
-                                                        <span class="text-emerald-300">[{{ nc.value }}]</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-bold text-sky-900 uppercase tracking-wider text-[10px] block mb-1">Permitted Functional Roles:</span>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <span v-for="r in (rule.rule_logic?.allowed_functional_roles || ['admin_staff'])" :key="r" class="px-2 py-0.5 bg-white border border-sky-300 text-sky-800 font-semibold rounded text-[10px]">{{ r }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ROLE PERMISSION RULE VISUALIZER -->
+                                    <div v-else-if="rule.type === 'role_permission_rule'" class="bg-indigo-50/70 border border-indigo-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-bold text-indigo-900 uppercase tracking-wider text-[10px]">Operational Action:</span>
+                                            <span class="font-mono bg-indigo-100 text-indigo-900 px-2.5 py-0.5 font-bold rounded uppercase">
+                                                {{ rule.rule_logic?.operation || 'Role Operational Rule' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-indigo-800 font-medium mt-1">
+                                            {{ rule.rule_logic?.error_message || 'Enforces System & Functional Role operational permissions.' }}
+                                        </p>
+                                    </div>
+
+                                    <!-- CONDITIONAL LOGIC VISUALIZER -->
+                                    <div v-else-if="rule.type === 'conditional_logic' && rule.rule_logic" class="space-y-3">
+                                        <div class="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs border border-slate-800 space-y-2">
+                                            <div class="text-teal-400 font-bold tracking-wider uppercase">IF CONDITIONS:</div>
+                                            <div v-if="rule.rule_logic.conditions" class="pl-4 space-y-1.5 border-l-2 border-teal-500/50">
+                                                <div v-for="(cond, idx) in rule.rule_logic.conditions" :key="idx">
+                                                    <div v-if="cond.field" class="flex items-center gap-2">
+                                                        <span class="text-amber-300 font-semibold">[{{ cond.field }}]</span>
+                                                        <span class="text-sky-300">{{ cond.operator }}</span>
+                                                        <span class="text-emerald-300">[{{ cond.value }}]</span>
+                                                    </div>
+                                                    <div v-else-if="cond.conditions" class="pl-3 py-1 bg-slate-800/80 rounded border border-slate-700 space-y-1">
+                                                        <span class="text-teal-300 font-bold uppercase text-[10px]">{{ cond.operator || 'AND' }}</span>
+                                                        <div v-for="(nc, nidx) in cond.conditions" :key="nidx" class="flex items-center gap-2">
+                                                            <span class="text-amber-300 font-semibold">[{{ nc.field }}]</span>
+                                                            <span class="text-sky-300">{{ nc.operator }}</span>
+                                                            <span class="text-emerald-300">[{{ nc.value }}]</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div class="text-teal-400 font-bold tracking-wider uppercase mt-3">THEN:</div>
-                                        <div class="pl-4 space-y-1 text-slate-300">
-                                            <div v-if="rule.rule_logic.then_show && rule.rule_logic.then_show.length">
-                                                <span class="text-emerald-400 font-bold">Show the following fields:</span>
-                                                <ul class="list-disc list-inside text-slate-200 pl-2">
-                                                    <li v-for="f in rule.rule_logic.then_show" :key="f">{{ f }}</li>
-                                                </ul>
-                                            </div>
-                                            <div v-if="rule.rule_logic.then_hide && rule.rule_logic.then_hide.length" class="mt-1">
-                                                <span class="text-rose-400 font-bold">Hide the following fields:</span>
-                                                <ul class="list-disc list-inside text-slate-400 pl-2">
-                                                    <li v-for="f in rule.rule_logic.then_hide" :key="f">{{ f }}</li>
-                                                </ul>
+                                            <div class="text-teal-400 font-bold tracking-wider uppercase mt-3">THEN:</div>
+                                            <div class="pl-4 space-y-1 text-slate-300">
+                                                <div v-if="rule.rule_logic.then_show && rule.rule_logic.then_show.length">
+                                                    <span class="text-emerald-400 font-bold">Show the following fields:</span>
+                                                    <ul class="list-disc list-inside text-slate-200 pl-2">
+                                                        <li v-for="f in rule.rule_logic.then_show" :key="f">{{ f }}</li>
+                                                    </ul>
+                                                </div>
+                                                <div v-if="rule.rule_logic.then_hide && rule.rule_logic.then_hide.length" class="mt-1">
+                                                    <span class="text-rose-400 font-bold">Hide the following fields:</span>
+                                                    <ul class="list-disc list-inside text-slate-400 pl-2">
+                                                        <li v-for="f in rule.rule_logic.then_hide" :key="f">{{ f }}</li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- VALIDATION RULE VISUALIZER -->
-                                <div v-else-if="rule.type === 'validation_rule'" class="bg-amber-50/60 border border-amber-200 p-4 rounded-xl text-xs space-y-2">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-bold text-amber-900 uppercase tracking-wider text-[10px]">Target Field:</span>
-                                        <span class="px-2 py-0.5 bg-amber-100 text-amber-900 font-mono font-bold rounded">[{{ rule.rule_logic?.field || 'name' }}]</span>
-                                        <span class="text-amber-800 font-medium">Type: {{ rule.rule_logic?.validation_type }}</span>
+                                    <!-- VALIDATION RULE VISUALIZER -->
+                                    <div v-else-if="rule.type === 'validation_rule'" class="bg-amber-50/60 border border-amber-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-amber-900 uppercase tracking-wider text-[10px]">Target Field:</span>
+                                            <span class="px-2 py-0.5 bg-amber-100 text-amber-900 font-mono font-bold rounded">[{{ rule.rule_logic?.field || 'name' }}]</span>
+                                            <span class="text-amber-800 font-medium">Type: {{ rule.rule_logic?.validation_type }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="font-bold text-amber-900 uppercase tracking-wider text-[10px] block mb-1">Validation Error Message Template:</span>
+                                            <p class="font-mono bg-white p-2.5 rounded border border-amber-200 text-slate-800">
+                                                {{ rule.rule_logic?.error_message }}
+                                            </p>
+                                        </div>
                                     </div>
+
+                                    <!-- APPROVAL RULE VISUALIZER -->
+                                    <div v-else-if="rule.type === 'approval_rule'" class="bg-[#F0FDFA] border border-teal-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div>
+                                            <span class="font-bold text-teal-900 uppercase tracking-wider text-[10px] block mb-1">Approval Hierarchy Chain:</span>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <template v-for="(step, idx) in (rule.rule_logic?.approval_chain || ['Department Head', 'Administrator'])" :key="idx">
+                                                    <span class="px-3 py-1 bg-[#0D9488] text-white font-bold rounded-lg shadow-sm">{{ step }}</span>
+                                                    <span v-if="idx < (rule.rule_logic?.approval_chain?.length - 1)" class="text-teal-500 font-bold text-base">→</span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- NOTIFICATION RULE VISUALIZER -->
+                                    <div v-else-if="rule.type === 'notification_rule'" class="bg-blue-50/60 border border-blue-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div class="flex items-center gap-4">
+                                            <div>
+                                                <span class="font-bold text-blue-900 uppercase tracking-wider text-[10px] block">Trigger Event:</span>
+                                                <span class="font-mono font-bold text-blue-800">{{ rule.rule_logic?.event }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-bold text-blue-900 uppercase tracking-wider text-[10px] block">Channels:</span>
+                                                <div class="flex items-center gap-1">
+                                                    <span v-for="ch in (rule.rule_logic?.channels || [])" :key="ch" class="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded uppercase text-[9px]">{{ ch }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- COMPLIANCE RULE VISUALIZER -->
+                                    <div v-else-if="rule.type === 'compliance_rule'" class="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl text-xs space-y-2">
+                                        <div class="flex items-center gap-4">
+                                            <span class="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">Sector: {{ rule.rule_logic?.sector || 'General' }}</span>
+                                            <span class="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">Standard: {{ rule.rule_logic?.standard || 'ISO' }}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rule Description -->
                                     <div>
-                                        <span class="font-bold text-amber-900 uppercase tracking-wider text-[10px] block mb-1">Validation Error Message Template:</span>
-                                        <p class="font-mono bg-white p-2.5 rounded border border-amber-200 text-slate-800">
-                                            {{ rule.rule_logic?.error_message }}
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Description:</span>
+                                        <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            {{ rule.description || 'No description provided for this system rule.' }}
                                         </p>
                                     </div>
-                                </div>
 
-                                <!-- APPROVAL RULE VISUALIZER -->
-                                <div v-else-if="rule.type === 'approval_rule'" class="bg-[#F0FDFA] border border-teal-200 p-4 rounded-xl text-xs space-y-2">
-                                    <div>
-                                        <span class="font-bold text-teal-900 uppercase tracking-wider text-[10px] block mb-1">Approval Hierarchy Chain:</span>
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <template v-for="(step, idx) in (rule.rule_logic?.approval_chain || ['Department Head', 'Administrator'])" :key="idx">
-                                                <span class="px-3 py-1 bg-[#0D9488] text-white font-bold rounded-lg shadow-sm">{{ step }}</span>
-                                                <span v-if="idx < (rule.rule_logic?.approval_chain?.length - 1)" class="text-teal-500 font-bold text-base">→</span>
-                                            </template>
+                                    <!-- Scope Modules & Actions Badges -->
+                                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Applicable Scope:</span>
+                                            <div class="flex flex-wrap gap-1">
+                                                <span v-for="sc in (rule.scope || [])" :key="sc" class="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold rounded-md">
+                                                    {{ sc }}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                <!-- NOTIFICATION RULE VISUALIZER -->
-                                <div v-else-if="rule.type === 'notification_rule'" class="bg-blue-50/60 border border-blue-200 p-4 rounded-xl text-xs space-y-2">
-                                    <div class="flex items-center gap-4">
-                                        <div>
-                                            <span class="font-bold text-blue-900 uppercase tracking-wider text-[10px] block">Trigger Event:</span>
-                                            <span class="font-mono font-bold text-blue-800">{{ rule.rule_logic?.event }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="font-bold text-blue-900 uppercase tracking-wider text-[10px] block">Channels:</span>
-                                            <div class="flex items-center gap-1">
-                                                <span v-for="ch in (rule.rule_logic?.channels || [])" :key="ch" class="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded uppercase text-[9px]">{{ ch }}</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actions Executed:</span>
+                                            <div class="flex flex-wrap gap-1">
+                                                <span v-for="act in (rule.actions || [])" :key="act" class="px-2 py-0.5 bg-teal-50 border border-teal-200 text-[#0D9488] text-[10px] font-bold rounded-md uppercase">
+                                                    {{ act.replace(/_/g, ' ') }}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
+
                                 </div>
 
-                                <!-- COMPLIANCE RULE VISUALIZER -->
-                                <div v-else-if="rule.type === 'compliance_rule'" class="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl text-xs space-y-2">
+                                <!-- Metadata Footer -->
+                                <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex items-center gap-4">
-                                        <span class="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">Sector: {{ rule.rule_logic?.sector || 'General' }}</span>
-                                        <span class="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">Standard: {{ rule.rule_logic?.standard || 'ISO' }}</span>
+                                        <span>Created: <strong class="text-slate-600">{{ rule.created_by || 'Admin' }}</strong> | {{ new Date(rule.created_at).toLocaleDateString() }}</span>
+                                        <span>Last Modified: <strong class="text-slate-600">{{ rule.last_modified_by || 'Admin' }}</strong> | {{ new Date(rule.updated_at).toLocaleDateString() }}</span>
                                     </div>
                                 </div>
 
-                                <!-- Rule Description -->
-                                <div>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Description:</span>
-                                    <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        {{ rule.description || 'No description provided for this system rule.' }}
-                                    </p>
+                                <!-- Footer Action Buttons ([Edit] [Clone] [Export] [Preview] [Delete]) -->
+                                <div class="px-6 py-3 bg-white border-t border-slate-100 flex items-center justify-end gap-2">
+                                    <button 
+                                        @click="openEditRuleModal(rule)"
+                                        class="px-3 py-1.5 bg-slate-100 hover:bg-[#0D9488] hover:text-white text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Edit
+                                    </button>
+
+                                    <button 
+                                        @click="cloneRule(rule)"
+                                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
+                                        title="Clone system rule"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                                        </svg>
+                                        Clone
+                                    </button>
+
+                                    <button 
+                                        @click="exportSingleRule(rule)"
+                                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
+                                        title="Export rule to JSON"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                        </svg>
+                                        Export
+                                    </button>
+
+                                    <button 
+                                        @click="openPreviewModal(rule)"
+                                        class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-[#0D9488] text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
+                                        title="Simulate rule in preview mode"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        Preview
+                                    </button>
+
+                                    <button 
+                                        @click="confirmDeleteRule(rule)"
+                                        class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
+                                        title="Delete system rule"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Delete
+                                    </button>
                                 </div>
-
-                                <!-- Scope Modules & Actions Badges -->
-                                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Applicable Scope:</span>
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="sc in (rule.scope || [])" :key="sc" class="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold rounded-md">
-                                                {{ sc }}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actions Executed:</span>
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="act in (rule.actions || [])" :key="act" class="px-2 py-0.5 bg-teal-50 border border-teal-200 text-[#0D9488] text-[10px] font-bold rounded-md uppercase">
-                                                {{ act.replace(/_/g, ' ') }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <!-- Metadata Footer -->
-                            <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
-                                <div class="flex items-center gap-4">
-                                    <span>Created: <strong class="text-slate-600">{{ rule.created_by || 'Admin' }}</strong> | {{ new Date(rule.created_at).toLocaleDateString() }}</span>
-                                    <span>Last Modified: <strong class="text-slate-600">{{ rule.last_modified_by || 'Admin' }}</strong> | {{ new Date(rule.updated_at).toLocaleDateString() }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Footer Action Buttons ([Edit] [Clone] [Export] [Preview] [Delete]) -->
-                            <div class="px-6 py-3 bg-white border-t border-slate-100 flex items-center justify-end gap-2">
-                                <button 
-                                    @click="openEditRuleModal(rule)"
-                                    class="px-3 py-1.5 bg-slate-100 hover:bg-[#0D9488] hover:text-white text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                    Edit
-                                </button>
-
-                                <button 
-                                    @click="cloneRule(rule)"
-                                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
-                                    title="Clone system rule"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
-                                    </svg>
-                                    Clone
-                                </button>
-
-                                <button 
-                                    @click="exportSingleRule(rule)"
-                                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
-                                    title="Export rule to JSON"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                    </svg>
-                                    Export
-                                </button>
-
-                                <button 
-                                    @click="openPreviewModal(rule)"
-                                    class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-[#0D9488] text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
-                                    title="Simulate rule in preview mode"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                    Preview
-                                </button>
-
-                                <button 
-                                    @click="confirmDeleteRule(rule)"
-                                    class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1"
-                                    title="Delete system rule"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                    Delete
-                                </button>
                             </div>
                         </div>
 
@@ -1098,14 +1174,39 @@ const insertErrorMessageVar = (varName) => {
                                 <option value="create_user">Create User Accounts</option>
                                 <option value="update_user">Update User Accounts & Roles</option>
                                 <option value="delete_user">Delete User Accounts</option>
-                                <option value="create_project">Create Projects</option>
-                                <option value="update_project">Update Projects</option>
+                                <option value="create_project">Create Task Boards</option>
+                                <option value="update_project">Update Task Boards</option>
+                                <option value="delete_project">Delete Task Boards</option>
                                 <option value="manage_tasks">Allocate Tasks & Workflows</option>
+                                <option value="manage_sections">Manage Sections</option>
+                                <option value="manage_workflows">Manage Workflows</option>
+                                <option value="manage_functional_roles">Manage Functional Roles</option>
+                                <option value="view_all_projects_dashboard">View All Task Boards on Dashboard</option>
                             </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-indigo-200/60">
+                            <div>
+                                <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Permitted System Roles</label>
+                                <div class="space-y-1">
+                                    <label v-for="sr in systemRoleOptions" :key="sr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <input type="checkbox" :value="sr.slug" v-model="ruleForm.rule_logic.allowed_system_roles" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                                        <span>{{ sr.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Permitted Functional Roles</label>
+                                <div class="space-y-1 max-h-32 overflow-y-auto">
+                                    <label v-for="fr in functionalRoleOptions" :key="fr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <input type="checkbox" :value="fr.slug" v-model="ruleForm.rule_logic.allowed_functional_roles" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                                        <span>{{ fr.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Target Error / Restriction Message</label>
-                            <input type="text" v-model="ruleForm.rule_logic.error_message" class="w-full rounded-xl border-indigo-200 text-xs" placeholder="e.g. Admin Staff can only create new users with System Role User." />
+                            <input type="text" v-model="ruleForm.rule_logic.error_message" class="w-full rounded-xl border-indigo-200 text-xs" placeholder="e.g. Only authorized roles can perform this action." />
                         </div>
                     </div>
 
@@ -1165,7 +1266,16 @@ const insertErrorMessageVar = (varName) => {
                     </div>
 
                     <!-- 5. APPROVAL RULE BUILDER -->
-                    <div v-else-if="ruleForm.type === 'approval_rule'" class="border border-teal-200 rounded-2xl p-5 bg-teal-50/40 space-y-3">
+                    <div v-else-if="ruleForm.type === 'approval_rule'" class="border border-teal-200 rounded-2xl p-5 bg-teal-50/40 space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Target Operational Action</label>
+                            <select v-model="ruleForm.rule_logic.operation" class="w-full rounded-xl border-teal-200 text-xs">
+                                <option value="create_project">Create Task Boards (Task Board Creation Authority)</option>
+                                <option value="manage_tasks">Allocate Tasks & Workflows (Section Manager Authority)</option>
+                                <option value="update_project">Update Task Boards</option>
+                                <option value="create_user">Create User Accounts</option>
+                            </select>
+                        </div>
                         <div class="flex items-center justify-between">
                             <div>
                                 <h4 class="text-xs font-bold text-teal-900 uppercase tracking-wider">📋 Approval Hierarchy Chain</h4>
@@ -1203,6 +1313,27 @@ const insertErrorMessageVar = (varName) => {
                             </template>
                             <div v-if="!ruleForm.rule_logic.approval_chain || ruleForm.rule_logic.approval_chain.length === 0" class="text-xs text-slate-400 italic">
                                 No approval steps configured. Click "+ Add Step" to add a role to the chain.
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-teal-200/60">
+                            <div>
+                                <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Permitted System Roles</label>
+                                <div class="space-y-1">
+                                    <label v-for="sr in systemRoleOptions" :key="sr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <input type="checkbox" :value="sr.slug" v-model="ruleForm.rule_logic.allowed_system_roles" class="rounded text-teal-600 focus:ring-teal-500" />
+                                        <span>{{ sr.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Permitted Functional Roles</label>
+                                <div class="space-y-1 max-h-32 overflow-y-auto">
+                                    <label v-for="fr in functionalRoleOptions" :key="fr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <input type="checkbox" :value="fr.slug" v-model="ruleForm.rule_logic.allowed_functional_roles" class="rounded text-teal-600 focus:ring-teal-500" />
+                                        <span>{{ fr.label }}</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>

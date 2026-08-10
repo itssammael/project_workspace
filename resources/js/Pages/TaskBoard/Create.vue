@@ -115,7 +115,7 @@ const deselectAllWorkflows = () => {
 };
 
 const submit = () => {
-    form.post(route('projects.store'));
+    form.post(route('task-boards.store'));
 };
 
 const selectedSectionMembers = computed(() => {
@@ -288,15 +288,15 @@ watch(() => form.section_id, () => {
 </script>
 
 <template>
-    <AppLayout title="Create New Project">
+    <AppLayout title="Create New Task Board">
         <template #header>
             <div class="flex items-center gap-2 text-xs font-semibold text-[#0D9488] mb-1">
                 <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                 <span>&bull;</span>
-                <span class="text-slate-400">Create Project</span>
+                <span class="text-slate-400">Create Task Board</span>
             </div>
             <h2 class="font-bold text-2xl text-slate-800 leading-tight">
-                Create New Board
+                Create New Task Board
             </h2>
         </template>
 
@@ -368,8 +368,8 @@ watch(() => form.section_id, () => {
                         <div v-if="form.section_id" class="border-t border-slate-100 pt-6">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Project Roles</label>
-                                    <p class="text-xs text-slate-400 mt-0.5">Select members from this section to work on this project, and assign their project-specific functional roles.</p>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Board Roles</label>
+                                    <p class="text-xs text-slate-400 mt-0.5">Select members from this section to work on this board, and assign their board-specific functional roles.</p>
                                 </div>
                                 <button 
                                     type="button" 
@@ -403,7 +403,7 @@ watch(() => form.section_id, () => {
                                     </div>
                                     
                                     <div v-if="isMemberSelected(member.id)" class="pl-6 space-y-1">
-                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Role</label>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
                                         <RoleSelectDropdown
                                             :member="member"
                                             :all-roles="memberRoles"
@@ -418,8 +418,8 @@ watch(() => form.section_id, () => {
                             <!-- Collaborators Section -->
                             <div v-if="selectedCollaborators.length > 0" class="mt-6 border-t border-slate-100 pt-6">
                                 <div class="mb-4">
-                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Project Collaborators (Other Sections)</label>
-                                    <p class="text-xs text-slate-400 mt-0.5">Collaborators from other sections assigned to this project.</p>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Board Collaborators (Other Sections)</label>
+                                    <p class="text-xs text-slate-400 mt-0.5">Collaborators from other sections assigned to this board.</p>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                     <div 
@@ -449,7 +449,7 @@ watch(() => form.section_id, () => {
                                         </div>
                                         
                                         <div class="space-y-1">
-                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Role</label>
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
                                             <RoleSelectDropdown
                                                 :member="collaborator"
                                                 :all-roles="memberRoles"
@@ -486,12 +486,12 @@ watch(() => form.section_id, () => {
                             </div>
                         </div>
 
-                        <!-- Development Workflows Selection -->
+                        <!-- Workflows Selection -->
                         <div class="border-t border-slate-100 pt-6">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Choose Workflow</label>
-                                    <p class="text-xs text-slate-400 mt-0.5">Select the execution workflows that will construct the project timeline.</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Select the execution workflows that will construct the board timeline.</p>
                                 </div>
                                 <div class="flex gap-2">
                                     <button 
@@ -515,7 +515,7 @@ watch(() => form.section_id, () => {
 
                             <!-- Search/Select Workflow Dropdown -->
                             <div class="mb-4 relative">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Project Workflow</label>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Board Workflow</label>
                                 <div class="relative w-full md:w-72">
                                     <!-- Trigger Button -->
                                     <button
@@ -629,7 +629,7 @@ watch(() => form.section_id, () => {
                                 :disabled="form.processing"
                                 class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm disabled:opacity-50"
                             >
-                                Create Project
+                                Create Task Board
                             </button>
                         </div>
                     </form>
@@ -647,8 +647,8 @@ watch(() => form.section_id, () => {
                 <!-- Header -->
                 <div class="p-6 border-b border-slate-150 flex items-center justify-between">
                     <div>
-                        <h3 class="font-bold text-slate-800 text-base">Add Project Collaborator</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Find and assign section members to this project.</p>
+                        <h3 class="font-bold text-slate-800 text-base">Add Board Collaborator</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Find and assign section members to this board.</p>
                     </div>
                     <button 
                         type="button" 
@@ -713,13 +713,13 @@ watch(() => form.section_id, () => {
                         class="bg-slate-50/50 border border-slate-100 rounded-xl p-4 space-y-3 mt-4"
                     >
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-700">Assign Project Role</span>
+                            <span class="text-xs font-bold text-slate-700">Assign Board Role</span>
                             <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded font-bold">
                                 {{ allAvailableMembers.find(m => m.id === selectedCollaboratorId)?.name }}
                             </span>
                         </div>
                         <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project Functional Role</label>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Functional Role</label>
                             <select 
                                 v-model="selectedCollaboratorRoleId"
                                 class="w-full rounded-lg border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]"
@@ -748,7 +748,7 @@ watch(() => form.section_id, () => {
                         class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         <span v-if="isAttachingCollaboratorRole" class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        {{ isAttachingCollaboratorRole ? 'Attaching...' : 'Add to Project' }}
+                        {{ isAttachingCollaboratorRole ? 'Attaching...' : 'Add to Board' }}
                     </button>
                 </div>
             </div>

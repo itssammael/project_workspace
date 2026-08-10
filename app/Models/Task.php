@@ -11,14 +11,19 @@ class Task extends Model
         'name',
         'details',
         'workflow_id',
-        'project_id',
+        'task_board_id',
     ];
 
     protected $casts = [];
 
+    public function taskBoard(): BelongsTo
+    {
+        return $this->belongsTo(TaskBoard::class, 'task_board_id');
+    }
+
     public function project(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->taskBoard();
     }
 
     public function workflow(): BelongsTo

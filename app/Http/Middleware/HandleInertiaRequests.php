@@ -46,6 +46,11 @@ class HandleInertiaRequests extends Middleware
                 'theme' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('theme', 'corporate_teal') : 'corporate_teal',
                 'logo' => \Illuminate\Support\Facades\Schema::hasTable('settings') ? \App\Models\Setting::get('logo', null) : null,
             ],
+            'can' => [
+                'access_admin_management' => $user ? \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/admin/management', ['admin'], ['admin_staff']) : false,
+                'access_admin_settings' => $user ? \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/admin/settings', ['admin'], ['admin_staff']) : false,
+                'access_support_function_reports' => $user ? \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/support-function-reports', ['admin', 'user', 'viewer'], ['admin_staff', 'department_head', 'project_manager', 'developer']) : false,
+            ],
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

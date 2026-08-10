@@ -9,11 +9,27 @@ import DangerButton from '@/Components/DangerButton.vue';
 const props = defineProps({
     users: Array,
     sections: Array,
+    departments: {
+        type: Array,
+        default: () => []
+    },
+    canManageDepartments: {
+        type: Boolean,
+        default: false
+    },
     roles: Array,
     memberRoles: Array,
     membersList: Array,
     workflows: Array,
     workflowTypes: Array,
+    employeeTypes: {
+        type: Array,
+        default: () => [
+            { id: 1, description: 'Regular' },
+            { id: 2, description: 'Casual' },
+            { id: 3, description: 'JOW' }
+        ]
+    },
     systemLogs: {
         type: Array,
         default: () => []
@@ -21,12 +37,13 @@ const props = defineProps({
 });
 
 // Active tab
-const activeTab = ref('users'); // 'users', 'sections', 'workflows', or 'system_logs'
+const activeTab = ref('users'); // 'users', 'sections', 'departments', 'workflows', or 'system_logs'
 
 // Search & filter states
 const userSearch = ref('');
 const roleFilter = ref('');
 const sectionSearch = ref('');
+const departmentSearch = ref('');
 const workflowSearch = ref('');
 const projectTypeFilter = ref('');
 const systemLogSearch = ref('');
@@ -36,6 +53,8 @@ const isUserModalOpen = ref(false);
 const userModalMode = ref('create'); // 'create', 'edit'
 const isSectionModalOpen = ref(false);
 const sectionModalMode = ref('create'); // 'create', 'edit'
+const isDepartmentModalOpen = ref(false);
+const departmentModalMode = ref('create'); // 'create', 'edit'
 const isWorkflowModalOpen = ref(false);
 const workflowModalMode = ref('create'); // 'create', 'edit'
 const isWorkflowTypeModalOpen = ref(false);
@@ -58,6 +77,7 @@ const userForm = useForm({
     email: '',
     password: '',
     role_id: '',
+    employee_type_id: 1,
     member_role_ids: [],
     section_ids: [],
 });
@@ -72,8 +92,16 @@ watch(() => userForm.username, (newUsername) => {
 const sectionForm = useForm({
     id: null,
     name: '',
+    department_id: '',
     member_id: '', // PM
     member_ids: [], // Assigned members
+});
+
+const departmentForm = useForm({
+    id: null,
+    name: '',
+    short_name: '',
+    department_head_id: '',
 });
 
 const workflowForm = useForm({
@@ -81,6 +109,7 @@ const workflowForm = useForm({
     name: '',
     order: 0,
     workflow_type_id: '',
+    workflows: [],
 });
 
 const workflowTypeForm = useForm({
@@ -263,6 +292,7 @@ const canEditUser = (user) => {
 // User Actions
 const openAddUserModal = () => {
     userForm.reset();
+    userForm.employee_type_id = 1;
     userModalMode.value = 'create';
     if (page.props.auth.user.role?.slug !== 'admin') {
         const userRole = props.roles.find(r => r.slug === 'user');
@@ -284,6 +314,7 @@ const openEditUserModal = (user) => {
     userForm.email = user.email;
     userForm.password = ''; // leave blank by default
     userForm.role_id = user.role_id;
+    userForm.employee_type_id = user.employee_type_id || 1;
     userForm.member_role_ids = user.member_role_ids || [];
     userForm.section_ids = user.sections ? user.sections.map(s => s.id) : [];
     userModalMode.value = 'edit';
@@ -429,6 +460,9 @@ const closeUserModal = () => {
 // Section Actions
 const openAddSectionModal = () => {
     sectionForm.reset();
+    if (props.departments && props.departments.length > 0) {
+        sectionForm.department_id = props.departments[0].id;
+    }
     sectionModalMode.value = 'create';
     isSectionModalOpen.value = true;
 };
@@ -437,8 +471,9 @@ const openEditSectionModal = (section) => {
     sectionForm.reset();
     sectionForm.id = section.id;
     sectionForm.name = section.name;
+    sectionForm.department_id = section.department_id || (props.departments && props.departments.length > 0 ? props.departments[0].id : '');
     sectionForm.member_id = section.member_id || '';
-    sectionForm.member_ids = section.members.map(m => m.id);
+    sectionForm.member_ids = section.members ? section.members.map(m => m.id) : [];
     sectionModalMode.value = 'edit';
     isSectionModalOpen.value = true;
 };
@@ -465,8 +500,96 @@ const deleteSection = (section) => {
     );
 };
 
+// Department Actions
+const openAddDepartmentModal = () => {
+    departmentForm.reset();
+    departmentModalMode.value = 'create';
+    isDepartmentModalOpen.value = true;
+};
+
+const openEditDepartmentModal = (dept) => {
+    departmentForm.reset();
+    departmentForm.id = dept.id;
+    departmentForm.name = dept.name;
+    departmentForm.short_name = dept.short_name;
+    departmentForm.department_head_id = dept.department_head_id || '';
+    departmentModalMode.value = 'edit';
+    isDepartmentModalOpen.value = true;
+};
+
+const closeDepartmentModal = () => {
+    isDepartmentModalOpen.value = false;
+    departmentForm.reset();
+};
+
+const submitDepartmentForm = () => {
+    if (departmentModalMode.value === 'create') {
+        departmentForm.post(route('admin.departments.store'), {
+            onSuccess: () => closeDepartmentModal(),
+        });
+    } else {
+        departmentForm.put(route('admin.departments.update', departmentForm.id), {
+            onSuccess: () => closeDepartmentModal(),
+        });
+    }
+};
+
+const deleteDepartment = (dept) => {
+    triggerConfirm(
+        'Delete Department',
+        `Are you sure you want to delete the department "${dept.name}" (${dept.short_name})?`,
+        () => {
+            departmentForm.delete(route('admin.departments.destroy', dept.id));
+        }
+    );
+};
+
+const filteredDepartments = computed(() => {
+    if (!departmentSearch.value) return props.departments;
+    const query = departmentSearch.value.toLowerCase();
+    return props.departments.filter(d => 
+        d.name.toLowerCase().includes(query) ||
+        d.short_name.toLowerCase().includes(query) ||
+        (d.department_head && d.department_head.name.toLowerCase().includes(query))
+    );
+});
+
+const isMemberPickerOpen = ref(false);
+const memberPickerSearch = ref('');
+
+const assignedSectionMembers = computed(() => {
+    return props.membersList.filter(m => sectionForm.member_ids.includes(m.id));
+});
+
+const filteredPickerMembers = computed(() => {
+    if (!memberPickerSearch.value) return props.membersList;
+    const query = memberPickerSearch.value.toLowerCase();
+    return props.membersList.filter(m => 
+        m.name.toLowerCase().includes(query) ||
+        (m.email && m.email.toLowerCase().includes(query)) ||
+        (m.role && m.role.toLowerCase().includes(query))
+    );
+});
+
+const openMemberPicker = () => {
+    memberPickerSearch.value = '';
+    isMemberPickerOpen.value = true;
+};
+
+const closeMemberPicker = () => {
+    isMemberPickerOpen.value = false;
+};
+
+const removeMemberAssignment = (memberId) => {
+    const index = sectionForm.member_ids.indexOf(memberId);
+    if (index > -1) {
+        sectionForm.member_ids.splice(index, 1);
+    }
+};
+
 const closeSectionModal = () => {
     isSectionModalOpen.value = false;
+    isMemberPickerOpen.value = false;
     sectionForm.reset();
 };
 
@@ -484,18 +607,44 @@ const getInitials = (name) => {
 };
 
 // Workflow Actions
+const addWorkflowRow = () => {
+    const lastRow = workflowForm.workflows.length > 0 
+        ? workflowForm.workflows[workflowForm.workflows.length - 1] 
+        : null;
+    const nextOrder = lastRow ? Number(lastRow.order || 0) + 1 : 0;
+    const nextType = lastRow ? lastRow.workflow_type_id : '';
+    workflowForm.workflows.push({
+        name: '',
+        order: nextOrder,
+        workflow_type_id: nextType,
+    });
+};
+
+const removeWorkflowRow = (index) => {
+    if (workflowForm.workflows.length > 1) {
+        workflowForm.workflows.splice(index, 1);
+    }
+};
+
 const openAddWorkflowModal = () => {
     workflowForm.reset();
+    workflowForm.clearErrors();
+    workflowForm.id = null;
+    workflowForm.workflows = [
+        { name: '', order: 0, workflow_type_id: '' }
+    ];
     workflowModalMode.value = 'create';
     isWorkflowModalOpen.value = true;
 };
 
 const openEditWorkflowModal = (workflow) => {
     workflowForm.reset();
+    workflowForm.clearErrors();
     workflowForm.id = workflow.id;
     workflowForm.name = workflow.name;
     workflowForm.order = workflow.order;
     workflowForm.workflow_type_id = workflow.workflow_type_id || '';
+    workflowForm.workflows = [];
     workflowModalMode.value = 'edit';
     isWorkflowModalOpen.value = true;
 };
@@ -525,6 +674,7 @@ const deleteWorkflow = (workflow) => {
 const closeWorkflowModal = () => {
     isWorkflowModalOpen.value = false;
     workflowForm.reset();
+    workflowForm.clearErrors();
 };
 
 // Workflow Type Actions
@@ -627,6 +777,18 @@ const submitBulkAssign = () => {
                          ]"
                     >
                         Sections & Assignments
+                    </button>
+                    <button 
+                        v-if="canManageDepartments || $page.props.auth.user.role?.slug === 'admin'"
+                        @click="activeTab = 'departments'"
+                        :class="[
+                             'px-4 py-2 text-xs font-bold rounded-lg transition-all',
+                             activeTab === 'departments' 
+                                 ? 'bg-white text-[#0D9488] shadow-sm border border-slate-200/20' 
+                                 : 'text-slate-500 hover:text-slate-800'
+                         ]"
+                    >
+                        Departments
                     </button>
                     <button 
                         v-if="$page.props.auth.user.role?.slug === 'admin'"
@@ -788,6 +950,7 @@ const submitBulkAssign = () => {
                                         <th class="py-4 px-6">User details</th>
                                         <th class="py-4 px-6">System Role</th>
                                         <th class="py-4 px-6">Functional Role</th>
+                                        <th class="py-4 px-6">Employee Type</th>
                                         <th class="py-4 px-6">Assigned Section</th>
                                         <th class="py-4 px-6 text-right">Actions</th>
                                     </tr>
@@ -827,6 +990,11 @@ const submitBulkAssign = () => {
                                         </td>
                                         <td class="py-4 px-6">
                                             <span class="font-medium text-slate-700">{{ user.member_role }}</span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider bg-teal-50 text-teal-800 border-teal-200">
+                                                {{ user.employee_type || 'Regular' }}
+                                            </span>
                                         </td>
                                         <td class="py-4 px-6">
                                             <div class="flex flex-wrap gap-1.5" v-if="user.sections.length">
@@ -992,7 +1160,12 @@ const submitBulkAssign = () => {
                         >
                             <div class="space-y-4">
                                 <div class="flex justify-between items-start gap-4">
-                                    <h3 class="font-bold text-slate-800 text-lg leading-tight group-hover:text-[#0D9488] transition">{{ section.name }}</h3>
+                                    <div>
+                                        <span v-if="section.department_name" class="inline-block px-2 py-0.5 text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200/60 rounded-md mb-1">
+                                            {{ section.department_name }}
+                                        </span>
+                                        <h3 class="font-bold text-slate-800 text-lg leading-tight group-hover:text-[#0D9488] transition">{{ section.name }}</h3>
+                                    </div>
                                     
                                     <div class="flex gap-1.5 opacity-80 group-hover:opacity-100 transition">
                                         <button 
@@ -1019,10 +1192,10 @@ const submitBulkAssign = () => {
                                 <!-- PM -->
                                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center gap-3">
                                     <div class="h-9 w-9 rounded-full bg-[#F0FDFA] border border-teal-100 text-[#0D9488] flex items-center justify-center font-bold text-xs">
-                                        {{ section.project_manager ? getInitials(section.project_manager.name) : 'Section' }}
+                                        {{ section.project_manager ? getInitials(section.project_manager.name) : 'Head' }}
                                     </div>
                                     <div>
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Section Head</p>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Head</p>
                                         <h4 class="font-bold text-slate-700 text-sm mt-0.5">
                                             {{ section.project_manager ? section.project_manager.name : 'Unassigned' }}
                                         </h4>
@@ -1062,8 +1235,115 @@ const submitBulkAssign = () => {
                     </div>
                 </div>
 
+                <!-- Tab: Departments -->
+                <div v-else-if="activeTab === 'departments'" class="space-y-6">
+                    <!-- Header Controls & Search -->
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div class="relative flex-1 max-w-md">
+                            <input 
+                                type="text" 
+                                v-model="departmentSearch" 
+                                placeholder="Search department by name, short code, or department head..." 
+                                class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border-slate-200 focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm" 
+                            />
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button 
+                                @click="openAddDepartmentModal"
+                                class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl shadow-sm transition inline-flex items-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Add New Department
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Departments Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-6 py-3.5">Department Name</th>
+                                        <th class="px-6 py-3.5">Short Code</th>
+                                        <th class="px-6 py-3.5">Department Head</th>
+                                        <th class="px-6 py-3.5">Associated Sections</th>
+                                        <th class="px-6 py-3.5 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700">
+                                    <tr v-for="dept in filteredDepartments" :key="dept.id" class="hover:bg-slate-50/50 transition">
+                                        <td class="px-6 py-4 font-bold text-slate-800">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="h-8 w-8 rounded-lg bg-teal-50 border border-teal-200 text-[#0D9488] flex items-center justify-center font-extrabold text-xs uppercase">
+                                                    {{ dept.short_name.slice(0, 3) }}
+                                                </div>
+                                                <span>{{ dept.name }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wide">
+                                                {{ dept.short_name }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div v-if="dept.department_head" class="flex items-center gap-2">
+                                                <div class="h-6 w-6 rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold flex items-center justify-center">
+                                                    {{ getInitials(dept.department_head.name) }}
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-slate-800 text-xs leading-none">{{ dept.department_head.name }}</p>
+                                                    <p class="text-[10px] text-slate-400 leading-tight mt-0.5">{{ dept.department_head.email }}</p>
+                                                </div>
+                                            </div>
+                                            <span v-else class="text-slate-400 italic">Unassigned</span>
+                                        </td>
+                                        <td class="px-6 py-4 font-bold">
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-[#0D9488] border border-teal-100">
+                                                {{ dept.sections_count }} {{ dept.sections_count === 1 ? 'Section' : 'Sections' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <button 
+                                                    @click="openEditDepartmentModal(dept)" 
+                                                    class="px-2.5 py-1 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button 
+                                                    @click="deleteDepartment(dept)" 
+                                                    class="px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-if="filteredDepartments.length === 0">
+                                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                            <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                            <p class="font-bold text-slate-600 text-sm">No departments found</p>
+                                            <p class="text-xs text-slate-400 mt-1">Get started by creating a new department.</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tab: Workflows -->
-                <div v-if="activeTab === 'workflows'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div v-else-if="activeTab === 'workflows'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Workflow Types management card -->
                     <div class="lg:col-span-1 space-y-4">
                         <div class="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 space-y-4">
@@ -1439,6 +1719,27 @@ const submitBulkAssign = () => {
                     </div>
 
                     <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Employee Type</label>
+                        <div class="flex items-center gap-6 py-2.5 px-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <label 
+                                v-for="et in employeeTypes" 
+                                :key="et.id" 
+                                class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none"
+                            >
+                                <input 
+                                    type="radio" 
+                                    name="employee_type" 
+                                    :value="et.id" 
+                                    v-model="userForm.employee_type_id" 
+                                    class="text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4" 
+                                />
+                                <span>{{ et.description }}</span>
+                            </label>
+                        </div>
+                        <div v-if="userForm.errors.employee_type_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.employee_type_id }}</div>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign to Section(s)</label>
                         <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
                             <div v-for="sec in availableSections" :key="sec.id" class="flex items-center">
@@ -1498,13 +1799,24 @@ const submitBulkAssign = () => {
 
                 <form @submit.prevent="submitSectionForm" class="p-6 space-y-4">
                     <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                        <select v-model="sectionForm.department_id" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                            <option value="" disabled>Select Department</option>
+                            <option v-for="dept in props.departments" :key="dept.id" :value="dept.id">
+                                {{ dept.name }}
+                            </option>
+                        </select>
+                        <div v-if="sectionForm.errors.department_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.department_id }}</div>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Section Name</label>
                         <input type="text" v-model="sectionForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Beta Development Section" />
                         <div v-if="sectionForm.errors.name" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.name }}</div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Section <Head></Head></label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Head</label>
                         <select v-model="sectionForm.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
                             <option value="">Unassigned</option>
                             <option v-for="m in membersList" :key="m.id" :value="m.id">
@@ -1514,34 +1826,69 @@ const submitBulkAssign = () => {
                         <div v-if="sectionForm.errors.member_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.member_id }}</div>
                     </div>
 
-                    <!-- Member Assignment List -->
+                    <!-- Member Assignment List (Shows ONLY Assigned Members with + Button) -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section Members</label>
-                        <div class="border border-slate-100 rounded-xl max-h-60 overflow-y-auto p-3 bg-slate-50/50 space-y-2">
-                            <div 
-                                v-for="m in membersList" 
-                                :key="m.id"
-                                @click="toggleMemberAssignment(m.id)"
-                                :class="[
-                                    'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer select-none transition-all',
-                                    sectionForm.member_ids.includes(m.id) 
-                                        ? 'bg-[#F0FDFA] border-teal-200 text-teal-900 shadow-sm' 
-                                        : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                                ]"
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Section Members ({{ assignedSectionMembers.length }})
+                            </label>
+                            <button 
+                                type="button" 
+                                @click="openMemberPicker"
+                                class="inline-flex items-center gap-1 text-xs font-bold text-[#0D9488] hover:text-[#0f766e] bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-lg border border-teal-200/60 transition shadow-sm"
+                                title="Add member to section"
                             >
-                                <input 
-                                    type="checkbox" 
-                                    :checked="sectionForm.member_ids.includes(m.id)" 
-                                    @click.stop 
-                                    @change="toggleMemberAssignment(m.id)"
-                                    class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
-                                />
-                                <div class="flex-1 min-w-0">
-                                    <p class="font-bold text-xs truncate leading-none text-slate-800">{{ m.name }}</p>
-                                    <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider leading-none mt-1 block">
-                                        {{ m.role }}
-                                    </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                <span>Add Member</span>
+                            </button>
+                        </div>
+
+                        <!-- List of Assigned Members Only -->
+                        <div class="border border-slate-200 rounded-xl max-h-56 overflow-y-auto p-3 bg-slate-50/50 space-y-2">
+                            <div 
+                                v-for="m in assignedSectionMembers" 
+                                :key="m.id"
+                                class="flex items-center justify-between p-2.5 rounded-lg border bg-white border-slate-200/80 shadow-sm transition-all"
+                            >
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="h-8 w-8 rounded-full bg-[#F0FDFA] border border-teal-200 text-[#0D9488] flex items-center justify-center font-bold text-xs shrink-0">
+                                        {{ getInitials(m.name) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-xs truncate leading-none text-slate-800">{{ m.name }}</p>
+                                        <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider leading-none mt-1 block">
+                                            {{ m.role }}
+                                        </span>
+                                    </div>
                                 </div>
+
+                                <button 
+                                    type="button" 
+                                    @click="removeMemberAssignment(m.id)"
+                                    class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
+                                    title="Remove member from section"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Empty State when no members assigned -->
+                            <div v-if="assignedSectionMembers.length === 0" class="text-center py-6 px-4">
+                                <svg class="w-8 h-8 mx-auto text-slate-300 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                </svg>
+                                <p class="text-xs font-medium text-slate-500">No members assigned to this section</p>
+                                <button 
+                                    type="button" 
+                                    @click="openMemberPicker"
+                                    class="mt-1.5 text-xs font-bold text-[#0D9488] hover:underline inline-flex items-center gap-1"
+                                >
+                                    <span>Click "+ Add Member" to assign</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1565,15 +1912,94 @@ const submitBulkAssign = () => {
                 </form>
             </div>
         </div>
+
+        <!-- Searchable Member Picker Modal -->
+        <div v-if="isMemberPickerOpen" class="fixed inset-0 overflow-y-auto z-[60] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeMemberPicker"></div>
+
+            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col max-h-[80vh]">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">Select Section Members</h3>
+                        <p class="text-xs text-slate-500">Search and select members to assign to this section.</p>
+                    </div>
+                    <button @click="closeMemberPicker" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-4 border-b border-slate-100 bg-white flex-shrink-0">
+                    <input 
+                        type="text" 
+                        v-model="memberPickerSearch"
+                        placeholder="Search by name, email, or role..." 
+                        class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm"
+                        autofocus
+                    />
+                </div>
+
+                <div class="p-4 overflow-y-auto flex-1 space-y-2 max-h-[340px]">
+                    <div 
+                        v-for="m in filteredPickerMembers" 
+                        :key="m.id"
+                        @click="toggleMemberAssignment(m.id)"
+                        :class="[
+                            'flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all',
+                            sectionForm.member_ids.includes(m.id) 
+                                ? 'bg-[#F0FDFA] border-teal-300 text-teal-900 shadow-sm' 
+                                : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
+                        ]"
+                    >
+                        <input 
+                            type="checkbox" 
+                            :checked="sectionForm.member_ids.includes(m.id)" 
+                            @click.stop 
+                            @change="toggleMemberAssignment(m.id)"
+                            class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-xs truncate leading-none text-slate-800">{{ m.name }}</p>
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none mt-1 block">
+                                {{ m.role }}
+                            </span>
+                        </div>
+                        <span v-if="sectionForm.member_ids.includes(m.id)" class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-100 text-teal-800">
+                            Assigned ✓
+                        </span>
+                    </div>
+
+                    <div v-if="filteredPickerMembers.length === 0" class="text-center py-8 text-slate-400">
+                        <p class="text-xs font-semibold">No members match your search query.</p>
+                    </div>
+                </div>
+
+                <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end flex-shrink-0">
+                    <button 
+                        type="button" 
+                        @click="closeMemberPicker" 
+                        class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg shadow-sm transition"
+                    >
+                        Done ({{ sectionForm.member_ids.length }} Selected)
+                    </button>
+                </div>
+            </div>
+        </div>
         <!-- Workflow Create/Edit Modal -->
         <div v-if="isWorkflowModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWorkflowModal"></div>
 
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        {{ workflowModalMode === 'create' ? 'Add' : 'Edit' }} Workflow
-                    </h3>
+            <div :class="[workflowModalMode === 'create' ? 'max-w-2xl' : 'max-w-md', 'bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden w-full z-10 transform transition-all flex flex-col max-h-[90vh]']">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">
+                            {{ workflowModalMode === 'create' ? 'Add Workflows' : 'Edit Workflow' }}
+                        </h3>
+                        <p v-if="workflowModalMode === 'create'" class="text-xs text-slate-500">
+                            Create one or multiple workflows at once.
+                        </p>
+                    </div>
                     <button @click="closeWorkflowModal" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1581,29 +2007,113 @@ const submitBulkAssign = () => {
                     </button>
                 </div>
 
-                <form @submit.prevent="submitWorkflowForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Name</label>
-                        <input type="text" v-model="workflowForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Design & Prototype" />
-                        <div v-if="workflowForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.name }}</div>
-                    </div>
+                <form @submit.prevent="submitWorkflowForm" class="p-6 overflow-y-auto space-y-4 flex-1">
+                    <!-- CREATE MODE: Multiple Workflow Rows -->
+                    <template v-if="workflowModalMode === 'create'">
+                        <div class="space-y-4">
+                            <div 
+                                v-for="(row, index) in workflowForm.workflows" 
+                                :key="index"
+                                class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 relative group"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-[#0D9488] uppercase tracking-wider">
+                                        Workflow #{{ index + 1 }}
+                                    </span>
+                                    <button 
+                                        v-if="workflowForm.workflows.length > 1" 
+                                        type="button" 
+                                        @click="removeWorkflowRow(index)"
+                                        class="text-slate-400 hover:text-rose-600 p-1 rounded transition"
+                                        title="Remove workflow row"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                        </svg>
+                                    </button>
+                                </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Display Order</label>
-                        <input type="number" v-model="workflowForm.order" required min="0" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. 1" />
-                        <div v-if="workflowForm.errors.order" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.order }}</div>
-                    </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div class="sm:col-span-5">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Workflow Name</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="row.name" 
+                                            required 
+                                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
+                                            placeholder="e.g. Design & Prototype" 
+                                        />
+                                        <div v-if="workflowForm.errors[`workflows.${index}.name`]" class="text-rose-500 text-xs mt-1">
+                                            {{ workflowForm.errors[`workflows.${index}.name`] }}
+                                        </div>
+                                    </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Type</label>
-                        <select v-model="workflowForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                            <option value="">Uncategorized / General</option>
-                            <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
-                        </select>
-                        <div v-if="workflowForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.workflow_type_id }}</div>
-                    </div>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Display Order</label>
+                                        <input 
+                                            type="number" 
+                                            v-model="row.order" 
+                                            required 
+                                            min="0" 
+                                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
+                                            placeholder="e.g. 1" 
+                                        />
+                                        <div v-if="workflowForm.errors[`workflows.${index}.order`]" class="text-rose-500 text-xs mt-1">
+                                            {{ workflowForm.errors[`workflows.${index}.order`] }}
+                                        </div>
+                                    </div>
 
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                                    <div class="sm:col-span-4">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Workflow Type</label>
+                                        <select v-model="row.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                                            <option value="">Uncategorized / General</option>
+                                            <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                        </select>
+                                        <div v-if="workflowForm.errors[`workflows.${index}.workflow_type_id`]" class="text-rose-500 text-xs mt-1">
+                                            {{ workflowForm.errors[`workflows.${index}.workflow_type_id`] }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button 
+                            type="button" 
+                            @click="addWorkflowRow" 
+                            class="w-full py-2.5 px-4 border-2 border-dashed border-slate-200 hover:border-[#0D9488] text-slate-600 hover:text-[#0D9488] text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-[#F0FDFA]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Add Another Workflow
+                        </button>
+                    </template>
+
+                    <!-- EDIT MODE: Single Workflow -->
+                    <template v-else>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Name</label>
+                            <input type="text" v-model="workflowForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Design & Prototype" />
+                            <div v-if="workflowForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.name }}</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Display Order</label>
+                            <input type="number" v-model="workflowForm.order" required min="0" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. 1" />
+                            <div v-if="workflowForm.errors.order" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.order }}</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Type</label>
+                            <select v-model="workflowForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                                <option value="">Uncategorized / General</option>
+                                <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                            </select>
+                            <div v-if="workflowForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.workflow_type_id }}</div>
+                        </div>
+                    </template>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6 flex-shrink-0">
                         <button 
                             type="button" 
                             @click="closeWorkflowModal" 
@@ -1614,9 +2124,10 @@ const submitBulkAssign = () => {
                         <button 
                             type="submit" 
                             :disabled="workflowForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
+                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm flex items-center gap-2"
                         >
-                            Save Workflow
+                            <span v-if="workflowForm.processing" class="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-white"></span>
+                            {{ workflowModalMode === 'create' ? (workflowForm.workflows.length > 1 ? `Save ${workflowForm.workflows.length} Workflows` : 'Save Workflow') : 'Save Workflow' }}
                         </button>
                     </div>
                 </form>
@@ -1755,6 +2266,78 @@ const submitBulkAssign = () => {
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Department Create/Edit Modal -->
+        <div v-if="isDepartmentModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDepartmentModal"></div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-lg">
+                        {{ departmentModalMode === 'create' ? 'Create New Department' : 'Edit Department' }}
+                    </h3>
+                    <button @click="closeDepartmentModal" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitDepartmentForm" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department Name</label>
+                        <input 
+                            type="text" 
+                            v-model="departmentForm.name" 
+                            required 
+                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
+                            placeholder="e.g. Information Technology Department" 
+                        />
+                        <div v-if="departmentForm.errors.name" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.name }}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Short Code / Abbreviation</label>
+                        <input 
+                            type="text" 
+                            v-model="departmentForm.short_name" 
+                            required 
+                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm uppercase" 
+                            placeholder="e.g. IT, HR, FIN" 
+                        />
+                        <div v-if="departmentForm.errors.short_name" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.short_name }}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department Head</label>
+                        <select v-model="departmentForm.department_head_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
+                            <option value="">Unassigned</option>
+                            <option v-for="m in membersList" :key="m.id" :value="m.id">
+                                {{ m.name }} ({{ m.role }})
+                            </option>
+                        </select>
+                        <div v-if="departmentForm.errors.department_head_id" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.department_head_id }}</div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                        <button 
+                            type="button" 
+                            @click="closeDepartmentModal" 
+                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            :disabled="departmentForm.processing"
+                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
+                        >
+                            Save Department
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 

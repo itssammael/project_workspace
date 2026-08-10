@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskBoardController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminManagementController;
 
@@ -21,16 +21,25 @@ Route::middleware([
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Projects
-    Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
-    Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
-    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
-    Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-    Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
-    Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+    // Task Boards
+    Route::get('/task-boards', [TaskBoardController::class, 'index'])->name('task-boards.index');
+    Route::get('/task-boards/create', [TaskBoardController::class, 'create'])->name('task-boards.create');
+    Route::post('/task-boards', [TaskBoardController::class, 'store'])->name('task-boards.store');
+    Route::get('/task-boards/{taskBoard}', [TaskBoardController::class, 'show'])->name('task-boards.show');
+    Route::put('/task-boards/{taskBoard}', [TaskBoardController::class, 'update'])->name('task-boards.update');
+    Route::delete('/task-boards/{taskBoard}', [TaskBoardController::class, 'destroy'])->name('task-boards.destroy');
+
+    // Legacy Route Aliases for Projects
+    Route::get('/projects', [TaskBoardController::class, 'index'])->name('projects.index');
+    Route::get('/projects/create', [TaskBoardController::class, 'create'])->name('projects.create');
+    Route::post('/projects', [TaskBoardController::class, 'store'])->name('projects.store');
+    Route::get('/projects/{taskBoard}', [TaskBoardController::class, 'show'])->name('projects.show');
+    Route::put('/projects/{taskBoard}', [TaskBoardController::class, 'update'])->name('projects.update');
+    Route::delete('/projects/{taskBoard}', [TaskBoardController::class, 'destroy'])->name('projects.destroy');
 
     // Tasks
-    Route::post('/projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::post('/task-boards/{taskBoard}/tasks', [TaskController::class, 'store'])->name('task-boards.tasks.store');
+    Route::post('/projects/{taskBoard}/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::put('/tasks/{task}/move', [TaskController::class, 'moveKanbanCard'])->name('tasks.move');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
@@ -39,6 +48,9 @@ Route::middleware([
     Route::put('/subtasks/{subTask}/status', [TaskController::class, 'updateSubtaskStatus'])->name('subtasks.update-status');
     Route::post('/subtasks/{subTask}/attachments', [TaskController::class, 'storeAttachment'])->name('subtasks.store-attachment');
     Route::post('/subtasks/{subTask}/comments', [TaskController::class, 'storeComment'])->name('subtasks.store-comment');
+
+    // Support Function Reports
+    Route::get('/support-function-reports', [App\Http\Controllers\SupportFunctionReportsController::class, 'index'])->name('support-function-reports.index');
 
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');
@@ -52,6 +64,9 @@ Route::middleware([
     Route::post('/admin/sections', [AdminManagementController::class, 'storeSection'])->name('admin.sections.store');
     Route::put('/admin/sections/{section}', [AdminManagementController::class, 'updateSection'])->name('admin.sections.update');
     Route::delete('/admin/sections/{section}', [AdminManagementController::class, 'destroySection'])->name('admin.sections.destroy');
+    Route::post('/admin/departments', [AdminManagementController::class, 'storeDepartment'])->name('admin.departments.store');
+    Route::put('/admin/departments/{department}', [AdminManagementController::class, 'updateDepartment'])->name('admin.departments.update');
+    Route::delete('/admin/departments/{department}', [AdminManagementController::class, 'destroyDepartment'])->name('admin.departments.destroy');
     Route::post('/admin/workflows', [AdminManagementController::class, 'storeWorkflow'])->name('admin.workflows.store');
     Route::put('/admin/workflows/{workflow}', [AdminManagementController::class, 'updateWorkflow'])->name('admin.workflows.update');
     Route::delete('/admin/workflows/{workflow}', [AdminManagementController::class, 'destroyWorkflow'])->name('admin.workflows.destroy');

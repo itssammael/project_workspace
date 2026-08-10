@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Models\Project;
+use App\Models\TaskBoard;
 use App\Models\Workflow;
 use App\Models\Task;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class ProjectTrackerTest extends TestCase
+class TaskBoardTrackerTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -285,7 +285,7 @@ class ProjectTrackerTest extends TestCase
     public function test_admin_can_view_project_details(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         $response = $this->actingAs($admin)->get(route('projects.show', $project->id));
@@ -298,13 +298,13 @@ class ProjectTrackerTest extends TestCase
     public function test_section_member_can_view_project_details(): void
     {
         $designer = User::where('email', 'designer@example.com')->first();
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         $response = $this->actingAs($designer)->get(route('projects.show', $project->id));
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page
-            ->component('Project/Show')
+            ->component('TaskBoard/Show')
             ->has('project')
             ->has('workflows')
         );
@@ -316,7 +316,7 @@ class ProjectTrackerTest extends TestCase
     public function test_non_section_member_cannot_view_project_details(): void
     {
         $viewer = User::where('email', 'viewer@example.com')->first();
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         $response = $this->actingAs($viewer)->get(route('projects.show', $project->id));
@@ -354,7 +354,7 @@ class ProjectTrackerTest extends TestCase
      */
     public function test_non_admin_cannot_delete_project(): void
     {
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         // Guest
@@ -373,13 +373,13 @@ class ProjectTrackerTest extends TestCase
     public function test_admin_can_delete_project(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         $response = $this->actingAs($admin)->delete(route('projects.destroy', $project->id));
-        $response->assertRedirect(route('projects.index'));
+        $response->assertRedirect(route('task-boards.index'));
 
-        $this->assertDatabaseMissing('projects', [
+        $this->assertDatabaseMissing('task_boards', [
             'id' => $project->id,
         ]);
     }
@@ -389,7 +389,7 @@ class ProjectTrackerTest extends TestCase
      */
     public function test_non_admin_cannot_update_project_section(): void
     {
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         // Guest
@@ -417,7 +417,7 @@ class ProjectTrackerTest extends TestCase
     public function test_admin_can_update_project_section(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
-        $project = Project::first();
+        $project = TaskBoard::first();
         $this->assertNotNull($project);
 
         // Create a new section to assign
@@ -460,12 +460,12 @@ class ProjectTrackerTest extends TestCase
 
         $response->assertRedirect(route('dashboard'));
 
-        $this->assertDatabaseHas('projects', [
+        $this->assertDatabaseHas('task_boards', [
             'name' => 'New Awesome Project',
             'section_id' => $section->id,
         ]);
 
-        $project = Project::where('name', 'New Awesome Project')->first();
+        $project = TaskBoard::where('name', 'New Awesome Project')->first();
         $this->assertNotNull($project);
         $this->assertEquals(count($workflows), $project->workflows()->count());
     }
@@ -662,8 +662,8 @@ class ProjectTrackerTest extends TestCase
         $response->assertRedirect();
         $this->assertDatabaseHas('system_logs', [
             'user_id' => $admin->id,
-            'action' => 'Create Project',
-            'description' => "Project 'New Logging Project' (Task Board) was created.",
+            'action' => 'Create Task Board',
+            'description' => "Task Board 'New Logging Project' was created.",
         ]);
     }
 }

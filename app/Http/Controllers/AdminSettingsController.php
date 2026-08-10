@@ -17,7 +17,7 @@ class AdminSettingsController extends Controller
      */
     public function index(Request $request): Response
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('view-admin-settings');
 
         $settings = [
             'system_name' => Setting::get('system_name', 'Project Tracker'),
@@ -38,7 +38,7 @@ class AdminSettingsController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $validated = $request->validate([
             'system_name' => 'required|string|max:255',
@@ -70,7 +70,7 @@ class AdminSettingsController extends Controller
      */
     public function storeRule(Request $request): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -108,7 +108,7 @@ class AdminSettingsController extends Controller
      */
     public function updateRule(Request $request, SystemRule $rule): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -147,7 +147,7 @@ class AdminSettingsController extends Controller
      */
     public function toggleRule(Request $request, SystemRule $rule): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $rule->enabled = !$rule->enabled;
         $rule->status = $rule->enabled ? 'active' : 'inactive';
@@ -165,7 +165,7 @@ class AdminSettingsController extends Controller
      */
     public function cloneRule(Request $request, SystemRule $rule): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $userName = $request->user()?->name ?? 'System Admin';
 
@@ -192,7 +192,7 @@ class AdminSettingsController extends Controller
      */
     public function destroyRule(Request $request, SystemRule $rule): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $name = $rule->name;
         $rule->delete();
@@ -207,7 +207,7 @@ class AdminSettingsController extends Controller
      */
     public function importRules(Request $request): RedirectResponse
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-system-settings');
 
         $validated = $request->validate([
             'rules' => 'required|array',

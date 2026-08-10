@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Project extends Model
+class TaskBoard extends Model
 {
+    protected $table = 'task_boards';
+
     protected $fillable = ['name', 'description', 'status', 'section_id', 'start_date', 'end_date'];
 
     protected $casts = [
@@ -23,17 +25,17 @@ class Project extends Model
 
     public function tasks(): HasMany
     {
-        return $this->hasMany(Task::class);
+        return $this->hasMany(Task::class, 'task_board_id');
     }
 
     public function workflows(): BelongsToMany
     {
-        return $this->belongsToMany(Workflow::class, 'project_workflow');
+        return $this->belongsToMany(Workflow::class, 'task_board_workflow', 'task_board_id', 'workflow_id');
     }
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(Member::class, 'project_members')
+        return $this->belongsToMany(Member::class, 'task_board_members', 'task_board_id', 'member_id')
             ->withPivot('member_role_id')
             ->withTimestamps();
     }

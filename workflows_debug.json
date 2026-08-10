@@ -4,75 +4,237 @@
         "name": "To do",
         "order": 0,
         "workflow_type_id": 3,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
         "tasks": [
             {
-                "id": 14,
-                "name": "MANG CHIXCK",
-                "details": "YIUY",
-                "workflow_id": 6,
-                "project_id": 2,
-                "created_at": "2026-07-17T07:52:30.000000Z",
-                "updated_at": "2026-07-17T07:52:30.000000Z",
-                "deliverables": "",
-                "start_date": "2026-02-03",
-                "duration": 5,
-                "member_id": 7,
-                "status": "completed",
+                "id": 6,
+                "name": "Perform Integration & QA Testing",
+                "details": "Write end-to-end checkout flow automation tests and run security checks.",
+                "workflow_id": 4,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "QA Checklist Report, Cypress Test Log",
+                "start_date": "2026-07-21",
+                "duration": 4,
+                "member_id": 4,
+                "status": "pending",
                 "member": {
-                    "id": 7,
-                    "user_id": 7,
-                    "created_at": "2026-07-17T07:28:45.000000Z",
-                    "updated_at": "2026-07-17T07:28:45.000000Z",
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
                     "user": {
-                        "id": 7,
-                        "name": "Erick M. Zerna",
-                        "username": "emzerna",
-                        "email": "emzerna@bayawancity.gov.ph",
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
                         "email_verified_at": null,
                         "two_factor_confirmed_at": null,
                         "current_team_id": null,
                         "profile_photo_path": null,
-                        "created_at": "2026-07-17T07:28:45.000000Z",
-                        "updated_at": "2026-07-17T07:35:09.000000Z",
-                        "role_id": 1,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=E+M+Z&color=7F9CF5&background=EBF4FF"
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
                     }
                 },
                 "sub_tasks": [
                     {
-                        "id": 15,
-                        "name": "MANG CHIX",
-                        "details": null,
-                        "deliverables": null,
-                        "duration": 5,
-                        "member_id": 7,
-                        "start_date": "2026-02-03",
-                        "status": "completed",
+                        "id": 6,
+                        "name": "Perform Integration & QA Testing Subtask",
+                        "details": "Write end-to-end checkout flow automation tests and run security checks.",
+                        "deliverables": "QA Checklist Report, Cypress Test Log",
+                        "duration": 4,
+                        "member_id": 4,
+                        "start_date": "2026-07-21",
+                        "status": "pending",
                         "member": {
-                            "id": 7,
-                            "name": "Erick M. Zerna",
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 7,
+                "name": "Staging & Production Deployment",
+                "details": "Prepare environment configs and launch to production servers.",
+                "workflow_id": 5,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Live website access, Deployment log",
+                "start_date": "2026-07-25",
+                "duration": 2,
+                "member_id": 2,
+                "status": "pending",
+                "member": {
+                    "id": 2,
+                    "user_id": 2,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 2,
+                        "name": "Paul Manager",
+                        "username": "manager",
+                        "email": "manager@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=P+M&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 7,
+                        "name": "Staging & Production Deployment Subtask",
+                        "details": "Prepare environment configs and launch to production servers.",
+                        "deliverables": "Live website access, Deployment log",
+                        "duration": 2,
+                        "member_id": 2,
+                        "start_date": "2026-07-25",
+                        "status": "pending",
+                        "member": {
+                            "id": 2,
+                            "name": "Paul Manager",
                             "role": "Project Manager"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 8,
+                "name": "Final Brand Assets Package",
+                "details": "Create SVG files for standard brand logo variations.",
+                "workflow_id": 2,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Branding Assets ZIP",
+                "start_date": "2026-06-25",
+                "duration": 2,
+                "member_id": 3,
+                "status": "pending",
+                "member": {
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 8,
+                        "name": "Final Brand Assets Package Subtask",
+                        "details": "Create SVG files for standard brand logo variations.",
+                        "deliverables": "Branding Assets ZIP",
+                        "duration": 2,
+                        "member_id": 3,
+                        "start_date": "2026-06-25",
+                        "status": "pending",
+                        "member": {
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
                         },
                         "can_comment": true,
                         "attachments": [],
                         "comments": []
                     }
                 ]
+            },
+            {
+                "id": 12,
+                "name": "Review Codebase Standards",
+                "details": "Define styling rules, directory structure guidelines, and write template scripts.",
+                "workflow_id": 6,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Style Guide MD File",
+                "start_date": "2026-07-16",
+                "duration": 2,
+                "member_id": 4,
+                "status": "pending",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 12,
+                        "name": "Standards Drafting Subtask",
+                        "details": "Define styling rules, directory structure guidelines, and write template scripts.",
+                        "deliverables": "Style Guide MD File",
+                        "duration": 2,
+                        "member_id": 4,
+                        "start_date": "2026-07-16",
+                        "status": "pending",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
             }
         ],
-        "total_tasks": 1,
-        "completed_tasks": 1,
-        "progress": 100,
+        "total_tasks": 4,
+        "completed_tasks": 0,
+        "progress": 0,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 6
         }
     },
@@ -81,127 +243,129 @@
         "name": "Requirements",
         "order": 1,
         "workflow_type_id": 1,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
         "tasks": [
             {
-                "id": 13,
-                "name": "Database Design",
-                "details": null,
+                "id": 1,
+                "name": "Define Scope & Requirements",
+                "details": "Draft functional specification documents and list third-party APIs to integrate.",
                 "workflow_id": 1,
-                "project_id": 2,
-                "created_at": "2026-07-17T07:48:42.000000Z",
-                "updated_at": "2026-07-17T07:48:42.000000Z",
-                "deliverables": "File Upload: ERD DIAGRAM, File Upload: DATATABLES",
-                "start_date": "2026-02-03",
-                "duration": 3,
-                "member_id": 8,
-                "status": "in_progress",
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Functional Specs PDF, API Registry Spreadsheet",
+                "start_date": "2026-07-01",
+                "duration": 4,
+                "member_id": 2,
+                "status": "completed",
                 "member": {
-                    "id": 8,
-                    "user_id": 8,
-                    "created_at": "2026-07-17T07:33:07.000000Z",
-                    "updated_at": "2026-07-17T07:33:07.000000Z",
+                    "id": 2,
+                    "user_id": 2,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
                     "user": {
-                        "id": 8,
-                        "name": "Lucille V. Marinda",
-                        "username": "lvmarinda",
-                        "email": "lvmarinda@bayawancity.gov.ph",
+                        "id": 2,
+                        "name": "Paul Manager",
+                        "username": "manager",
+                        "email": "manager@example.com",
                         "email_verified_at": null,
                         "two_factor_confirmed_at": null,
                         "current_team_id": null,
                         "profile_photo_path": null,
-                        "created_at": "2026-07-17T07:33:06.000000Z",
-                        "updated_at": "2026-07-17T07:33:06.000000Z",
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
                         "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=L+V+M&color=7F9CF5&background=EBF4FF"
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=P+M&color=7F9CF5&background=EBF4FF"
                     }
                 },
                 "sub_tasks": [
                     {
-                        "id": 13,
-                        "name": "ERD\/SCHEMA",
-                        "details": "KO",
-                        "deliverables": "File Upload: ERD DIAGRAM",
-                        "duration": 3,
-                        "member_id": 8,
-                        "start_date": "2026-02-03",
-                        "status": "pending",
-                        "member": {
-                            "id": 8,
-                            "name": "Lucille V. Marinda",
-                            "role": "System Analyst"
-                        },
-                        "can_comment": true,
-                        "attachments": [
-                            {
-                                "id": 1,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784274917_2026-ESIGN-ICT-00212.pdf"
-                            }
-                        ],
-                        "comments": [
-                            {
-                                "id": 1,
-                                "comment": "Hi mama!",
-                                "created_at": "2026-07-17T07:54:11+00:00",
-                                "member": {
-                                    "id": 1,
-                                    "name": "Alamein Tabunda"
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "id": 14,
-                        "name": "DATATABLES",
-                        "details": null,
-                        "deliverables": "File Upload: DATATABLES",
-                        "duration": 1,
-                        "member_id": 10,
-                        "start_date": "2026-02-03",
-                        "status": "pending",
-                        "member": {
-                            "id": 10,
-                            "name": "Ma. Carmen T. Elnar",
-                            "role": "System Analyst"
-                        },
-                        "can_comment": true,
-                        "attachments": [],
-                        "comments": []
-                    },
-                    {
-                        "id": 16,
-                        "name": "Table Relationships \/ Foreign Keys",
-                        "details": "Set table relationship and assign foreign keys.",
-                        "deliverables": null,
-                        "duration": 1,
-                        "member_id": 7,
-                        "start_date": "2026-02-05",
+                        "id": 1,
+                        "name": "Define Scope & Requirements Subtask",
+                        "details": "Draft functional specification documents and list third-party APIs to integrate.",
+                        "deliverables": "Functional Specs PDF, API Registry Spreadsheet",
+                        "duration": 4,
+                        "member_id": 2,
+                        "start_date": "2026-07-01",
                         "status": "completed",
                         "member": {
-                            "id": 7,
-                            "name": "Erick M. Zerna",
+                            "id": 2,
+                            "name": "Paul Manager",
                             "role": "Project Manager"
                         },
-                        "can_comment": true,
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "name": "Design Database Architecture",
+                "details": "Draft relational schemas and plan performance optimization\/indexes.",
+                "workflow_id": 1,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "DB Schema Diagram, Migration Scripts",
+                "start_date": "2026-07-05",
+                "duration": 3,
+                "member_id": 4,
+                "status": "completed",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 2,
+                        "name": "Design Database Architecture Subtask",
+                        "details": "Draft relational schemas and plan performance optimization\/indexes.",
+                        "deliverables": "DB Schema Diagram, Migration Scripts",
+                        "duration": 3,
+                        "member_id": 4,
+                        "start_date": "2026-07-05",
+                        "status": "completed",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
                         "attachments": [],
                         "comments": []
                     }
                 ]
             }
         ],
-        "total_tasks": 1,
-        "completed_tasks": 0,
-        "progress": 0,
+        "total_tasks": 2,
+        "completed_tasks": 2,
+        "progress": 100,
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 1
         }
     },
@@ -210,20 +374,129 @@
         "name": "Design",
         "order": 2,
         "workflow_type_id": 1,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [
+            {
+                "id": 3,
+                "name": "Create High-Fidelity UI Mockups",
+                "details": "Design interfaces for homepage, product detail page, and checkout process.",
+                "workflow_id": 2,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Figma Prototype Link",
+                "start_date": "2026-07-08",
+                "duration": 5,
+                "member_id": 3,
+                "status": "completed",
+                "member": {
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 3,
+                        "name": "Create High-Fidelity UI Mockups Subtask",
+                        "details": "Design interfaces for homepage, product detail page, and checkout process.",
+                        "deliverables": "Figma Prototype Link",
+                        "duration": 5,
+                        "member_id": 3,
+                        "start_date": "2026-07-08",
+                        "status": "completed",
+                        "member": {
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 8,
+                "name": "Final Brand Assets Package",
+                "details": "Create SVG files for standard brand logo variations.",
+                "workflow_id": 2,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Branding Assets ZIP",
+                "start_date": "2026-06-25",
+                "duration": 2,
+                "member_id": 3,
+                "status": "pending",
+                "member": {
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 8,
+                        "name": "Final Brand Assets Package Subtask",
+                        "details": "Create SVG files for standard brand logo variations.",
+                        "deliverables": "Branding Assets ZIP",
+                        "duration": 2,
+                        "member_id": 3,
+                        "start_date": "2026-06-25",
+                        "status": "pending",
+                        "member": {
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 2,
+        "completed_tasks": 1,
+        "progress": 50,
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 2
         }
     },
@@ -232,110 +505,396 @@
         "name": "Doing",
         "order": 2,
         "workflow_type_id": 3,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
         "tasks": [
             {
-                "id": 13,
-                "name": "Database Design",
-                "details": null,
-                "workflow_id": 1,
-                "project_id": 2,
-                "created_at": "2026-07-17T07:48:42.000000Z",
-                "updated_at": "2026-07-17T07:48:42.000000Z",
-                "deliverables": "File Upload: ERD DIAGRAM, File Upload: DATATABLES",
-                "start_date": "2026-02-03",
-                "duration": 3,
-                "member_id": 8,
+                "id": 4,
+                "name": "Frontend Assembly & Component Styling",
+                "details": "Implement designs in Vue 3 with responsive layout structures.",
+                "workflow_id": 3,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Vue files pushed to repository",
+                "start_date": "2026-07-13",
+                "duration": 6,
+                "member_id": 3,
                 "status": "in_progress",
                 "member": {
-                    "id": 8,
-                    "user_id": 8,
-                    "created_at": "2026-07-17T07:33:07.000000Z",
-                    "updated_at": "2026-07-17T07:33:07.000000Z",
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
                     "user": {
-                        "id": 8,
-                        "name": "Lucille V. Marinda",
-                        "username": "lvmarinda",
-                        "email": "lvmarinda@bayawancity.gov.ph",
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
                         "email_verified_at": null,
                         "two_factor_confirmed_at": null,
                         "current_team_id": null,
                         "profile_photo_path": null,
-                        "created_at": "2026-07-17T07:33:06.000000Z",
-                        "updated_at": "2026-07-17T07:33:06.000000Z",
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
                         "role_id": 2,
-                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=L+V+M&color=7F9CF5&background=EBF4FF"
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
                     }
                 },
                 "sub_tasks": [
                     {
-                        "id": 13,
-                        "name": "ERD\/SCHEMA",
-                        "details": "KO",
-                        "deliverables": "File Upload: ERD DIAGRAM",
-                        "duration": 3,
-                        "member_id": 8,
-                        "start_date": "2026-02-03",
-                        "status": "pending",
+                        "id": 4,
+                        "name": "Frontend Assembly & Component Styling Subtask",
+                        "details": "Implement designs in Vue 3 with responsive layout structures.",
+                        "deliverables": "Vue files pushed to repository",
+                        "duration": 6,
+                        "member_id": 3,
+                        "start_date": "2026-07-13",
+                        "status": "in_progress",
                         "member": {
-                            "id": 8,
-                            "name": "Lucille V. Marinda",
-                            "role": "System Analyst"
-                        },
-                        "can_comment": true,
-                        "attachments": [
-                            {
-                                "id": 1,
-                                "attachment_type": "File Upload",
-                                "attachment": "1784274917_2026-ESIGN-ICT-00212.pdf"
-                            }
-                        ],
-                        "comments": [
-                            {
-                                "id": 1,
-                                "comment": "Hi mama!",
-                                "created_at": "2026-07-17T07:54:11+00:00",
-                                "member": {
-                                    "id": 1,
-                                    "name": "Alamein Tabunda"
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "id": 14,
-                        "name": "DATATABLES",
-                        "details": null,
-                        "deliverables": "File Upload: DATATABLES",
-                        "duration": 1,
-                        "member_id": 10,
-                        "start_date": "2026-02-03",
-                        "status": "pending",
-                        "member": {
-                            "id": 10,
-                            "name": "Ma. Carmen T. Elnar",
-                            "role": "System Analyst"
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
                         },
                         "can_comment": true,
                         "attachments": [],
                         "comments": []
-                    },
+                    }
+                ]
+            },
+            {
+                "id": 5,
+                "name": "Implement Backend Checkout API",
+                "details": "Construct controller logic and integrate Stripe payment processing.",
+                "workflow_id": 3,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Checkout endpoints, Stripe integration unit tests",
+                "start_date": "2026-07-13",
+                "duration": 8,
+                "member_id": 4,
+                "status": "in_progress",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
                     {
-                        "id": 16,
-                        "name": "Table Relationships \/ Foreign Keys",
-                        "details": "Set table relationship and assign foreign keys.",
-                        "deliverables": null,
-                        "duration": 1,
-                        "member_id": 7,
-                        "start_date": "2026-02-05",
-                        "status": "completed",
+                        "id": 5,
+                        "name": "Implement Backend Checkout API Subtask",
+                        "details": "Construct controller logic and integrate Stripe payment processing.",
+                        "deliverables": "Checkout endpoints, Stripe integration unit tests",
+                        "duration": 8,
+                        "member_id": 4,
+                        "start_date": "2026-07-13",
+                        "status": "in_progress",
                         "member": {
-                            "id": 7,
-                            "name": "Erick M. Zerna",
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 11,
+                "name": "Draft Project Roadmap",
+                "details": "List timeline phases, identify milestones, and draft subtask plans.",
+                "workflow_id": 7,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Gantt Chart Setup Draft",
+                "start_date": "2026-07-14",
+                "duration": 4,
+                "member_id": 2,
+                "status": "in_progress",
+                "member": {
+                    "id": 2,
+                    "user_id": 2,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 2,
+                        "name": "Paul Manager",
+                        "username": "manager",
+                        "email": "manager@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=P+M&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 11,
+                        "name": "Roadmap Drafting Subtask",
+                        "details": "List timeline phases, identify milestones, and draft subtask plans.",
+                        "deliverables": "Gantt Chart Setup Draft",
+                        "duration": 4,
+                        "member_id": 2,
+                        "start_date": "2026-07-14",
+                        "status": "in_progress",
+                        "member": {
+                            "id": 2,
+                            "name": "Paul Manager",
                             "role": "Project Manager"
                         },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 3,
+        "completed_tasks": 0,
+        "progress": 0,
+        "workflow_type": {
+            "id": 3,
+            "name": "Kanban",
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
+        },
+        "pivot": {
+            "project_id": 1,
+            "workflow_id": 7
+        }
+    },
+    {
+        "id": 3,
+        "name": "Development",
+        "order": 3,
+        "workflow_type_id": 1,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [
+            {
+                "id": 4,
+                "name": "Frontend Assembly & Component Styling",
+                "details": "Implement designs in Vue 3 with responsive layout structures.",
+                "workflow_id": 3,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Vue files pushed to repository",
+                "start_date": "2026-07-13",
+                "duration": 6,
+                "member_id": 3,
+                "status": "in_progress",
+                "member": {
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 4,
+                        "name": "Frontend Assembly & Component Styling Subtask",
+                        "details": "Implement designs in Vue 3 with responsive layout structures.",
+                        "deliverables": "Vue files pushed to repository",
+                        "duration": 6,
+                        "member_id": 3,
+                        "start_date": "2026-07-13",
+                        "status": "in_progress",
+                        "member": {
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
+                        },
                         "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 5,
+                "name": "Implement Backend Checkout API",
+                "details": "Construct controller logic and integrate Stripe payment processing.",
+                "workflow_id": 3,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Checkout endpoints, Stripe integration unit tests",
+                "start_date": "2026-07-13",
+                "duration": 8,
+                "member_id": 4,
+                "status": "in_progress",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 5,
+                        "name": "Implement Backend Checkout API Subtask",
+                        "details": "Construct controller logic and integrate Stripe payment processing.",
+                        "deliverables": "Checkout endpoints, Stripe integration unit tests",
+                        "duration": 8,
+                        "member_id": 4,
+                        "start_date": "2026-07-13",
+                        "status": "in_progress",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 2,
+        "completed_tasks": 0,
+        "progress": 0,
+        "workflow_type": {
+            "id": 1,
+            "name": "Software Development",
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
+        },
+        "pivot": {
+            "project_id": 1,
+            "workflow_id": 3
+        }
+    },
+    {
+        "id": 8,
+        "name": "Submitted",
+        "order": 3,
+        "workflow_type_id": 3,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [],
+        "total_tasks": 0,
+        "completed_tasks": 0,
+        "progress": 0,
+        "workflow_type": {
+            "id": 3,
+            "name": "Kanban",
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
+        },
+        "pivot": {
+            "project_id": 1,
+            "workflow_id": 8
+        }
+    },
+    {
+        "id": 4,
+        "name": "Testing",
+        "order": 4,
+        "workflow_type_id": 1,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [
+            {
+                "id": 6,
+                "name": "Perform Integration & QA Testing",
+                "details": "Write end-to-end checkout flow automation tests and run security checks.",
+                "workflow_id": 4,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "QA Checklist Report, Cypress Test Log",
+                "start_date": "2026-07-21",
+                "duration": 4,
+                "member_id": 4,
+                "status": "pending",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 6,
+                        "name": "Perform Integration & QA Testing Subtask",
+                        "details": "Write end-to-end checkout flow automation tests and run security checks.",
+                        "deliverables": "QA Checklist Report, Cypress Test Log",
+                        "duration": 4,
+                        "member_id": 4,
+                        "start_date": "2026-07-21",
+                        "status": "pending",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
                         "attachments": [],
                         "comments": []
                     }
@@ -346,79 +905,13 @@
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
-            "id": 3,
-            "name": "Kanban",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
-        },
-        "pivot": {
-            "project_id": 2,
-            "workflow_id": 7
-        }
-    },
-    {
-        "id": 3,
-        "name": "Development",
-        "order": 3,
-        "workflow_type_id": 1,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
-        "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
-            "workflow_id": 3
-        }
-    },
-    {
-        "id": 8,
-        "name": "Submitted",
-        "order": 3,
-        "workflow_type_id": 3,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
-        "workflow_type": {
-            "id": 3,
-            "name": "Kanban",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
-        },
-        "pivot": {
-            "project_id": 2,
-            "workflow_id": 8
-        }
-    },
-    {
-        "id": 4,
-        "name": "Testing",
-        "order": 4,
-        "workflow_type_id": 1,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
-        "workflow_type": {
-            "id": 1,
-            "name": "Software Development",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
-        },
-        "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 4
         }
     },
@@ -427,20 +920,291 @@
         "name": "Completed",
         "order": 4,
         "workflow_type_id": 3,
-        "created_at": "2026-07-17T07:12:32.000000Z",
-        "updated_at": "2026-07-17T07:12:32.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
-        "completed_tasks": 0,
-        "progress": 0,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [
+            {
+                "id": 1,
+                "name": "Define Scope & Requirements",
+                "details": "Draft functional specification documents and list third-party APIs to integrate.",
+                "workflow_id": 1,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Functional Specs PDF, API Registry Spreadsheet",
+                "start_date": "2026-07-01",
+                "duration": 4,
+                "member_id": 2,
+                "status": "completed",
+                "member": {
+                    "id": 2,
+                    "user_id": 2,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 2,
+                        "name": "Paul Manager",
+                        "username": "manager",
+                        "email": "manager@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=P+M&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 1,
+                        "name": "Define Scope & Requirements Subtask",
+                        "details": "Draft functional specification documents and list third-party APIs to integrate.",
+                        "deliverables": "Functional Specs PDF, API Registry Spreadsheet",
+                        "duration": 4,
+                        "member_id": 2,
+                        "start_date": "2026-07-01",
+                        "status": "completed",
+                        "member": {
+                            "id": 2,
+                            "name": "Paul Manager",
+                            "role": "Project Manager"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "name": "Design Database Architecture",
+                "details": "Draft relational schemas and plan performance optimization\/indexes.",
+                "workflow_id": 1,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "DB Schema Diagram, Migration Scripts",
+                "start_date": "2026-07-05",
+                "duration": 3,
+                "member_id": 4,
+                "status": "completed",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 2,
+                        "name": "Design Database Architecture Subtask",
+                        "details": "Draft relational schemas and plan performance optimization\/indexes.",
+                        "deliverables": "DB Schema Diagram, Migration Scripts",
+                        "duration": 3,
+                        "member_id": 4,
+                        "start_date": "2026-07-05",
+                        "status": "completed",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "name": "Create High-Fidelity UI Mockups",
+                "details": "Design interfaces for homepage, product detail page, and checkout process.",
+                "workflow_id": 2,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Figma Prototype Link",
+                "start_date": "2026-07-08",
+                "duration": 5,
+                "member_id": 3,
+                "status": "completed",
+                "member": {
+                    "id": 3,
+                    "user_id": 3,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 3,
+                        "name": "Diana Designer",
+                        "username": "designer",
+                        "email": "designer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 3,
+                        "name": "Create High-Fidelity UI Mockups Subtask",
+                        "details": "Design interfaces for homepage, product detail page, and checkout process.",
+                        "deliverables": "Figma Prototype Link",
+                        "duration": 5,
+                        "member_id": 3,
+                        "start_date": "2026-07-08",
+                        "status": "completed",
+                        "member": {
+                            "id": 3,
+                            "name": "Diana Designer",
+                            "role": "UI\/UX Designer"
+                        },
+                        "can_comment": true,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 9,
+                "name": "Setup Git Repository",
+                "details": "Initialize repo, setup main\/dev branches, protect branches, and configure CI\/CD starter templates.",
+                "workflow_id": 9,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "GitHub Repository Link, Branch Protection Rules",
+                "start_date": "2026-07-01",
+                "duration": 2,
+                "member_id": 4,
+                "status": "completed",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 9,
+                        "name": "Repository Setup Subtask",
+                        "details": "Initialize repo, setup main\/dev branches, protect branches, and configure CI\/CD starter templates.",
+                        "deliverables": "GitHub Repository Link, Branch Protection Rules",
+                        "duration": 2,
+                        "member_id": 4,
+                        "start_date": "2026-07-01",
+                        "status": "completed",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            },
+            {
+                "id": 10,
+                "name": "Configure Dev Environment",
+                "details": "Install packages, setup vite plugins, and verify local development server.",
+                "workflow_id": 9,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Working local dev environments",
+                "start_date": "2026-07-03",
+                "duration": 1,
+                "member_id": 4,
+                "status": "completed",
+                "member": {
+                    "id": 4,
+                    "user_id": 4,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 4,
+                        "name": "Devon Developer",
+                        "username": "developer",
+                        "email": "developer@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=D+D&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 10,
+                        "name": "Environment Setup Subtask",
+                        "details": "Install packages, setup vite plugins, and verify local development server.",
+                        "deliverables": "Working local dev environments",
+                        "duration": 1,
+                        "member_id": 4,
+                        "start_date": "2026-07-03",
+                        "status": "completed",
+                        "member": {
+                            "id": 4,
+                            "name": "Devon Developer",
+                            "role": "Lead Developer"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 5,
+        "completed_tasks": 5,
+        "progress": 100,
         "workflow_type": {
             "id": 3,
             "name": "Kanban",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 9
         }
     },
@@ -449,20 +1213,75 @@
         "name": "Deployment",
         "order": 5,
         "workflow_type_id": 1,
-        "created_at": "2026-07-17T07:12:31.000000Z",
-        "updated_at": "2026-07-17T07:12:31.000000Z",
-        "tasks": [],
-        "total_tasks": 0,
+        "created_at": "2026-08-09T17:53:14.000000Z",
+        "updated_at": "2026-08-09T17:53:14.000000Z",
+        "tasks": [
+            {
+                "id": 7,
+                "name": "Staging & Production Deployment",
+                "details": "Prepare environment configs and launch to production servers.",
+                "workflow_id": 5,
+                "project_id": 1,
+                "created_at": "2026-08-09T17:53:14.000000Z",
+                "updated_at": "2026-08-09T17:53:14.000000Z",
+                "deliverables": "Live website access, Deployment log",
+                "start_date": "2026-07-25",
+                "duration": 2,
+                "member_id": 2,
+                "status": "pending",
+                "member": {
+                    "id": 2,
+                    "user_id": 2,
+                    "created_at": "2026-08-09T17:53:14.000000Z",
+                    "updated_at": "2026-08-09T17:53:14.000000Z",
+                    "user": {
+                        "id": 2,
+                        "name": "Paul Manager",
+                        "username": "manager",
+                        "email": "manager@example.com",
+                        "email_verified_at": null,
+                        "two_factor_confirmed_at": null,
+                        "current_team_id": null,
+                        "profile_photo_path": null,
+                        "created_at": "2026-08-09T17:53:14.000000Z",
+                        "updated_at": "2026-08-09T17:53:14.000000Z",
+                        "role_id": 2,
+                        "profile_photo_url": "https:\/\/ui-avatars.com\/api\/?name=P+M&color=7F9CF5&background=EBF4FF"
+                    }
+                },
+                "sub_tasks": [
+                    {
+                        "id": 7,
+                        "name": "Staging & Production Deployment Subtask",
+                        "details": "Prepare environment configs and launch to production servers.",
+                        "deliverables": "Live website access, Deployment log",
+                        "duration": 2,
+                        "member_id": 2,
+                        "start_date": "2026-07-25",
+                        "status": "pending",
+                        "member": {
+                            "id": 2,
+                            "name": "Paul Manager",
+                            "role": "Project Manager"
+                        },
+                        "can_comment": false,
+                        "attachments": [],
+                        "comments": []
+                    }
+                ]
+            }
+        ],
+        "total_tasks": 1,
         "completed_tasks": 0,
         "progress": 0,
         "workflow_type": {
             "id": 1,
             "name": "Software Development",
-            "created_at": "2026-07-17T07:12:30.000000Z",
-            "updated_at": "2026-07-17T07:12:30.000000Z"
+            "created_at": "2026-08-09T17:53:14.000000Z",
+            "updated_at": "2026-08-09T17:53:14.000000Z"
         },
         "pivot": {
-            "project_id": 2,
+            "project_id": 1,
             "workflow_id": 5
         }
     }

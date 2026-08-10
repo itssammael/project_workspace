@@ -54,13 +54,16 @@ const logout = () => {
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Dashboard
                                 </NavLink>
-                                <NavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
+                                <NavLink :href="route('task-boards.index')" :active="route().current('task-boards.index') || route().current('task-boards.show') || route().current('task-boards.create') || route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
                                     Task Boards
                                 </NavLink>
-                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin' || ($page.props.auth.user.member && $page.props.auth.user.member.member_roles?.some(r => r.slug === 'admin_staff'))" :href="route('admin.management')" :active="route().current('admin.management')">
+                                <NavLink v-if="$page.props.can?.access_support_function_reports" :href="route('support-function-reports.index')" :active="route().current('support-function-reports.index')">
+                                    Support Function Reports
+                                </NavLink>
+                                <NavLink v-if="$page.props.can?.access_admin_management" :href="route('admin.management')" :active="route().current('admin.management')">
                                     Management
                                 </NavLink>
-                                <NavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">
+                                <NavLink v-if="$page.props.can?.access_admin_settings" :href="route('admin.settings')" :active="route().current('admin.settings')">
                                     Settings
                                 </NavLink>
                             </div>
@@ -206,13 +209,16 @@ const logout = () => {
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Dashboard
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('projects.index')" :active="route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
+                        <ResponsiveNavLink :href="route('task-boards.index')" :active="route().current('task-boards.index') || route().current('task-boards.show') || route().current('task-boards.create') || route().current('projects.index') || route().current('projects.show') || route().current('projects.create')">
                             Task Boards
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin' || ($page.props.auth.user.member && $page.props.auth.user.member.member_roles?.some(r => r.slug === 'admin_staff'))" :href="route('admin.management')" :active="route().current('admin.management')">
+                        <ResponsiveNavLink v-if="$page.props.can?.access_support_function_reports" :href="route('support-function-reports.index')" :active="route().current('support-function-reports.index')">
+                            Support Function Reports
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.can?.access_admin_management" :href="route('admin.management')" :active="route().current('admin.management')">
                             Management
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="$page.props.auth.user.role?.slug === 'admin'" :href="route('admin.settings')" :active="route().current('admin.settings')">
+                        <ResponsiveNavLink v-if="$page.props.can?.access_admin_settings" :href="route('admin.settings')" :active="route().current('admin.settings')">
                             Settings
                         </ResponsiveNavLink>
                     </div>

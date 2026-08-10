@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
+use App\Models\TaskBoard;
 use App\Models\Section;
 use App\Models\Workflow;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class ProjectController extends Controller
+class TaskBoardController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -19,59 +19,66 @@ class ProjectController extends Controller
         $member = $user->member;
 
         if ($user->hasRole('admin')) {
-            $projectsQuery = Project::with(['section.projectManager.user', 'tasks.subTasks']);
+            $taskBoardsQuery = TaskBoard::with(['section.projectManager.user', 'tasks.subTasks']);
         } else {
             $sectionIds = $member ? $member->sections->pluck('id')->toArray() : [];
-            $projectsQuery = Project::whereIn('section_id', $sectionIds)->with(['section.projectManager.user', 'tasks.subTasks']);
+            $taskBoardsQuery = TaskBoard::whereIn('section_id', $sectionIds)->with(['section.projectManager.user', 'tasks.subTasks']);
         }
 
-        $projects = $projectsQuery->get()->map(function (Project $project) {
-            $subTasks = $project->tasks->flatMap->subTasks;
+        $taskBoards = $taskBoardsQuery->get()->map(function (TaskBoard $taskBoard) {
+            $subTasks = $taskBoard->tasks->flatMap->subTasks;
             $totalTasks = $subTasks->count();
             $completedTasks = $subTasks->where('status', 'completed')->count();
             
-            $project->total_tasks = $totalTasks;
-            $project->completed_tasks = $completedTasks;
-            $project->progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
-            return $project;
+            $taskBoard->total_tasks = $totalTasks;
+            $taskBoard->completed_tasks = $completedTasks;
+            $taskBoard->progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
+            return $taskBoard;
         });
 
-        $canCreateProjects = Gate::allows('create-projects');
-        $canDeleteProjects = $user->hasRole('admin');
+        $canCreateTaskBoards = Gate::allows('create-task-boards') || Gate::allows('create-projects');
+        $canDeleteTaskBoards = Gate::allows('delete-task-board') || Gate::allows('delete-project');
 
-        return Inertia::render('Project/Index', [
-            'projects' => $projects,
-            'canCreateProjects' => $canCreateProjects,
-            'canDeleteProjects' => $canDeleteProjects,
+        return Inertia::render('TaskBoard/Index', [
+            'taskBoards' => $taskBoards,
+            'projects' => $taskBoards,
+            'canCreateTaskBoards' => $canCreateTaskBoards,
+            'canCreateProjects' => $canCreateTaskBoards,
+            'canDeleteTaskBoards' => $canDeleteTaskBoards,
+            'canDeleteProjects' => $canDeleteTaskBoards,
         ]);
     }
 
-    public function show(Request $request, Project $project): Response
+    public function show(Request $request, TaskBoard $taskBoard): Response
     {
-        Gate::authorize('view-project', $project);
+        if (Gate::has('view-task-board')) {
+            Gate::authorize('view-task-board', $taskBoard);
+        } else {
+            Gate::authorize('view-project', $taskBoard);
+        }
 
-        // Load section, assigned project members, tasks and phases
-        $project->load(['section.projectManager.user', 'section.members.user', 'members.user', 'members.memberRoles']);
+        // Load section, assigned members, tasks and workflows
+        $taskBoard->load(['section.projectManager.user', 'section.members.user', 'members.user', 'members.memberRoles']);
 
-        $project->members->transform(function ($m) {
+        $taskBoard->members->transform(function ($m) {
             $projectRole = \App\Models\MemberRole::find($m->pivot->member_role_id);
             $m->project_role = $projectRole ? $projectRole->name : 'Member';
             return $m;
         });
 
-        // Project-level progress
-        $taskIds = $project->tasks()->pluck('id');
+        // TaskBoard-level progress
+        $taskIds = $taskBoard->tasks()->pluck('id');
         $totalTasks = \App\Models\SubTask::whereIn('task_id', $taskIds)->count();
         $completedTasks = \App\Models\SubTask::whereIn('task_id', $taskIds)->where('status', 'completed')->count();
-        $project->total_tasks = $totalTasks;
-        $project->completed_tasks = $completedTasks;
-        $project->progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
+        $taskBoard->total_tasks = $totalTasks;
+        $taskBoard->completed_tasks = $completedTasks;
+        $taskBoard->progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
 
-        // Fetch all tasks for the project with their subtasks up front
-        $allTasks = $project->tasks()->with(['subTasks.member.user'])->get();
+        // Fetch all tasks for the task board with their subtasks up front
+        $allTasks = $taskBoard->tasks()->with(['subTasks.member.user'])->get();
 
         // Populate tasks with computed attributes
-        $allTasks->transform(function ($task) use ($project, $request) {
+        $allTasks->transform(function ($task) use ($taskBoard, $request) {
             $subTasks = $task->subTasks;
             if ($subTasks->isNotEmpty()) {
                 $task->deliverables = $subTasks->pluck('deliverables')->filter()->implode(', ');
@@ -124,10 +131,10 @@ class ProjectController extends Controller
             }
             
             // Expose sub_tasks list to the frontend
-            $mappedSubTasks = $subTasks->map(function ($st) use ($project, $request) {
+            $mappedSubTasks = $subTasks->map(function ($st) use ($taskBoard, $request) {
                 $projectMemberRole = \App\Models\MemberRole::find(
-                    \Illuminate\Support\Facades\DB::table('project_members')
-                        ->where('project_id', $project->id)
+                    \Illuminate\Support\Facades\DB::table('task_board_members')
+                        ->where('task_board_id', $taskBoard->id)
                         ->where('member_id', $st->member_id)
                         ->value('member_role_id')
                 );
@@ -138,8 +145,8 @@ class ProjectController extends Controller
                 $isAssignee = $member && $st->member_id === $member->id;
                 
                 $isPM = $member && $member->memberRoles()->where('slug', 'project_manager')->exists() && 
-                        $project->section && 
-                        $project->section->member_id === $member->id;
+                        $taskBoard->section && 
+                        $taskBoard->section->member_id === $member->id;
 
                 $isDeptHead = $member && $member->memberRoles()->where('slug', 'department_head')->exists();
                 
@@ -196,15 +203,14 @@ class ProjectController extends Controller
             return $task;
         });
 
-        // Load the project's workflows and identify which ones belong to the "Kanban" workflow type
-        $workflowsList = $project->workflows()->with('workflowType')->orderBy('order', 'asc')->get();
+        // Load the task board's workflows and identify which ones belong to the "Kanban" workflow type
+        $workflowsList = $taskBoard->workflows()->with('workflowType')->orderBy('order', 'asc')->get();
         $kanbanWorkflowIds = $workflowsList->filter(fn($w) => $w->workflowType?->name === 'Kanban')->pluck('id')->toArray();
 
-        $workflows = $workflowsList->map(function ($workflow) use ($project, $allTasks, $kanbanWorkflowIds) {
+        $workflows = $workflowsList->map(function ($workflow) use ($allTasks, $kanbanWorkflowIds) {
             $isKanban = $workflow->workflowType?->name === 'Kanban';
             
             if ($isKanban) {
-                // Determine target status for this Kanban workflow stage
                 $nameLower = strtolower($workflow->name);
                 $targetStatus = 'pending';
                 if ($nameLower === 'to do' || $nameLower === 'to-do' || $nameLower === 'todo') {
@@ -217,9 +223,6 @@ class ProjectController extends Controller
                     $targetStatus = 'completed';
                 }
 
-                // Filter tasks that:
-                // - are directly in this Kanban workflow
-                // - OR are in a user-selected (non-Kanban) workflow AND their status is $targetStatus
                 $tasks = $allTasks->filter(function ($task) use ($workflow, $kanbanWorkflowIds, $targetStatus) {
                     $directlyInWorkflow = $task->workflow_id === $workflow->id;
                     $isUserSelectedWorkflow = !in_array($task->workflow_id, $kanbanWorkflowIds);
@@ -228,7 +231,6 @@ class ProjectController extends Controller
                     return $directlyInWorkflow || ($isUserSelectedWorkflow && $matchesStatus);
                 })->values();
             } else {
-                // For non-Kanban (user-selected) workflows: Only show tasks directly in this workflow
                 $tasks = $allTasks->filter(function ($task) use ($workflow) {
                     return $task->workflow_id === $workflow->id;
                 })->values();
@@ -246,13 +248,8 @@ class ProjectController extends Controller
             return $workflow;
         });
 
-        \Illuminate\Support\Facades\File::put(
-            base_path('workflows_debug.json'),
-            json_encode($workflows, JSON_PRETTY_PRINT)
-        );
-
-        // Restrict assignable members to members assigned to this specific project
-        $teamMembers = $project->members->map(function ($m) {
+        // Restrict assignable members to members assigned to this specific task board
+        $teamMembers = $taskBoard->members->map(function ($m) {
             return [
                 'id' => $m->id,
                 'name' => $m->user->name,
@@ -261,7 +258,9 @@ class ProjectController extends Controller
             ];
         });
 
-        $sections = Gate::allows('update-project', $project)
+        $canUpdate = Gate::allows('update-task-board', $taskBoard) || Gate::allows('update-project', $taskBoard);
+
+        $sections = $canUpdate
             ? Section::with(['members.user', 'members.memberRoles'])->get()->map(function ($t) {
                 return [
                     'id' => $t->id,
@@ -289,13 +288,16 @@ class ProjectController extends Controller
             'created_at' => $att->created_at->toIso8601String(),
         ]);
 
-        return Inertia::render('Project/Show', [
-            'project' => $project,
+        return Inertia::render('TaskBoard/Show', [
+            'taskBoard' => $taskBoard,
+            'project' => $taskBoard,
             'workflows' => $workflows,
             'teamMembers' => $teamMembers,
-            'canManageTasks' => Gate::allows('manage-tasks', $project),
-            'canDeleteProject' => $request->user()->hasRole('admin'),
-            'canUpdateProject' => Gate::allows('update-project', $project),
+            'canManageTasks' => Gate::allows('manage-tasks', $taskBoard),
+            'canDeleteTaskBoard' => Gate::allows('delete-task-board') || Gate::allows('delete-project'),
+            'canDeleteProject' => Gate::allows('delete-task-board') || Gate::allows('delete-project'),
+            'canUpdateTaskBoard' => $canUpdate,
+            'canUpdateProject' => $canUpdate,
             'sections' => $sections,
             'memberRoles' => \App\Models\MemberRole::all(),
             'currentMemberId' => $request->user()->member?->id,
@@ -305,7 +307,11 @@ class ProjectController extends Controller
 
     public function create(): Response
     {
-        Gate::authorize('create-projects');
+        if (Gate::has('create-task-boards')) {
+            Gate::authorize('create-task-boards');
+        } else {
+            Gate::authorize('create-projects');
+        }
 
         $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles'])->get()->map(function ($t) {
             return [
@@ -335,7 +341,7 @@ class ProjectController extends Controller
             ];
         });
         
-        return Inertia::render('Project/Create', [
+        return Inertia::render('TaskBoard/Create', [
             'sections' => $sections,
             'workflows' => $workflows,
             'memberRoles' => \App\Models\MemberRole::all(),
@@ -344,7 +350,11 @@ class ProjectController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Gate::authorize('create-projects');
+        if (Gate::has('create-task-boards')) {
+            Gate::authorize('create-task-boards');
+        } else {
+            Gate::authorize('create-projects');
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -360,7 +370,7 @@ class ProjectController extends Controller
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
 
-        // Evaluate active System Rules for Project validation
+        // Evaluate active System Rules for Task Board validation
         $validationRules = \App\Models\SystemRule::where('enabled', true)
             ->where('type', 'validation_rule')
             ->get();
@@ -371,16 +381,16 @@ class ProjectController extends Controller
                 $minLength = (int)$logic['min_length'];
                 if (mb_strlen($validated['name']) < $minLength) {
                     $msg = str_replace(
-                        ['[Project Name]', '[Field Name]'],
-                        [$validated['name'], 'Project Name'],
-                        $logic['error_message'] ?? "Project Name must be at least {$minLength} characters long."
+                        ['[Task Board Name]', '[Project Name]', '[Field Name]'],
+                        [$validated['name'], $validated['name'], 'Task Board Name'],
+                        $logic['error_message'] ?? "Task Board Name must be at least {$minLength} characters long."
                     );
                     return redirect()->back()->withErrors(['name' => $msg]);
                 }
             }
         }
 
-        $project = Project::create([
+        $taskBoard = TaskBoard::create([
             'name' => $validated['name'],
             'description' => $validated['description'],
             'status' => $validated['status'],
@@ -389,24 +399,28 @@ class ProjectController extends Controller
             'end_date' => $validated['end_date'],
         ]);
 
-        $project->workflows()->sync($validated['workflow_ids']);
+        $taskBoard->workflows()->sync($validated['workflow_ids']);
 
         if (!empty($validated['members'])) {
             $syncData = [];
             foreach ($validated['members'] as $m) {
                 $syncData[$m['id']] = ['member_role_id' => $m['member_role_id']];
             }
-            $project->members()->sync($syncData);
+            $taskBoard->members()->sync($syncData);
         }
 
-        \App\Models\SystemLog::log('Create Project', "Project '{$project->name}' (Task Board) was created.");
+        \App\Models\SystemLog::log('Create Task Board', "Task Board '{$taskBoard->name}' was created.");
 
-        return redirect()->route('dashboard')->with('success', 'Project created successfully.');
+        return redirect()->route('dashboard')->with('success', 'Task Board created successfully.');
     }
 
-    public function update(Request $request, Project $project): RedirectResponse
+    public function update(Request $request, TaskBoard $taskBoard): RedirectResponse
     {
-        Gate::authorize('update-project', $project);
+        if (Gate::has('update-task-board')) {
+            Gate::authorize('update-task-board', $taskBoard);
+        } else {
+            Gate::authorize('update-project', $taskBoard);
+        }
 
         $validated = $request->validate([
             'section_id' => 'required|exists:sections,id',
@@ -415,11 +429,11 @@ class ProjectController extends Controller
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
 
-        if (!$request->user()->hasRole('admin') && (int)$validated['section_id'] !== (int)$project->section_id) {
-            abort(403, 'Only administrators can update the project section.');
+        if (!$request->user()->hasRole('admin') && (int)$validated['section_id'] !== (int)$taskBoard->section_id) {
+            abort(403, 'Only administrators can update the task board section.');
         }
 
-        $project->update([
+        $taskBoard->update([
             'section_id' => $validated['section_id'],
         ]);
 
@@ -429,22 +443,26 @@ class ProjectController extends Controller
                 $syncData[$m['id']] = ['member_role_id' => $m['member_role_id']];
             }
         }
-        $project->members()->sync($syncData);
+        $taskBoard->members()->sync($syncData);
 
-        \App\Models\SystemLog::log('Update Project', "Project '{$project->name}' team and section assignments were updated.");
+        \App\Models\SystemLog::log('Update Task Board', "Task Board '{$taskBoard->name}' team and section assignments were updated.");
 
-        return redirect()->back()->with('success', 'Project team updated successfully.');
+        return redirect()->back()->with('success', 'Task Board team updated successfully.');
     }
 
-    public function destroy(Project $project): RedirectResponse
+    public function destroy(TaskBoard $taskBoard): RedirectResponse
     {
-        Gate::authorize('admin');
+        if (Gate::has('delete-task-board')) {
+            Gate::authorize('delete-task-board');
+        } else {
+            Gate::authorize('delete-project');
+        }
 
-        $projectName = $project->name;
-        $project->delete();
+        $taskBoardName = $taskBoard->name;
+        $taskBoard->delete();
 
-        \App\Models\SystemLog::log('Delete Project', "Project '{$projectName}' was deleted.");
+        \App\Models\SystemLog::log('Delete Task Board', "Task Board '{$taskBoardName}' was deleted.");
 
-        return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
+        return redirect()->route('task-boards.index')->with('success', 'Task Board deleted successfully.');
     }
 }

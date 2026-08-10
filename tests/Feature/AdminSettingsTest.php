@@ -34,7 +34,7 @@ class AdminSettingsTest extends TestCase
         }
 
         $response = $this->actingAs($user)->get(route('admin.settings'));
-        $response->assertStatus(403);
+        $response->assertRedirect(route('dashboard'));
     }
 
     /**
@@ -51,7 +51,7 @@ class AdminSettingsTest extends TestCase
             'system_name' => 'Hacked Project Tracker',
             'theme' => 'refined_indigo',
         ]);
-        $response->assertStatus(403);
+        $response->assertRedirect(route('dashboard'));
         
         $this->assertNotEquals('Hacked Project Tracker', Setting::get('system_name'));
     }

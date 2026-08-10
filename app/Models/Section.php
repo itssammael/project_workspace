@@ -9,7 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Section extends Model
 {
-    protected $fillable = ['name', 'member_id'];
+    protected $fillable = ['name', 'member_id', 'department_id'];
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
 
     public function projectManager(): BelongsTo
     {
@@ -21,8 +26,13 @@ class Section extends Model
         return $this->belongsToMany(Member::class, 'sections_member_pivot');
     }
 
+    public function taskBoards(): HasMany
+    {
+        return $this->hasMany(TaskBoard::class, 'section_id');
+    }
+
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class);
+        return $this->taskBoards();
     }
 }

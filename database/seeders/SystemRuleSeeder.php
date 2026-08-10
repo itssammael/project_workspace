@@ -138,18 +138,61 @@ class SystemRuleSeeder extends Seeder
             'last_modified_by' => 'System Security Architect',
         ]);
 
+        // Rule 7: Same-Department Member Access & Search Visibility Security Rule
+        SystemRule::create([
+            'name' => 'Same-Department Member Access & Visibility Guard',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide security rule specifying that users (depending on System/Functional Role permissions) can only access, view, list, and search Members and Users that belong under the same Department.',
+            'scope' => ['Users', 'Sections', 'Departments'],
+            'actions' => ['filter_data_scope', 'reject_submission'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'same_department_member_access',
+                'enforce_same_department' => true,
+                'bypass_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Users can only view and access members belonging to the same department.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 8: Support Function Reports Page Access Restriction
+        SystemRule::create([
+            'name' => 'Support Function Reports Page Access Restriction',
+            'type' => 'page_access_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide page view restriction enforcing that access to Support Function Reports is restricted only to users with Employee Types Regular or Casual.',
+            'scope' => ['Support Function Reports'],
+            'actions' => ['route_for_approval', 'reject_submission'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'target_route' => '/support-function-reports',
+                'allowed_system_roles' => ['admin', 'user', 'viewer'],
+                'allowed_functional_roles' => ['admin_staff', 'department_head', 'project_manager', 'developer'],
+                'allowed_employee_types' => ['Regular', 'Casual'],
+                'restriction_action' => 'block_and_redirect',
+                'error_message' => 'Support Function Reports are only accessible to Regular and Casual employees.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
         // =========================================================
         // DOMAIN 2: WORKSPACE & FORM GOVERNANCE RULES
         // =========================================================
 
-        // Rule 7: Project Creation Authority
+        // Rule 7: Task Board Creation Authority
         SystemRule::create([
-            'name' => 'Project Creation Authority Rule',
+            'name' => 'Task Board Creation Authority Rule',
             'type' => 'approval_rule',
             'enabled' => true,
             'status' => 'active',
-            'description' => 'Workspace governance rule restricting project creation capabilities to System Administrators and Department Heads.',
-            'scope' => ['Projects'],
+            'description' => 'Workspace governance rule restricting task board creation capabilities to System Administrators and Department Heads.',
+            'scope' => ['Task Boards'],
             'actions' => ['route_for_approval', 'reject_submission'],
             'rule_logic' => [
                 'category' => 'workspace_governance',
@@ -157,7 +200,7 @@ class SystemRuleSeeder extends Seeder
                 'approval_chain' => ['Department Head', 'Administrator'],
                 'allowed_system_roles' => ['admin'],
                 'allowed_functional_roles' => ['department_head'],
-                'error_message' => 'Only Department Heads and Administrators are authorized to create new projects.',
+                'error_message' => 'Only Department Heads and Administrators are authorized to create new task boards.',
             ],
             'created_by' => 'Workspace Governance Board',
             'last_modified_by' => 'Workspace Governance Board',
@@ -165,18 +208,18 @@ class SystemRuleSeeder extends Seeder
 
         // Rule 8: Mandatory Client Feedback & Sign-off
         SystemRule::create([
-            'name' => 'Infrastructure Project Sign-off Documentation',
+            'name' => 'Infrastructure Task Board Sign-off Documentation',
             'type' => 'conditional_logic',
             'enabled' => true,
             'status' => 'active',
-            'description' => 'Conditional logic rule mandating that all completed Infrastructure projects display required sign-off form and drawing attachments.',
-            'scope' => ['Projects'],
+            'description' => 'Conditional logic rule mandating that all completed Infrastructure task boards display required sign-off form and drawing attachments.',
+            'scope' => ['Task Boards'],
             'actions' => ['show_field', 'hide_field'],
             'rule_logic' => [
                 'category' => 'workspace_governance',
                 'operator' => 'AND',
                 'conditions' => [
-                    ['field' => 'Project Type', 'operator' => 'equals', 'value' => 'Infrastructure'],
+                    ['field' => 'Task Board Type', 'operator' => 'equals', 'value' => 'Infrastructure'],
                     [
                         'operator' => 'AND',
                         'conditions' => [
@@ -192,21 +235,21 @@ class SystemRuleSeeder extends Seeder
             'last_modified_by' => 'Workspace Governance Board',
         ]);
 
-        // Rule 9: Project Name Length Validation
+        // Rule 9: Task Board Name Length Validation
         SystemRule::create([
-            'name' => 'Project Name Length Validation',
+            'name' => 'Task Board Name Length Validation',
             'type' => 'validation_rule',
             'enabled' => true,
             'status' => 'active',
-            'description' => 'Form validation rule ensuring project titles meet minimum length requirements of 5 characters during project creation.',
-            'scope' => ['Projects'],
+            'description' => 'Form validation rule ensuring task board titles meet minimum length requirements of 5 characters during creation.',
+            'scope' => ['Task Boards'],
             'actions' => ['show_error_message', 'reject_submission'],
             'rule_logic' => [
                 'category' => 'workspace_governance',
                 'field' => 'name',
                 'validation_type' => 'min_length',
                 'min_length' => 5,
-                'error_message' => 'Project Name [Project Name] must be at least 5 characters long.',
+                'error_message' => 'Task Board Name [Task Board Name] must be at least 5 characters long.',
             ],
             'created_by' => 'Workspace Governance Board',
             'last_modified_by' => 'Workspace Governance Board',
@@ -257,8 +300,8 @@ class SystemRuleSeeder extends Seeder
             'type' => 'compliance_rule',
             'enabled' => true,
             'status' => 'active',
-            'description' => 'Compliance audit rule enforcing regulatory environmental impact assessments and risk matrices for Sustainability projects.',
-            'scope' => ['Projects', 'Reports'],
+            'description' => 'Compliance audit rule enforcing regulatory environmental impact assessments and risk matrices for Sustainability task boards.',
+            'scope' => ['Task Boards', 'Reports'],
             'actions' => ['log_critical_event'],
             'rule_logic' => [
                 'category' => 'workspace_governance',
@@ -268,6 +311,167 @@ class SystemRuleSeeder extends Seeder
             ],
             'created_by' => 'Workspace Governance Board',
             'last_modified_by' => 'Workspace Governance Board',
+        ]);
+
+        // Rule 13: Task Board Deletion Authority Restriction
+        SystemRule::create([
+            'name' => 'Task Board Deletion Authority Restriction',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide operational restriction reserving task board record deletion capabilities exclusively to System Administrators.',
+            'scope' => ['Task Boards'],
+            'actions' => ['hide_field', 'reject_submission'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'delete_project',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators are authorized to delete task boards.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 14: Section Management Authority Rule
+        SystemRule::create([
+            'name' => 'Section Management Authority Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide governance rule controlling section creation, modification, and deletion.',
+            'scope' => ['Sections'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'manage_sections',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators are authorized to manage organizational sections.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 15: Workflow & Development Phase Management Rule
+        SystemRule::create([
+            'name' => 'Workflow & Development Phase Management Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide governance rule controlling workflow process structure and phase configuration.',
+            'scope' => ['Workflows'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'manage_workflows',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators are authorized to manage workflow phases.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 16: Functional Role Provisioning & Management Rule
+        SystemRule::create([
+            'name' => 'Functional Role Provisioning & Management Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide governance rule controlling functional member role creation, editing, and assignment.',
+            'scope' => ['Roles'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'manage_functional_roles',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators are authorized to manage functional roles.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 17: Task Board Section Reassignment Authority Rule
+        SystemRule::create([
+            'name' => 'Task Board Section Reassignment Authority Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'Workspace restriction controlling who can change the section ownership of an existing task board.',
+            'scope' => ['Task Boards', 'Sections'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'workspace_governance',
+                'operation' => 'reassign_project_section',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators can reassign a task board to a different section.',
+            ],
+            'created_by' => 'Workspace Governance Board',
+            'last_modified_by' => 'Workspace Governance Board',
+        ]);
+
+        // Rule 18: Dashboard Task Boards Visibility Rule
+        SystemRule::create([
+            'name' => 'Dashboard Task Boards Visibility Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide visibility rule allowing designated roles to view cross-sectional task board metrics on the dashboard.',
+            'scope' => ['Dashboard'],
+            'actions' => ['enable_field'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'view_all_projects_dashboard',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'You only have access to task boards in your assigned sections.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 21: Kanban & IPCR Workflow Protection Guard
+        SystemRule::create([
+            'name' => 'Kanban & IPCR Workflow Protection Guard',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide governance rule restricting modification and deletion of workflows and phases under Kanban and IPCR Workflow Types exclusively to System Administrators.',
+            'scope' => ['Workflows'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'workspace_governance',
+                'operation' => 'manage_protected_workflow_types',
+                'protected_workflow_types' => ['Kanban', 'IPCR'],
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators can update or delete items under Kanban & IPCR Workflow Types.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
+
+        // Rule 22: Departments Access & Management Guard
+        SystemRule::create([
+            'name' => 'Departments Access & Management Guard',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide security rule restricting access to the Departments tab and Department CRUD management exclusively to System Administrators.',
+            'scope' => ['Departments', 'Admin Management'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'system_wide_access',
+                'operation' => 'manage_departments',
+                'allowed_system_roles' => ['admin'],
+                'allowed_functional_roles' => [],
+                'error_message' => 'Only System Administrators can access and manage Departments.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
         ]);
     }
 }

@@ -9,11 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Member extends Model
 {
-    protected $fillable = ['user_id'];
+    protected $fillable = ['user_id', 'employee_type_id'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function employeeType(): BelongsTo
+    {
+        return $this->belongsTo(EmployeeType::class);
     }
 
     public function memberRoles(): BelongsToMany
@@ -29,5 +34,10 @@ class Member extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function headedDepartments(): HasMany
+    {
+        return $this->hasMany(Department::class, 'department_head_id');
     }
 }

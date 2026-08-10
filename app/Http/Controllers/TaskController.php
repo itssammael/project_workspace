@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
+use App\Models\TaskBoard;
 use App\Models\Task;
 use App\Models\Workflow;
 use Illuminate\Http\Request;
@@ -11,9 +11,9 @@ use Illuminate\Http\RedirectResponse;
 
 class TaskController extends Controller
 {
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(Request $request, TaskBoard $taskBoard): RedirectResponse
     {
-        Gate::authorize('manage-tasks', $project);
+        Gate::authorize('manage-tasks', $taskBoard);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -36,7 +36,7 @@ class TaskController extends Controller
             'subtasks.*.status' => 'required_with:subtasks|string|in:pending,in_progress,submitted,completed',
         ]);
 
-        $task = $project->tasks()->create([
+        $task = $taskBoard->tasks()->create([
             'name' => $validated['name'],
             'details' => $validated['details'],
             'workflow_id' => $validated['workflow_id'],
@@ -66,7 +66,7 @@ class TaskController extends Controller
             ]);
         }
 
-        \App\Models\SystemLog::log('Create Task', "Task '{$task->name}' was created in project '{$project->name}'.");
+        \App\Models\SystemLog::log('Create Task', "Task '{$task->name}' was created in task board '{$taskBoard->name}'.");
 
         return redirect()->back()->with('success', 'Task created successfully.');
     }
@@ -75,10 +75,10 @@ class TaskController extends Controller
     {
         $user = $request->user();
         $member = $user->member;
-        $project = $task->project;
+        $taskBoard = $task->taskBoard;
 
-        // Check if the user is a PM for the project or admin
-        $isPM = Gate::allows('manage-tasks', $project);
+        // Check if the user is a PM for the task board or admin
+        $isPM = Gate::allows('manage-tasks', $taskBoard);
 
         if ($isPM) {
             // Full update
@@ -181,7 +181,7 @@ class TaskController extends Controller
 
     public function destroy(Task $task): RedirectResponse
     {
-        Gate::authorize('manage-tasks', $task->project);
+        Gate::authorize('manage-tasks', $task->taskBoard);
         $taskName = $task->name;
         $task->delete();
         \App\Models\SystemLog::log('Delete Task', "Task '{$taskName}' was deleted.");
@@ -197,7 +197,7 @@ class TaskController extends Controller
         $member = $user->member;
 
         // Either Project Manager (Gate) or the assigned member can update status
-        $isPM = Gate::allows('manage-tasks', $subTask->task->project);
+        $isPM = Gate::allows('manage-tasks', $subTask->task->taskBoard);
         $isAssignee = $member && $subTask->member_id === $member->id;
 
         if (!$isPM && !$isAssignee) {
@@ -224,10 +224,9 @@ class TaskController extends Controller
     {
         $user = $request->user();
         $member = $user->member;
-        $project = $task->project;
+        $taskBoard = $task->taskBoard;
 
-        // Check if the user is a PM for the project or admin
-        $isPM = Gate::allows('manage-tasks', $project) || ($user && $user->role_id === 1); // admin role_id is 1 or check hasRole('admin')
+        $isPM = Gate::allows('manage-tasks', $taskBoard);
         $isAssignee = $member && $task->subTasks()->where('member_id', $member->id)->exists();
 
         if (!$isPM && !$isAssignee) {
@@ -364,13 +363,13 @@ class TaskController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        $project = $subTask->task->project;
+        $taskBoard = $subTask->task->taskBoard;
 
         $isAssignee = $subTask->member_id === $member->id;
         
         $isPM = $member->memberRoles()->where('slug', 'project_manager')->exists() && 
-                $project->section && 
-                $project->section->member_id === $member->id;
+                $taskBoard->section && 
+                $taskBoard->section->member_id === $member->id;
 
         $isDeptHead = $member->memberRoles()->where('slug', 'department_head')->exists();
         

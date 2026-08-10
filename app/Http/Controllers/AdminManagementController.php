@@ -9,6 +9,8 @@ use App\Models\Role;
 use App\Models\MemberRole;
 use App\Models\Workflow;
 use App\Models\WorkflowType;
+use App\Models\EmployeeType;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -24,11 +26,14 @@ class AdminManagementController extends Controller
      */
     public function index(Request $request): Response
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('view-admin-management');
 
-        // Fetch users with roles, member, and section relations
-        $users = User::with(['role', 'member.memberRoles', 'member.sections'])
-            ->get()
+        $loggedInUser = $request->user();
+
+        // Fetch users with roles, member, section, and employeeType relations
+        $usersQuery = User::with(['role', 'member.memberRoles', 'member.sections', 'member.employeeType']);
+        $usersQuery = \App\Services\SystemRuleEvaluator::scopeUserQueryByDepartmentRule($usersQuery, $loggedInUser);
+        $users = $usersQuery->get()
             ->map(function (User $u) {
                 return [
                     'id' => $u->id,
@@ -39,6 +44,8 @@ class AdminManagementController extends Controller
                     'system_role' => $u->role?->name ?? 'User',
                     'system_role_slug' => $u->role?->slug ?? 'user',
                     'member_id' => $u->member?->id,
+                    'employee_type_id' => $u->member?->employee_type_id ?? 1,
+                    'employee_type' => $u->member?->employeeType?->description ?? 'Regular',
                     'member_role_ids' => $u->member ? $u->member->memberRoles->pluck('id')->toArray() : [],
                     'member_role_slugs' => $u->member ? $u->member->memberRoles->pluck('slug')->toArray() : [],
                     'member_role' => $u->member && $u->member->memberRoles->isNotEmpty() ? $u->member->memberRoles->pluck('name')->implode(', ') : 'None',
@@ -50,13 +57,15 @@ class AdminManagementController extends Controller
             });
 
         // Fetch sections with manager and assigned members
-        $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles'])
+        $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles', 'department'])
             ->get()
             ->map(function (Section $t) {
                 return [
                     'id' => $t->id,
                     'name' => $t->name,
                     'member_id' => $t->member_id,
+                    'department_id' => $t->department_id,
+                    'department_name' => $t->department?->name ?? 'Default Department',
                     'project_manager' => $t->projectManager ? [
                         'id' => $t->projectManager->id,
                         'name' => $t->projectManager->user->name,
@@ -75,13 +84,34 @@ class AdminManagementController extends Controller
                 ];
             });
 
+        // Fetch departments
+        $departments = Department::with(['departmentHead.user', 'sections'])
+            ->get()
+            ->map(function (Department $d) {
+                return [
+                    'id' => $d->id,
+                    'name' => $d->name,
+                    'short_name' => $d->short_name,
+                    'department_head_id' => $d->department_head_id,
+                    'department_head' => $d->departmentHead ? [
+                        'id' => $d->departmentHead->id,
+                        'name' => $d->departmentHead->user->name,
+                        'email' => $d->departmentHead->user->email,
+                    ] : null,
+                    'sections_count' => $d->sections->count(),
+                ];
+            });
+
+        $canManageDepartments = \App\Services\SystemRuleEvaluator::checkOperation($request->user(), 'manage_departments', ['admin'], []);
+
         // Fetch support data for modals
         $roles = Role::all();
         $memberRoles = MemberRole::all();
         
         // Members list to populate managers and team assignments
-        $membersList = Member::with(['user', 'memberRoles'])
-            ->get()
+        $membersQuery = Member::with(['user', 'memberRoles']);
+        $membersQuery = \App\Services\SystemRuleEvaluator::scopeMemberQueryByDepartmentRule($membersQuery, $loggedInUser);
+        $membersList = $membersQuery->get()
             ->map(function (Member $m) {
                 return [
                     'id' => $m->id,
@@ -120,7 +150,24 @@ class AdminManagementController extends Controller
             'name' => $wt->name,
         ]);
 
-        return Inertia::render('Admin/Management', compact('users', 'sections', 'roles', 'memberRoles', 'membersList', 'workflows', 'workflowTypes', 'systemLogs'));
+        $employeeTypes = EmployeeType::all()->map(fn($et) => [
+            'id' => $et->id,
+            'description' => $et->description,
+        ]);
+
+        return Inertia::render('Admin/Management', compact(
+            'users', 
+            'sections', 
+            'departments', 
+            'canManageDepartments',
+            'roles', 
+            'memberRoles', 
+            'membersList', 
+            'workflows', 
+            'workflowTypes', 
+            'employeeTypes', 
+            'systemLogs'
+        ));
     }
 
     /**
@@ -136,6 +183,7 @@ class AdminManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
+            'employee_type_id' => 'required|exists:employee_types,id',
             'member_role_ids' => 'nullable|array',
             'member_role_ids.*' => 'exists:member_roles,id',
             'section_ids' => 'nullable|array',
@@ -172,6 +220,7 @@ class AdminManagementController extends Controller
         // Create the associated member
         $member = Member::create([
             'user_id' => $user->id,
+            'employee_type_id' => $validated['employee_type_id'] ?? 1,
         ]);
         
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
@@ -197,6 +246,7 @@ class AdminManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8',
             'role_id' => 'required|exists:roles,id',
+            'employee_type_id' => 'required|exists:employee_types,id',
             'member_role_ids' => 'nullable|array',
             'member_role_ids.*' => 'exists:member_roles,id',
             'section_ids' => 'nullable|array',
@@ -235,6 +285,9 @@ class AdminManagementController extends Controller
 
         // Update or create associated member
         $member = Member::firstOrCreate(['user_id' => $user->id]);
+        $member->update([
+            'employee_type_id' => $validated['employee_type_id'] ?? 1,
+        ]);
         $member->memberRoles()->sync($validated['member_role_ids'] ?? []);
 
         $loggedInUser = $request->user();
@@ -269,7 +322,7 @@ class AdminManagementController extends Controller
      */
     public function destroyUser(Request $request, User $user): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('delete-user');
 
         // Prevent admin from deleting themselves
         if ($user->id === $request->user()->id) {
@@ -290,10 +343,11 @@ class AdminManagementController extends Controller
      */
     public function storeSection(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-sections');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'department_id' => 'required|exists:departments,id',
             'member_id' => 'nullable|exists:members,id', // Project Manager
             'member_ids' => 'nullable|array',
             'member_ids.*' => 'exists:members,id',
@@ -301,6 +355,7 @@ class AdminManagementController extends Controller
 
         $section = Section::create([
             'name' => $validated['name'],
+            'department_id' => $validated['department_id'],
             'member_id' => $validated['member_id'],
         ]);
 
@@ -318,10 +373,11 @@ class AdminManagementController extends Controller
      */
     public function updateSection(Request $request, Section $section): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-sections');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'department_id' => 'required|exists:departments,id',
             'member_id' => 'nullable|exists:members,id', // Project Manager
             'member_ids' => 'nullable|array',
             'member_ids.*' => 'exists:members,id',
@@ -329,6 +385,7 @@ class AdminManagementController extends Controller
 
         $section->update([
             'name' => $validated['name'],
+            'department_id' => $validated['department_id'],
             'member_id' => $validated['member_id'],
         ]);
 
@@ -344,22 +401,105 @@ class AdminManagementController extends Controller
      */
     public function destroySection(Section $section): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-sections');
 
-        $sectionName = $section->name;
+        $name = $section->name;
         $section->delete();
 
-        \App\Models\SystemLog::log('Delete Section', "Section '{$sectionName}' was deleted.");
+        \App\Models\SystemLog::log('Delete Section', "Section '{$name}' was deleted.");
 
         return redirect()->back()->with('success', 'Section deleted successfully.');
     }
 
     /**
-     * Store a new Development Phase.
+     * Store a new Department.
+     */
+    public function storeDepartment(Request $request): RedirectResponse
+    {
+        Gate::authorize('manage-departments');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'short_name' => 'required|string|max:50',
+            'department_head_id' => 'nullable|exists:members,id',
+        ]);
+
+        $department = Department::create($validated);
+
+        \App\Models\SystemLog::log('Create Department', "Department '{$department->name}' ({$department->short_name}) was created.");
+
+        return redirect()->back()->with('success', 'Department created successfully.');
+    }
+
+    /**
+     * Update an existing Department.
+     */
+    public function updateDepartment(Request $request, Department $department): RedirectResponse
+    {
+        Gate::authorize('manage-departments');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'short_name' => 'required|string|max:50',
+            'department_head_id' => 'nullable|exists:members,id',
+        ]);
+
+        $department->update($validated);
+
+        \App\Models\SystemLog::log('Update Department', "Department '{$department->name}' details were updated.");
+
+        return redirect()->back()->with('success', 'Department updated successfully.');
+    }
+
+    /**
+     * Delete a Department.
+     */
+    public function destroyDepartment(Department $department): RedirectResponse
+    {
+        Gate::authorize('manage-departments');
+
+        $name = $department->name;
+        $department->delete();
+
+        \App\Models\SystemLog::log('Delete Department', "Department '{$name}' was deleted.");
+
+        return redirect()->back()->with('success', 'Department deleted successfully.');
+    }
+
+    /**
+     * Store a new Development Phase or multiple Development Phases.
      */
     public function storeWorkflow(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
+
+        if ($request->has('workflows') && is_array($request->input('workflows'))) {
+            $validated = $request->validate([
+                'workflows' => 'required|array|min:1',
+                'workflows.*.name' => 'required|string|max:255|unique:workflows,name',
+                'workflows.*.order' => 'required|integer|min:0',
+                'workflows.*.workflow_type_id' => 'nullable|exists:workflow_types,id',
+            ]);
+
+            $createdNames = [];
+            DB::transaction(function () use ($validated, &$createdNames) {
+                foreach ($validated['workflows'] as $wfData) {
+                    $wfData['workflow_type_id'] = !empty($wfData['workflow_type_id']) ? $wfData['workflow_type_id'] : null;
+                    $wf = Workflow::create([
+                        'name' => $wfData['name'],
+                        'order' => $wfData['order'],
+                        'workflow_type_id' => $wfData['workflow_type_id'],
+                    ]);
+                    $createdNames[] = $wf->name;
+                }
+            });
+
+            $count = count($createdNames);
+            $namesStr = implode(', ', $createdNames);
+            \App\Models\SystemLog::log('Create Workflows', "Created {$count} workflow(s): {$namesStr}.");
+
+            return redirect()->back()->with('success', "{$count} workflow(s) created successfully.");
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:workflows,name',
@@ -367,6 +507,7 @@ class AdminManagementController extends Controller
             'workflow_type_id' => 'nullable|exists:workflow_types,id',
         ]);
 
+        $validated['workflow_type_id'] = !empty($validated['workflow_type_id']) ? $validated['workflow_type_id'] : null;
         $workflow = Workflow::create($validated);
 
         \App\Models\SystemLog::log('Create Workflow', "Development Phase '{$workflow->name}' was created.");
@@ -377,9 +518,19 @@ class AdminManagementController extends Controller
     /**
      * Update an existing Workflow.
      */
+    /**
+     * Update an existing Workflow.
+     */
     public function updateWorkflow(Request $request, Workflow $workflow): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
+
+        $typeName = $workflow->workflowType?->name ?? $workflow->name;
+        if (\App\Services\SystemRuleEvaluator::isProtectedWorkflowType($typeName)) {
+            if (!\App\Services\SystemRuleEvaluator::checkOperation($request->user(), 'manage_protected_workflow_types', ['admin'], [])) {
+                return redirect()->back()->withErrors(['workflow' => 'Only System Administrators can update or delete items under Kanban & IPCR Workflow Types.']);
+            }
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:workflows,name,' . $workflow->id,
@@ -397,9 +548,16 @@ class AdminManagementController extends Controller
     /**
      * Delete a Workflow.
      */
-    public function destroyWorkflow(Workflow $workflow): RedirectResponse
+    public function destroyWorkflow(Request $request, Workflow $workflow): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
+
+        $typeName = $workflow->workflowType?->name ?? $workflow->name;
+        if (\App\Services\SystemRuleEvaluator::isProtectedWorkflowType($typeName)) {
+            if (!\App\Services\SystemRuleEvaluator::checkOperation($request->user(), 'manage_protected_workflow_types', ['admin'], [])) {
+                return redirect()->back()->withErrors(['workflow' => 'Only System Administrators can update or delete items under Kanban & IPCR Workflow Types.']);
+            }
+        }
 
         $workflowName = $workflow->name;
         $workflow->delete();
@@ -414,7 +572,7 @@ class AdminManagementController extends Controller
      */
     public function storeWorkflowType(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:workflow_types,name',
@@ -432,7 +590,13 @@ class AdminManagementController extends Controller
      */
     public function updateWorkflowType(Request $request, WorkflowType $workflowType): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
+
+        if (\App\Services\SystemRuleEvaluator::isProtectedWorkflowType($workflowType->name)) {
+            if (!\App\Services\SystemRuleEvaluator::checkOperation($request->user(), 'manage_protected_workflow_types', ['admin'], [])) {
+                return redirect()->back()->withErrors(['workflow_type' => 'Only System Administrators can update or delete Kanban & IPCR Workflow Types.']);
+            }
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:workflow_types,name,' . $workflowType->id,
@@ -448,9 +612,15 @@ class AdminManagementController extends Controller
     /**
      * Delete a Workflow Type.
      */
-    public function destroyWorkflowType(WorkflowType $workflowType): RedirectResponse
+    public function destroyWorkflowType(Request $request, WorkflowType $workflowType): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
+
+        if (\App\Services\SystemRuleEvaluator::isProtectedWorkflowType($workflowType->name)) {
+            if (!\App\Services\SystemRuleEvaluator::checkOperation($request->user(), 'manage_protected_workflow_types', ['admin'], [])) {
+                return redirect()->back()->withErrors(['workflow_type' => 'Only System Administrators can update or delete Kanban & IPCR Workflow Types.']);
+            }
+        }
 
         $workflowTypeName = $workflowType->name;
         $workflowType->delete();
@@ -465,15 +635,15 @@ class AdminManagementController extends Controller
      */
     public function bulkAssignWorkflows(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-workflows');
 
         $validated = $request->validate([
             'workflow_ids' => 'required|array',
             'workflow_ids.*' => 'exists:workflows,id',
-            'workflow_type_id' => 'nullable|string',
+            'workflow_type_id' => 'nullable',
         ]);
 
-        $workflowTypeId = $validated['workflow_type_id'];
+        $workflowTypeId = $request->input('workflow_type_id');
         if ($workflowTypeId === 'uncategorized' || empty($workflowTypeId)) {
             $workflowTypeId = null;
         } else {
@@ -497,7 +667,7 @@ class AdminManagementController extends Controller
      */
     public function storeMemberRole(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-functional-roles');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:member_roles,name',
@@ -518,7 +688,7 @@ class AdminManagementController extends Controller
      */
     public function updateMemberRole(Request $request, MemberRole $memberRole): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-functional-roles');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:member_roles,name,' . $memberRole->id,
@@ -539,7 +709,7 @@ class AdminManagementController extends Controller
      */
     public function destroyMemberRole(MemberRole $memberRole): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-functional-roles');
 
         $memberRoleName = $memberRole->name;
         // Detach role from members using it
@@ -557,7 +727,7 @@ class AdminManagementController extends Controller
      */
     public function bulkDestroyUsers(Request $request): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('delete-user');
 
         $validated = $request->validate([
             'ids' => 'required|array',
@@ -592,7 +762,7 @@ class AdminManagementController extends Controller
      */
     public function attachRoleToMember(Request $request, Member $member): RedirectResponse
     {
-        Gate::authorize('admin');
+        Gate::authorize('manage-functional-roles');
 
         $validated = $request->validate([
             'member_role_id' => 'required|exists:member_roles,id',

@@ -36,7 +36,7 @@ class AdminManagementTest extends TestCase
         }
 
         $response = $this->actingAs($user)->get(route('admin.management'));
-        $response->assertStatus(403);
+        $response->assertRedirect(route('dashboard'));
     }
 
     /**
@@ -101,9 +101,11 @@ class AdminManagementTest extends TestCase
 
         // Get some members
         $members = Member::take(2)->pluck('id')->toArray();
+        $department = \App\Models\Department::first() ?? \App\Models\Department::create(['name' => 'IT Department', 'short_name' => 'IT']);
 
         $response = $this->actingAs($admin)->post(route('admin.sections.store'), [
             'name' => 'Test Section Alpha',
+            'department_id' => $department->id,
             'member_id' => $members[0] ?? null, // Project Manager
             'member_ids' => $members,
         ]);

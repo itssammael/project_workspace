@@ -10,7 +10,7 @@ use App\Models\Member;
 use App\Models\Workflow;
 use App\Models\WorkflowType;
 use App\Models\Section;
-use App\Models\Project;
+use App\Models\TaskBoard;
 use App\Models\Task;
 use App\Models\Setting;
 use App\Models\SystemRule;
@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Seed Employee Types
+        $this->call(EmployeeTypeSeeder::class);
+
         // 0. Seed Default Settings
         Setting::set('system_name', 'Project Tracker');
         Setting::set('theme', 'corporate_teal');
@@ -145,8 +148,11 @@ class DatabaseSeeder extends Seeder
         $kanbanCompleted = Workflow::create(['name' => 'Completed', 'order' => 4, 'workflow_type_id' => $typeKanban->id]);
 
         // 7. Create Sections & Pivot bindings
+        $this->call(DepartmentSeeder::class);
+
         $sectionAlpha = Section::create([
             'name' => 'Alpha Software Section',
+            'department_id' => 1,
             'member_id' => $pmMember->id, // PM is the Manager
         ]);
         
@@ -157,8 +163,8 @@ class DatabaseSeeder extends Seeder
             $staffMember->id,
         ]);
 
-        // 8. Create Projects
-        $projectEcommerce = Project::create([
+        // 8. Create Task Boards
+        $projectEcommerce = TaskBoard::create([
             'name' => 'E-Commerce Platform Redesign',
             'description' => 'Upgrade the existing store layout, migrate products database, and optimize checkout flows.',
             'status' => 'active',
@@ -191,7 +197,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Define Scope & Requirements',
             'details' => 'Draft functional specification documents and list third-party APIs to integrate.',
             'workflow_id' => $phaseReq->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t1->subTasks()->create([
             'name' => 'Define Scope & Requirements Subtask',
@@ -208,7 +214,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Design Database Architecture',
             'details' => 'Draft relational schemas and plan performance optimization/indexes.',
             'workflow_id' => $phaseReq->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t2->subTasks()->create([
             'name' => 'Design Database Architecture Subtask',
@@ -225,7 +231,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Create High-Fidelity UI Mockups',
             'details' => 'Design interfaces for homepage, product detail page, and checkout process.',
             'workflow_id' => $phaseDesign->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t3->subTasks()->create([
             'name' => 'Create High-Fidelity UI Mockups Subtask',
@@ -242,7 +248,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Frontend Assembly & Component Styling',
             'details' => 'Implement designs in Vue 3 with responsive layout structures.',
             'workflow_id' => $phaseDev->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t4->subTasks()->create([
             'name' => 'Frontend Assembly & Component Styling Subtask',
@@ -259,7 +265,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Implement Backend Checkout API',
             'details' => 'Construct controller logic and integrate Stripe payment processing.',
             'workflow_id' => $phaseDev->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t5->subTasks()->create([
             'name' => 'Implement Backend Checkout API Subtask',
@@ -276,7 +282,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Perform Integration & QA Testing',
             'details' => 'Write end-to-end checkout flow automation tests and run security checks.',
             'workflow_id' => $phaseTest->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t6->subTasks()->create([
             'name' => 'Perform Integration & QA Testing Subtask',
@@ -293,7 +299,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Staging & Production Deployment',
             'details' => 'Prepare environment configs and launch to production servers.',
             'workflow_id' => $phaseDeploy->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t7->subTasks()->create([
             'name' => 'Staging & Production Deployment Subtask',
@@ -310,7 +316,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Final Brand Assets Package',
             'details' => 'Create SVG files for standard brand logo variations.',
             'workflow_id' => $phaseDesign->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t8->subTasks()->create([
             'name' => 'Final Brand Assets Package Subtask',
@@ -327,7 +333,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Setup Git Repository',
             'details' => 'Initialize repo, setup main/dev branches, protect branches, and configure CI/CD starter templates.',
             'workflow_id' => $kanbanCompleted->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t9->subTasks()->create([
             'name' => 'Repository Setup Subtask',
@@ -344,7 +350,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Configure Dev Environment',
             'details' => 'Install packages, setup vite plugins, and verify local development server.',
             'workflow_id' => $kanbanCompleted->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t10->subTasks()->create([
             'name' => 'Environment Setup Subtask',
@@ -361,7 +367,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Draft Project Roadmap',
             'details' => 'List timeline phases, identify milestones, and draft subtask plans.',
             'workflow_id' => $kanbanDoing->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t11->subTasks()->create([
             'name' => 'Roadmap Drafting Subtask',
@@ -378,7 +384,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Review Codebase Standards',
             'details' => 'Define styling rules, directory structure guidelines, and write template scripts.',
             'workflow_id' => $kanbanTodo->id,
-            'project_id' => $projectEcommerce->id,
+            'task_board_id' => $projectEcommerce->id,
         ]);
         $t12->subTasks()->create([
             'name' => 'Standards Drafting Subtask',
@@ -390,7 +396,12 @@ class DatabaseSeeder extends Seeder
             'status' => 'pending',
         ]);
 
-        // 8. Seed System Rules
+        // 8. Seed Departments, Activity Types, Semesters & System Rules
+        $this->call(DepartmentSeeder::class);
+        $this->call(ActivityTypeSeeder::class);
+        $this->call(SemesterSeeder::class);
+        $this->call(SectionMembersSeeder::class);
+        $this->call(SupportFunctionReportsSeeder::class);
         $this->call(SystemRuleSeeder::class);
     }
 }

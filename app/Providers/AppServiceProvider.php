@@ -5,7 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
-use App\Models\Project;
+use App\Models\TaskBoard;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,13 +22,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Super Admin bypass
-        Gate::before(function (User $user, string $ability) {
-            if ($user->hasRole('admin')) {
-                return true;
-            }
-        });
-
         // System Role Gates
         Gate::define('admin', function (User $user) {
             return $user->hasRole('admin');
@@ -42,34 +35,90 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('viewer');
         });
 
+        Gate::define('view-admin-management', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/admin/management', ['admin'], ['admin_staff']);
+        });
+
+        Gate::define('view-admin-settings', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/admin/settings', ['admin'], ['admin_staff']);
+        });
+
+        Gate::define('view-support-function-reports', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/support-function-reports', ['admin', 'user', 'viewer'], ['admin_staff', 'department_head', 'project_manager', 'developer']);
+        });
+
+        Gate::define('manage-system-settings', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_system_settings', ['admin'], ['admin_staff']);
+        });
+
         Gate::define('manage-users', function (User $user) {
-            return $user->isAdminStaff();
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_users', ['admin'], ['admin_staff']);
+        });
+
+        Gate::define('manage-sections', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_sections', ['admin'], []);
+        });
+
+        Gate::define('manage-departments', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_departments', ['admin'], []);
+        });
+
+        Gate::define('manage-workflows', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_workflows', ['admin'], []);
+        });
+
+        Gate::define('manage-functional-roles', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_functional_roles', ['admin'], []);
+        });
+
+        Gate::define('delete-user', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'delete_user', ['admin'], []);
+        });
+
+        Gate::define('delete-task-board', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'delete_task_board', ['admin'], [])
+                || \App\Services\SystemRuleEvaluator::checkOperation($user, 'delete_project', ['admin'], []);
+        });
+        Gate::define('delete-project', function (User $user) {
+            return Gate::allows('delete-task-board');
         });
 
         // Functional/Production Role Gates
+        Gate::define('create-task-boards', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'create_task_board', ['admin'], ['department_head'])
+                || \App\Services\SystemRuleEvaluator::checkOperation($user, 'create_project', ['admin'], ['department_head']);
+        });
         Gate::define('create-projects', function (User $user) {
-            if (!$user->hasRole('user') && !$user->hasRole('admin')) {
-                return false;
-            }
-            return $user->member && $user->member->memberRoles()->where('slug', 'department_head')->exists();
+            return Gate::allows('create-task-boards');
         });
 
-        Gate::define('update-project', function (User $user, Project $project) {
-            if (!$user->hasRole('user') && !$user->hasRole('admin')) {
-                return false;
-            }
-            return $user->member && $user->member->memberRoles()->whereIn('slug', ['project_manager', 'department_head'])->exists();
+        Gate::define('update-task-board', function (User $user, TaskBoard $taskBoard) {
+            return \App\Services\SystemRuleEvaluator::checkOperation($user, 'update_task_board', ['admin'], ['project_manager', 'department_head'])
+                || \App\Services\SystemRuleEvaluator::checkOperation($user, 'update_project', ['admin'], ['project_manager', 'department_head']);
+        });
+        Gate::define('update-project', function (User $user, TaskBoard $taskBoard) {
+            return Gate::allows('update-task-board', $taskBoard);
         });
 
-        Gate::define('manage-tasks', function (User $user, Project $project) {
-            if (!$user->member || !$user->member->memberRoles()->where('slug', 'project_manager')->exists()) {
+        Gate::define('manage-tasks', function (User $user, TaskBoard $taskBoard) {
+            $isPermittedRole = \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_tasks', ['admin'], ['project_manager']);
+            if (!$isPermittedRole) {
                 return false;
             }
-            return $project->section && $project->section->member_id === $user->member->id;
+            if ($user->hasRole('admin')) {
+                return true;
+            }
+            return $user->member && $taskBoard->section && $taskBoard->section->member_id === $user->member->id;
         });
 
-        Gate::define('view-project', function (User $user, Project $project) {
-            return $user->member && $user->member->sections()->where('sections.id', $project->section_id)->exists();
+        Gate::define('view-task-board', function (User $user, TaskBoard $taskBoard) {
+            if ($user->hasRole('admin')) {
+                return true;
+            }
+            return $user->member && $user->member->sections()->where('sections.id', $taskBoard->section_id)->exists();
+        });
+        Gate::define('view-project', function (User $user, TaskBoard $taskBoard) {
+            return Gate::allows('view-task-board', $taskBoard);
         });
 
         // Listen to login/logout events for activity logging
@@ -102,4 +151,3 @@ class AppServiceProvider extends ServiceProvider
         );
     }
 }
-
