@@ -473,5 +473,26 @@ class SystemRuleSeeder extends Seeder
             'created_by' => 'System Security Architect',
             'last_modified_by' => 'System Security Architect',
         ]);
+
+        // Rule 23: Support Function Reports Edit Restriction Rule
+        SystemRule::create([
+            'name' => 'Support Function Reports Edit Restriction Rule',
+            'type' => 'role_permission_rule',
+            'enabled' => true,
+            'status' => 'active',
+            'description' => 'System-wide security rule enforcing that only Members under Section "Admin" can edit and update tab data in Support Function Reports Page, while everyone else within the Department has view access.',
+            'scope' => ['Support Function Reports'],
+            'actions' => ['reject_submission', 'show_error_message'],
+            'rule_logic' => [
+                'category' => 'support_function_reports',
+                'operation' => 'edit_support_function_reports',
+                'allowed_sections' => ['Admin'],
+                'bypass_system_roles' => ['admin'],
+                'view_access_scope' => 'department',
+                'error_message' => 'Only Members under Section "Admin" can edit and update report data in Support Function Reports.',
+            ],
+            'created_by' => 'System Security Architect',
+            'last_modified_by' => 'System Security Architect',
+        ]);
     }
 }

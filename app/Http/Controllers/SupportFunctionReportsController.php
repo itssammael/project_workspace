@@ -78,6 +78,8 @@ class SupportFunctionReportsController extends Controller
         // =========================================================
         // 1. MMP REPORT DATA (activity_type_id = 1)
         // =========================================================
+        $this->ensureMmpMondaysForSemester($selectedSemesterId, $selectedYear);
+
         $mmpActivities = ScheduledActivity::where('activity_type_id', 1)
             ->where('semester_id', $selectedSemesterId)
             ->where('year', $selectedYear)
@@ -103,17 +105,14 @@ class SupportFunctionReportsController extends Controller
             $cellValues = [];
 
             foreach ($mmpActivities as $act) {
-                if ($m->user && $m->user->name === 'MARINDA, L.') {
-                    $cellValues[$act->id] = 'ON-LEAVE';
-                } else {
-                    $att = $memberAttendances->where('scheduled_activity_id', $act->id)->first();
-                    $isPresent = $att ? $att->is_present : true;
-                    if ($isPresent) {
-                        $totalPresent++;
-                        $cellValues[$act->id] = '1';
-                    } else {
-                        $cellValues[$act->id] = 'A';
-                    }
+                $att = $memberAttendances->where('scheduled_activity_id', $act->id)->first();
+                $val = '1';
+                if ($att) {
+                    $val = !empty($att->status) ? $att->status : ($att->is_present ? '1' : 'A');
+                }
+                $cellValues[$act->id] = $val;
+                if ($val === '1') {
+                    $totalPresent++;
                 }
             }
 
@@ -153,17 +152,14 @@ class SupportFunctionReportsController extends Controller
             $cellValues = [];
 
             foreach ($lguActivities as $act) {
-                if ($m->user && $m->user->name === 'MARINDA, L.') {
-                    $cellValues[$act->id] = 'ON-LEAVE';
-                } else {
-                    $att = $memberAttendances->where('scheduled_activity_id', $act->id)->first();
-                    $isPresent = $att ? $att->is_present : true;
-                    if ($isPresent) {
-                        $totalPresent++;
-                        $cellValues[$act->id] = '1';
-                    } else {
-                        $cellValues[$act->id] = 'A';
-                    }
+                $att = $memberAttendances->where('scheduled_activity_id', $act->id)->first();
+                $val = '1';
+                if ($att) {
+                    $val = !empty($att->status) ? $att->status : ($att->is_present ? '1' : 'A');
+                }
+                $cellValues[$act->id] = $val;
+                if ($val === '1') {
+                    $totalPresent++;
                 }
             }
 
@@ -201,21 +197,22 @@ class SupportFunctionReportsController extends Controller
                 $mNum = $mObj['number'];
                 $rec = $memberRecords->where('month', $mNum)->first();
 
-                if ($m->user && $m->user->name === 'MARINDA, L.') {
-                    $tardyMonths[$mNum] = ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE'];
-                    $utMonths[$mNum] = 'ON-LEAVE';
-                } else {
-                    $tVal = $rec ? (int) $rec->tardy : 0;
-                    $aVal = $rec ? (int) $rec->absences : 0;
-                    $utVal = $rec ? (int) $rec->undertime : 0;
+                $tVal = $rec ? (string) $rec->tardy : '0';
+                $aVal = $rec ? (string) $rec->absences : '0';
+                $utVal = $rec ? (string) $rec->undertime : '0';
 
-                    $totalTardy += $tVal;
-                    $totalAbsent += $aVal;
-                    $totalUndertime += $utVal;
-
-                    $tardyMonths[$mNum] = ['tardy' => $tVal, 'absences' => $aVal];
-                    $utMonths[$mNum] = $utVal;
+                if ($tVal !== 'ON-LEAVE' && is_numeric($tVal)) {
+                    $totalTardy += (int) $tVal;
                 }
+                if ($aVal !== 'ON-LEAVE' && is_numeric($aVal)) {
+                    $totalAbsent += (int) $aVal;
+                }
+                if ($utVal !== 'ON-LEAVE' && is_numeric($utVal)) {
+                    $totalUndertime += (int) $utVal;
+                }
+
+                $tardyMonths[$mNum] = ['tardy' => $tVal, 'absences' => $aVal];
+                $utMonths[$mNum] = $utVal;
             }
 
             $tardyMatrix[$m->id] = [
@@ -230,7 +227,10 @@ class SupportFunctionReportsController extends Controller
             ];
         }
 
+        $canEdit = SystemRuleEvaluator::canEditSupportFunctionReports($request->user());
+
         return Inertia::render('Reports/SupportFunctionReports', [
+            'canEdit' => $canEdit,
             'semesters' => $semesters,
             'selectedSemesterId' => $selectedSemesterId,
             'selectedYear' => $selectedYear,
@@ -244,5 +244,160 @@ class SupportFunctionReportsController extends Controller
             'tardyMatrix' => $tardyMatrix,
             'undertimeMatrix' => $undertimeMatrix,
         ]);
+    }
+
+    /**
+     * Update attendance record status (1, A, ON-LEAVE).
+     */
+    public function updateAttendance(Request $request)
+    {
+        Gate::authorize('edit-support-function-reports');
+
+        $request->validate([
+            'member_id' => 'required|exists:members,id',
+            'scheduled_activity_id' => 'required|exists:scheduled_activities,id',
+            'status' => 'required|in:1,A,ON-LEAVE',
+        ]);
+
+        Attendance::updateOrCreate(
+            [
+                'member_id' => $request->member_id,
+                'scheduled_activity_id' => $request->scheduled_activity_id,
+            ],
+            [
+                'status' => $request->status,
+                'is_present' => $request->status === '1',
+            ]
+        );
+
+        return back()->with('success', 'Attendance status updated successfully.');
+    }
+
+    /**
+     * Update tardiness, absences, or undertime value (numeric or ON-LEAVE).
+     */
+    public function updateTardinessAbsenceUndertime(Request $request)
+    {
+        Gate::authorize('edit-support-function-reports');
+
+        $request->validate([
+            'member_id' => 'required|exists:members,id',
+            'month' => 'required|integer',
+            'year' => 'required|integer',
+            'semester_id' => 'required|exists:semesters,id',
+            'field' => 'required|in:tardy,absences,undertime',
+            'value' => 'required|string',
+        ]);
+
+        $rec = TardinessAbsenceUndertime::firstOrNew([
+            'member_id' => $request->member_id,
+            'month' => $request->month,
+            'year' => $request->year,
+            'semester_id' => $request->semester_id,
+        ]);
+
+        $field = $request->field;
+        $rec->$field = $request->value;
+        $rec->save();
+
+        return back()->with('with', 'Record updated successfully.');
+    }
+
+    /**
+     * Store a new scheduled activity (e.g. LGU activity).
+     */
+    public function storeActivity(Request $request)
+    {
+        Gate::authorize('edit-support-function-reports');
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'date' => 'required|date',
+            'semester_id' => 'required|exists:semesters,id',
+            'year' => 'required|integer',
+            'activity_type_id' => 'nullable|exists:activity_types,id',
+        ]);
+
+        ScheduledActivity::create([
+            'name' => $request->name,
+            'date' => $request->date,
+            'semester_id' => $request->semester_id,
+            'year' => $request->year,
+            'activity_type_id' => $request->activity_type_id ?? 2,
+        ]);
+
+        return back()->with('success', 'Activity created successfully.');
+    }
+
+    /**
+     * Update an existing scheduled activity.
+     */
+    public function updateActivity(Request $request, ScheduledActivity $scheduledActivity)
+    {
+        Gate::authorize('edit-support-function-reports');
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'date' => 'required|date',
+        ]);
+
+        $scheduledActivity->update([
+            'name' => $request->name,
+            'date' => $request->date,
+        ]);
+
+        return back()->with('success', 'Activity updated successfully.');
+    }
+
+    /**
+     * Delete a scheduled activity.
+     */
+    public function destroyActivity(ScheduledActivity $scheduledActivity)
+    {
+        Gate::authorize('edit-support-function-reports');
+
+        $scheduledActivity->delete();
+
+        return back()->with('success', 'Activity deleted successfully.');
+    }
+
+    /**
+     * Ensure all Mondays for a semester are automatically generated if no MMP activities exist yet.
+     */
+    private function ensureMmpMondaysForSemester(int $semesterId, int $year): void
+    {
+        $semester = Semester::find($semesterId);
+        if (!$semester) return;
+
+        $existingCount = ScheduledActivity::where('activity_type_id', 1)
+            ->where('semester_id', $semesterId)
+            ->where('year', $year)
+            ->count();
+
+        if ($existingCount === 0) {
+            $startMonth = $semester->month_start;
+            $endMonth = $semester->month_end;
+
+            $startDate = \Carbon\Carbon::createFromDate($year, $startMonth, 1)->startOfDay();
+            $endDate = \Carbon\Carbon::createFromDate($year, $endMonth, 1)->endOfMonth()->endOfDay();
+
+            $curr = $startDate->copy();
+            if (!$curr->isMonday()) {
+                $curr->modify('next monday');
+            }
+
+            while ($curr->lte($endDate)) {
+                $dateStr = $curr->format('Y-m-d');
+                ScheduledActivity::create([
+                    'activity_type_id' => 1,
+                    'name' => 'MMP Flag Raising ' . $dateStr,
+                    'date' => $dateStr,
+                    'semester_id' => $semesterId,
+                    'year' => $year,
+                ]);
+
+                $curr->addWeek();
+            }
+        }
     }
 }

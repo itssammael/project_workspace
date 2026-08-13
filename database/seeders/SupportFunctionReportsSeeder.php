@@ -78,14 +78,17 @@ class SupportFunctionReportsSeeder extends Seeder
 
         foreach ($memberMap as $name => $member) {
             $absentDates = $mmpAbsences[$name] ?? [];
+            $isOnLeave = ($name === 'MARINDA, L.');
             foreach ($mmpActivities as $dStr => $act) {
+                $status = $isOnLeave ? 'ON-LEAVE' : (in_array($dStr, $absentDates) ? 'A' : '1');
                 Attendance::updateOrCreate(
                     [
                         'member_id' => $member->id,
                         'scheduled_activity_id' => $act->id,
                     ],
                     [
-                        'is_present' => !in_array($dStr, $absentDates),
+                        'is_present' => ($status === '1'),
+                        'status' => $status,
                     ]
                 );
             }
@@ -141,14 +144,17 @@ class SupportFunctionReportsSeeder extends Seeder
 
         foreach ($memberMap as $name => $member) {
             $absentActs = $lguAbsences[$name] ?? [];
+            $isOnLeave = ($name === 'MARINDA, L.');
             foreach ($lguActivities as $actName => $act) {
+                $status = $isOnLeave ? 'ON-LEAVE' : (in_array($actName, $absentActs) ? 'A' : '1');
                 Attendance::updateOrCreate(
                     [
                         'member_id' => $member->id,
                         'scheduled_activity_id' => $act->id,
                     ],
                     [
-                        'is_present' => !in_array($actName, $absentActs),
+                        'is_present' => ($status === '1'),
+                        'status' => $status,
                     ]
                 );
             }
@@ -309,6 +315,14 @@ class SupportFunctionReportsSeeder extends Seeder
                 4 => ['tardy' => 0, 'absences' => 1, 'ut' => 0],
                 5 => ['tardy' => 1, 'absences' => 1, 'ut' => 0],
                 6 => ['tardy' => 3, 'absences' => 2, 'ut' => 0],
+            ],
+            'MARINDA, L.' => [
+                1 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
+                2 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
+                3 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
+                4 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
+                5 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
+                6 => ['tardy' => 'ON-LEAVE', 'absences' => 'ON-LEAVE', 'ut' => 'ON-LEAVE'],
             ],
         ];
 

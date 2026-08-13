@@ -309,4 +309,48 @@ class SystemRuleEvaluator
 
         return count(array_intersect($userDeptIds, $targetDeptIds)) > 0;
     }
+
+    /**
+     * Check if a user is permitted to edit and update tab data in Support Function Reports.
+     * Enforces rule: only Members under Section "Admin" (or System Admin) can edit.
+     */
+    public static function canEditSupportFunctionReports(User $user): bool
+    {
+        if (!Schema::hasTable('system_rules')) {
+            return true;
+        }
+
+        $rule = SystemRule::where('enabled', true)
+            ->get()
+            ->first(function ($r) {
+                $op = $r->rule_logic['operation'] ?? null;
+                return $op === 'edit_support_function_reports' || $op === 'restrict_support_function_reports_edit';
+            });
+
+        if (!$rule) {
+            return true;
+        }
+
+        $logic = $rule->rule_logic ?? [];
+        $bypassRoles = $logic['bypass_system_roles'] ?? ['admin'];
+
+        if ($user->role && in_array($user->role->slug, $bypassRoles)) {
+            return true;
+        }
+
+        if (!$user->member) {
+            return false;
+        }
+
+        $allowedSections = array_map('strtolower', $logic['allowed_sections'] ?? ['Admin']);
+        $userSections = $user->member->sections()->pluck('name')->toArray();
+
+        foreach ($userSections as $secName) {
+            if (in_array(strtolower(trim($secName)), $allowedSections)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

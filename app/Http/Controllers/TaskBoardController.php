@@ -390,6 +390,26 @@ class TaskBoardController extends Controller
             }
         }
 
+        // Check if selected workflows include IPCR workflow type
+        $isIpcr = Workflow::whereIn('id', $validated['workflow_ids'])
+            ->whereHas('workflowType', function ($q) {
+                $q->where('name', 'IPCR');
+            })->exists();
+
+        if ($isIpcr) {
+            $creatorMember = $request->user()->member;
+            if ($creatorMember) {
+                $hasCreator = collect($validated['members'] ?? [])->contains('id', $creatorMember->id);
+                if (!$hasCreator) {
+                    $defaultRoleId = \App\Models\MemberRole::first()?->id ?? 1;
+                    $validated['members'][] = [
+                        'id' => $creatorMember->id,
+                        'member_role_id' => $defaultRoleId,
+                    ];
+                }
+            }
+        }
+
         $taskBoard = TaskBoard::create([
             'name' => $validated['name'],
             'description' => $validated['description'],

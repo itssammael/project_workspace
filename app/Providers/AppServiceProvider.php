@@ -47,6 +47,10 @@ class AppServiceProvider extends ServiceProvider
             return \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/support-function-reports', ['admin', 'user', 'viewer'], ['admin_staff', 'department_head', 'project_manager', 'developer']);
         });
 
+        Gate::define('edit-support-function-reports', function (User $user) {
+            return \App\Services\SystemRuleEvaluator::canEditSupportFunctionReports($user);
+        });
+
         Gate::define('manage-system-settings', function (User $user) {
             return \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_system_settings', ['admin'], ['admin_staff']);
         });

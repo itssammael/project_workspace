@@ -51,6 +51,11 @@ Route::middleware([
 
     // Support Function Reports
     Route::get('/support-function-reports', [App\Http\Controllers\SupportFunctionReportsController::class, 'index'])->name('support-function-reports.index');
+    Route::post('/support-function-reports/attendance', [App\Http\Controllers\SupportFunctionReportsController::class, 'updateAttendance'])->name('support-function-reports.update-attendance');
+    Route::post('/support-function-reports/tardiness-undertime', [App\Http\Controllers\SupportFunctionReportsController::class, 'updateTardinessAbsenceUndertime'])->name('support-function-reports.update-tardiness-undertime');
+    Route::post('/support-function-reports/activities', [App\Http\Controllers\SupportFunctionReportsController::class, 'storeActivity'])->name('support-function-reports.activities.store');
+    Route::put('/support-function-reports/activities/{scheduledActivity}', [App\Http\Controllers\SupportFunctionReportsController::class, 'updateActivity'])->name('support-function-reports.activities.update');
+    Route::delete('/support-function-reports/activities/{scheduledActivity}', [App\Http\Controllers\SupportFunctionReportsController::class, 'destroyActivity'])->name('support-function-reports.activities.destroy');
 
     // Admin Management
     Route::get('/admin/management', [AdminManagementController::class, 'index'])->name('admin.management');

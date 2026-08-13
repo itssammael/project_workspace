@@ -4,6 +4,10 @@ import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
+    canEdit: {
+        type: Boolean,
+        default: false,
+    },
     semesters: Array,
     selectedSemesterId: Number,
     selectedYear: Number,
@@ -21,8 +25,20 @@ const props = defineProps({
 const activeTab = ref('lgu'); // 'lgu', 'mmp', 'tardy', 'undertime'
 const currentSemesterId = ref(props.selectedSemesterId);
 const currentYear = ref(props.selectedYear);
+const isSaving = ref(false);
 
 const years = [2026, 2025, 2024];
+
+// Modal States for Activity Management
+const showActivityModal = ref(false);
+const editingActivity = ref(null);
+const activityForm = ref({
+    name: '',
+    date: new Date().toISOString().substring(0, 10),
+});
+
+const showDeleteConfirmModal = ref(false);
+const activityToDelete = ref(null);
 
 const handleFilterChange = () => {
     router.get(
@@ -33,6 +49,146 @@ const handleFilterChange = () => {
         },
         { preserveState: true, replace: true }
     );
+};
+
+const handleAttendanceChange = (memberId, scheduledActivityId, status) => {
+    if (!props.canEdit) return;
+    isSaving.value = true;
+    router.post(
+        route('support-function-reports.update-attendance'),
+        {
+            member_id: memberId,
+            scheduled_activity_id: scheduledActivityId,
+            status: status,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isSaving.value = false;
+            },
+        }
+    );
+};
+
+const handleTardinessChange = (memberId, month, field, value) => {
+    if (!props.canEdit) return;
+    isSaving.value = true;
+    router.post(
+        route('support-function-reports.update-tardiness-undertime'),
+        {
+            member_id: memberId,
+            month: month,
+            year: currentYear.value,
+            semester_id: currentSemesterId.value,
+            field: field,
+            value: String(value),
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isSaving.value = false;
+            },
+        }
+    );
+};
+
+const openAddActivityModal = () => {
+    if (!props.canEdit) return;
+    editingActivity.value = null;
+    activityForm.value = {
+        name: '',
+        date: new Date().toISOString().substring(0, 10),
+    };
+    showActivityModal.value = true;
+};
+
+const openEditActivityModal = (col) => {
+    if (!props.canEdit) return;
+    editingActivity.value = col;
+    activityForm.value = {
+        name: col.name,
+        date: col.date || new Date().toISOString().substring(0, 10),
+    };
+    showActivityModal.value = true;
+};
+
+const submitActivityForm = () => {
+    if (!props.canEdit || !activityForm.value.name || !activityForm.value.date) return;
+
+    isSaving.value = true;
+    if (editingActivity.value) {
+        router.put(
+            route('support-function-reports.activities.update', editingActivity.value.id),
+            {
+                name: activityForm.value.name,
+                date: activityForm.value.date,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showActivityModal.value = false;
+                },
+                onFinish: () => {
+                    isSaving.value = false;
+                },
+            }
+        );
+    } else {
+        router.post(
+            route('support-function-reports.activities.store'),
+            {
+                name: activityForm.value.name,
+                date: activityForm.value.date,
+                semester_id: currentSemesterId.value,
+                year: currentYear.value,
+                activity_type_id: 2, // LGU Activity
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showActivityModal.value = false;
+                },
+                onFinish: () => {
+                    isSaving.value = false;
+                },
+            }
+        );
+    }
+};
+
+const confirmDeleteActivity = (col) => {
+    if (!props.canEdit) return;
+    activityToDelete.value = col;
+    showDeleteConfirmModal.value = true;
+};
+
+const deleteActivity = () => {
+    if (!props.canEdit || !activityToDelete.value) return;
+    isSaving.value = true;
+    router.delete(
+        route('support-function-reports.activities.destroy', activityToDelete.value.id),
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showDeleteConfirmModal.value = false;
+                activityToDelete.value = null;
+            },
+            onFinish: () => {
+                isSaving.value = false;
+            },
+        }
+    );
+};
+
+const getNumericOptions = (currentVal) => {
+    const opts = Array.from({ length: 31 }, (_, i) => String(i));
+    if (currentVal !== undefined && currentVal !== null && currentVal !== 'ON-LEAVE' && !opts.includes(String(currentVal))) {
+        opts.push(String(currentVal));
+        opts.sort((a, b) => Number(a) - Number(b));
+    }
+    return opts;
 };
 
 // Group MMP columns by month for table header span
@@ -74,10 +230,21 @@ const mmpMonthHeaders = computed(() => {
                             <span class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-teal-50 text-[#0D9488] border border-teal-200/60">
                                 Operational Analytics
                             </span>
+                            <span v-if="props.canEdit" class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Admin Edit Access
+                            </span>
+                            <span v-else class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                                Read Only View
+                            </span>
+                            <span v-if="isSaving" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-amber-50 text-amber-600 border border-amber-200 animate-pulse">
+                                Saving Changes...
+                            </span>
                         </div>
                         <h1 class="text-2xl font-bold text-slate-800 mt-1">Support Function Reports</h1>
                         <p class="text-xs text-slate-500 mt-0.5">
                             Semester attendance tracking, LGU activity compliance, tardiness, absences, and undertime summary.
+                            <span v-if="props.canEdit">Click any cell to edit data.</span>
+                            <span v-else>Department view access. Only Members under Section "Admin" can edit data.</span>
                         </p>
                     </div>
 
@@ -178,13 +345,25 @@ const mmpMonthHeaders = computed(() => {
                 <!-- TAB 1: LGU ACTIVITIES -->
                 <!-- ========================================================= -->
                 <div v-if="activeTab === 'lgu'" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h2 class="text-lg font-bold text-slate-800 uppercase tracking-wide">
-                            LGU ACTIVITIES {{ props.selectedSemester?.name }} {{ props.selectedYear }}
-                        </h2>
-                        <span class="text-xs font-semibold text-slate-500">
-                            Total Activities: {{ props.lguColumns.length }}
-                        </span>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800 uppercase tracking-wide">
+                                LGU ACTIVITIES {{ props.selectedSemester?.name }} {{ props.selectedYear }}
+                            </h2>
+                            <span class="text-xs font-semibold text-slate-500">
+                                Total Activities: {{ props.lguColumns.length }}
+                            </span>
+                        </div>
+                        <button
+                            v-if="props.canEdit"
+                            @click="openAddActivityModal"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#0D9488] hover:bg-teal-700 active:bg-teal-800 rounded-xl shadow-2xs transition-all cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>Add Activity</span>
+                        </button>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -195,9 +374,33 @@ const mmpMonthHeaders = computed(() => {
                                     <th 
                                         v-for="col in props.lguColumns" 
                                         :key="col.id" 
-                                        class="p-3 text-center border-r border-slate-200 min-w-[140px] uppercase text-[11px]"
+                                        class="p-3 text-center border-r border-slate-200 min-w-[150px] uppercase text-[11px] group relative"
                                     >
-                                        {{ col.name }}
+                                        <div class="flex flex-col items-center justify-between min-h-[50px]">
+                                            <span class="font-bold text-slate-800 leading-tight mb-2">{{ col.name }}</span>
+                                            
+                                            <!-- Action Buttons (Edit & Delete) - Only if canEdit -->
+                                            <div v-if="props.canEdit" class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    @click.stop="openEditActivityModal(col)"
+                                                    title="Edit Activity"
+                                                    class="p-1 rounded-md text-slate-500 hover:text-teal-600 hover:bg-teal-50 border border-transparent hover:border-teal-200 transition-all cursor-pointer"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    @click.stop="confirmDeleteActivity(col)"
+                                                    title="Remove Activity"
+                                                    class="p-1 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </th>
                                     <th class="p-3 text-center border-r border-slate-200 w-28">TOTAL NO. OF ACTIVITIES</th>
                                     <th class="p-3 text-center w-24">%</th>
@@ -225,26 +428,43 @@ const mmpMonthHeaders = computed(() => {
                                         <td 
                                             v-for="col in props.lguColumns" 
                                             :key="col.id" 
-                                            class="p-2.5 text-center border-r border-slate-200 font-bold"
+                                            class="p-2 text-center border-r border-slate-200 font-bold"
                                         >
-                                            <span 
-                                                v-if="props.lguMatrix[m.id]?.cells[col.id] === '1'" 
-                                                class="inline-block px-2 py-0.5 rounded text-teal-700 bg-teal-50 border border-teal-200"
+                                            <select 
+                                                v-if="props.canEdit"
+                                                :value="props.lguMatrix[m.id]?.cells[col.id] ?? '1'"
+                                                @change="handleAttendanceChange(m.id, col.id, $event.target.value)"
+                                                :class="[
+                                                    'px-2 py-1 text-xs font-extrabold rounded-lg border shadow-2xs cursor-pointer transition-all appearance-none text-center outline-none focus:ring-2 focus:ring-teal-400/50',
+                                                    (props.lguMatrix[m.id]?.cells[col.id] ?? '1') === '1' ? 'text-teal-700 bg-teal-50 border-teal-200 hover:bg-teal-100/70' :
+                                                    (props.lguMatrix[m.id]?.cells[col.id] === 'A') ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100/70' :
+                                                    'text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100/70 text-[10px]'
+                                                ]"
                                             >
-                                                1
-                                            </span>
-                                            <span 
-                                                v-else-if="props.lguMatrix[m.id]?.cells[col.id] === 'A'" 
-                                                class="inline-block px-2 py-0.5 rounded text-rose-700 bg-rose-50 border border-rose-200"
-                                            >
-                                                A
-                                            </span>
-                                            <span 
-                                                v-else-if="props.lguMatrix[m.id]?.cells[col.id] === 'ON-LEAVE'" 
-                                                class="inline-block px-2 py-0.5 rounded text-purple-700 bg-purple-50 border border-purple-200 text-[10px]"
-                                            >
-                                                ON-LEAVE
-                                            </span>
+                                                <option value="1">1</option>
+                                                <option value="A">A</option>
+                                                <option value="ON-LEAVE">ON-LEAVE</option>
+                                            </select>
+                                            <template v-else>
+                                                <span 
+                                                    v-if="props.lguMatrix[m.id]?.cells[col.id] === '1' || !props.lguMatrix[m.id]?.cells[col.id]" 
+                                                    class="inline-block px-2 py-0.5 rounded text-teal-700 bg-teal-50 border border-teal-200 font-bold"
+                                                >
+                                                    1
+                                                </span>
+                                                <span 
+                                                    v-else-if="props.lguMatrix[m.id]?.cells[col.id] === 'A'" 
+                                                    class="inline-block px-2 py-0.5 rounded text-rose-700 bg-rose-50 border border-rose-200 font-bold"
+                                                >
+                                                    A
+                                                </span>
+                                                <span 
+                                                    v-else-if="props.lguMatrix[m.id]?.cells[col.id] === 'ON-LEAVE'" 
+                                                    class="inline-block px-2 py-0.5 rounded text-purple-700 bg-purple-50 border border-purple-200 text-[10px] font-bold"
+                                                >
+                                                    ON-LEAVE
+                                                </span>
+                                            </template>
                                         </td>
 
                                         <td class="p-3 text-center border-r border-slate-200 font-bold text-slate-900 bg-slate-50/40">
@@ -296,9 +516,21 @@ const mmpMonthHeaders = computed(() => {
                                     <th 
                                         v-for="col in props.mmpColumns" 
                                         :key="col.id" 
-                                        class="px-2 py-1.5 border-r border-emerald-700 text-[10px] whitespace-nowrap"
+                                        class="px-1.5 py-1 border-r border-emerald-700 text-[10px] whitespace-nowrap group relative hover:bg-emerald-900/80 transition-colors"
                                     >
-                                        {{ col.label }}
+                                        <div class="flex items-center justify-between gap-1">
+                                            <span class="font-bold">{{ col.label }}</span>
+                                            <button
+                                                v-if="props.canEdit"
+                                                @click.stop="confirmDeleteActivity(col)"
+                                                title="Delete Monday Session"
+                                                class="p-0.5 rounded text-emerald-300 hover:text-rose-300 hover:bg-rose-900/50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </th>
                                 </tr>
                             </thead>
@@ -324,26 +556,43 @@ const mmpMonthHeaders = computed(() => {
                                         <td 
                                             v-for="col in props.mmpColumns" 
                                             :key="col.id" 
-                                            class="p-2 text-center border-r border-slate-200 font-bold"
+                                            class="p-1.5 text-center border-r border-slate-200 font-bold"
                                         >
-                                            <span 
-                                                v-if="props.mmpMatrix[m.id]?.cells[col.id] === '1'" 
-                                                class="text-teal-700 font-bold"
+                                            <select 
+                                                v-if="props.canEdit"
+                                                :value="props.mmpMatrix[m.id]?.cells[col.id] ?? '1'"
+                                                @change="handleAttendanceChange(m.id, col.id, $event.target.value)"
+                                                :class="[
+                                                    'px-1.5 py-0.5 text-xs font-extrabold rounded-md border shadow-2xs cursor-pointer transition-all appearance-none text-center outline-none focus:ring-2 focus:ring-emerald-400/50',
+                                                    (props.mmpMatrix[m.id]?.cells[col.id] ?? '1') === '1' ? 'text-teal-700 bg-teal-50 border-teal-200 hover:bg-teal-100/70' :
+                                                    (props.mmpMatrix[m.id]?.cells[col.id] === 'A') ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100/70' :
+                                                    'text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100/70 text-[9px]'
+                                                ]"
                                             >
-                                                1
-                                            </span>
-                                            <span 
-                                                v-else-if="props.mmpMatrix[m.id]?.cells[col.id] === 'A'" 
-                                                class="text-rose-700 font-extrabold"
-                                            >
-                                                A
-                                            </span>
-                                            <span 
-                                                v-else-if="props.mmpMatrix[m.id]?.cells[col.id] === 'ON-LEAVE'" 
-                                                class="text-purple-700 font-bold text-[9px]"
-                                            >
-                                                ON-LEAVE
-                                            </span>
+                                                <option value="1">1</option>
+                                                <option value="A">A</option>
+                                                <option value="ON-LEAVE">ON-LEAVE</option>
+                                            </select>
+                                            <template v-else>
+                                                <span 
+                                                    v-if="props.mmpMatrix[m.id]?.cells[col.id] === '1' || !props.mmpMatrix[m.id]?.cells[col.id]" 
+                                                    class="text-teal-700 font-bold"
+                                                >
+                                                    1
+                                                </span>
+                                                <span 
+                                                    v-else-if="props.mmpMatrix[m.id]?.cells[col.id] === 'A'" 
+                                                    class="text-rose-700 font-extrabold"
+                                                >
+                                                    A
+                                                </span>
+                                                <span 
+                                                    v-else-if="props.mmpMatrix[m.id]?.cells[col.id] === 'ON-LEAVE'" 
+                                                    class="text-purple-700 font-bold text-[9px]"
+                                                >
+                                                    ON-LEAVE
+                                                </span>
+                                            </template>
                                         </td>
 
                                         <td class="p-3 text-center border-r border-slate-200 font-extrabold text-slate-900 bg-slate-50/40">
@@ -416,13 +665,41 @@ const mmpMonthHeaders = computed(() => {
                                         </td>
 
                                         <template v-for="mObj in props.semesterMonths" :key="mObj.number">
-                                            <td class="p-2 text-center border-r border-slate-200 font-bold">
-                                                <span :class="props.tardyMatrix[m.id]?.months[mObj.number]?.tardy > 0 ? 'text-amber-700 font-extrabold' : 'text-slate-400'">
+                                            <td class="p-1.5 text-center border-r border-slate-200 font-bold">
+                                                <select 
+                                                    v-if="props.canEdit"
+                                                    :value="String(props.tardyMatrix[m.id]?.months[mObj.number]?.tardy ?? '0')"
+                                                    @change="handleTardinessChange(m.id, mObj.number, 'tardy', $event.target.value)"
+                                                    :class="[
+                                                        'w-full max-w-[70px] px-1 py-0.5 text-xs font-extrabold rounded border shadow-2xs text-center cursor-pointer transition-all appearance-none outline-none focus:ring-2 focus:ring-lime-400/50',
+                                                        props.tardyMatrix[m.id]?.months[mObj.number]?.tardy === 'ON-LEAVE'
+                                                            ? 'text-purple-700 bg-purple-50 border-purple-200 text-[9px]'
+                                                            : (Number(props.tardyMatrix[m.id]?.months[mObj.number]?.tardy) > 0 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-slate-400 bg-slate-50/50 border-slate-200 hover:border-slate-300')
+                                                    ]"
+                                                >
+                                                    <option v-for="opt in getNumericOptions(props.tardyMatrix[m.id]?.months[mObj.number]?.tardy)" :key="'t-'+opt" :value="opt">{{ opt }}</option>
+                                                    <option value="ON-LEAVE">ON-LEAVE</option>
+                                                </select>
+                                                <span v-else :class="props.tardyMatrix[m.id]?.months[mObj.number]?.tardy === 'ON-LEAVE' ? 'text-purple-700 font-bold text-[9px]' : (Number(props.tardyMatrix[m.id]?.months[mObj.number]?.tardy) > 0 ? 'text-amber-700 font-extrabold' : 'text-slate-400')">
                                                     {{ props.tardyMatrix[m.id]?.months[mObj.number]?.tardy ?? 0 }}
                                                 </span>
                                             </td>
-                                            <td class="p-2 text-center border-r border-slate-200 font-bold">
-                                                <span :class="props.tardyMatrix[m.id]?.months[mObj.number]?.absences > 0 ? 'text-rose-700 font-extrabold' : 'text-slate-400'">
+                                            <td class="p-1.5 text-center border-r border-slate-200 font-bold">
+                                                <select 
+                                                    v-if="props.canEdit"
+                                                    :value="String(props.tardyMatrix[m.id]?.months[mObj.number]?.absences ?? '0')"
+                                                    @change="handleTardinessChange(m.id, mObj.number, 'absences', $event.target.value)"
+                                                    :class="[
+                                                        'w-full max-w-[70px] px-1 py-0.5 text-xs font-extrabold rounded border shadow-2xs text-center cursor-pointer transition-all appearance-none outline-none focus:ring-2 focus:ring-lime-400/50',
+                                                        props.tardyMatrix[m.id]?.months[mObj.number]?.absences === 'ON-LEAVE'
+                                                            ? 'text-purple-700 bg-purple-50 border-purple-200 text-[9px]'
+                                                            : (Number(props.tardyMatrix[m.id]?.months[mObj.number]?.absences) > 0 ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-slate-400 bg-slate-50/50 border-slate-200 hover:border-slate-300')
+                                                    ]"
+                                                >
+                                                    <option v-for="opt in getNumericOptions(props.tardyMatrix[m.id]?.months[mObj.number]?.absences)" :key="'a-'+opt" :value="opt">{{ opt }}</option>
+                                                    <option value="ON-LEAVE">ON-LEAVE</option>
+                                                </select>
+                                                <span v-else :class="props.tardyMatrix[m.id]?.months[mObj.number]?.absences === 'ON-LEAVE' ? 'text-purple-700 font-bold text-[9px]' : (Number(props.tardyMatrix[m.id]?.months[mObj.number]?.absences) > 0 ? 'text-rose-700 font-extrabold' : 'text-slate-400')">
                                                     {{ props.tardyMatrix[m.id]?.months[mObj.number]?.absences ?? 0 }}
                                                 </span>
                                             </td>
@@ -501,9 +778,23 @@ const mmpMonthHeaders = computed(() => {
                                         <td 
                                             v-for="mObj in props.semesterMonths" 
                                             :key="mObj.number" 
-                                            class="p-2 text-center border-r border-slate-200 font-bold"
+                                            class="p-1.5 text-center border-r border-slate-200 font-bold"
                                         >
-                                            <span :class="props.undertimeMatrix[m.id]?.months[mObj.number] > 0 ? 'text-amber-700 font-extrabold' : 'text-slate-400'">
+                                            <select 
+                                                v-if="props.canEdit"
+                                                :value="String(props.undertimeMatrix[m.id]?.months[mObj.number] ?? '0')"
+                                                @change="handleTardinessChange(m.id, mObj.number, 'undertime', $event.target.value)"
+                                                :class="[
+                                                    'w-full max-w-[80px] px-1.5 py-0.5 text-xs font-extrabold rounded border shadow-2xs text-center cursor-pointer transition-all appearance-none outline-none focus:ring-2 focus:ring-teal-400/50',
+                                                    props.undertimeMatrix[m.id]?.months[mObj.number] === 'ON-LEAVE'
+                                                        ? 'text-purple-700 bg-purple-50 border-purple-200 text-[9px]'
+                                                        : (Number(props.undertimeMatrix[m.id]?.months[mObj.number]) > 0 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-slate-400 bg-slate-50/50 border-slate-200 hover:border-slate-300')
+                                                ]"
+                                            >
+                                                <option v-for="opt in getNumericOptions(props.undertimeMatrix[m.id]?.months[mObj.number])" :key="'u-'+opt" :value="opt">{{ opt }}</option>
+                                                <option value="ON-LEAVE">ON-LEAVE</option>
+                                            </select>
+                                            <span v-else :class="props.undertimeMatrix[m.id]?.months[mObj.number] === 'ON-LEAVE' ? 'text-purple-700 font-bold text-[9px]' : (Number(props.undertimeMatrix[m.id]?.months[mObj.number]) > 0 ? 'text-amber-700 font-extrabold' : 'text-slate-400')">
                                                 {{ props.undertimeMatrix[m.id]?.months[mObj.number] ?? 0 }}
                                             </span>
                                         </td>
@@ -519,6 +810,111 @@ const mmpMonthHeaders = computed(() => {
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Activity Modal (Add / Edit) -->
+        <div 
+            v-if="props.canEdit && showActivityModal" 
+            class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-bold text-slate-800">
+                        {{ editingActivity ? 'Edit LGU Activity' : 'Add New LGU Activity' }}
+                    </h3>
+                    <button 
+                        @click="showActivityModal = false" 
+                        class="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors cursor-pointer"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitActivityForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Activity Name
+                        </label>
+                        <input 
+                            v-model="activityForm.name"
+                            type="text"
+                            required
+                            placeholder="e.g. TAWO-TAWO CIVIC PARADE"
+                            class="w-full text-xs font-bold rounded-xl border-slate-200 shadow-2xs focus:border-[#0D9488] focus:ring-[#0D9488] px-3.5 py-2.5 text-slate-800"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Activity Date
+                        </label>
+                        <input 
+                            v-model="activityForm.date"
+                            type="date"
+                            required
+                            class="w-full text-xs font-bold rounded-xl border-slate-200 shadow-2xs focus:border-[#0D9488] focus:ring-[#0D9488] px-3.5 py-2.5 text-slate-800"
+                        />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button 
+                            type="button" 
+                            @click="showActivityModal = false"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            :disabled="isSaving"
+                            class="px-4 py-2 text-xs font-bold text-white bg-[#0D9488] hover:bg-teal-700 rounded-xl shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                            {{ editingActivity ? 'Save Changes' : 'Create Activity' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Activity Confirmation Modal -->
+        <div 
+            v-if="props.canEdit && showDeleteConfirmModal" 
+            class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+            <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+                <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                </div>
+
+                <div class="text-center space-y-1">
+                    <h3 class="text-base font-bold text-slate-800">Remove Activity?</h3>
+                    <p class="text-xs text-slate-500">
+                        Are you sure you want to remove <span class="font-bold text-slate-700">"{{ activityToDelete?.name }}"</span>? This will delete the activity column and its attendance records.
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-center gap-2 pt-2">
+                    <button 
+                        type="button" 
+                        @click="showDeleteConfirmModal = false"
+                        class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button"
+                        @click="deleteActivity"
+                        :disabled="isSaving"
+                        class="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                        Remove
+                    </button>
+                </div>
             </div>
         </div>
     </AppLayout>

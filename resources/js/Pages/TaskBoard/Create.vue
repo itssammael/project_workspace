@@ -1,5 +1,5 @@
 <script setup>
-import { useForm, Link, router } from '@inertiajs/vue3';
+import { useForm, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, watch, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
@@ -25,7 +25,6 @@ const workflowTypesWithoutKanban = computed(() => {
 });
 
 const selectedWorkflow = ref('');
-
 const workflowSearchQuery = ref('');
 const isWorkflowDropdownOpen = ref(false);
 
@@ -33,6 +32,23 @@ const filteredWorkflows = computed(() => {
     return workflowTypesWithoutKanban.value.filter(wf => 
         wf.toLowerCase().includes(workflowSearchQuery.value.toLowerCase())
     );
+});
+
+const getInitialWorkflowIds = () => {
+    if (!props.workflows) return [];
+    const kanbanIds = props.workflows.filter(w => w.workflow_type === 'Kanban').map(w => w.id);
+    return [...kanbanIds];
+};
+
+const form = useForm({
+    name: '',
+    description: '',
+    status: 'planning',
+    section_id: '',
+    start_date: '',
+    end_date: '',
+    workflow_ids: getInitialWorkflowIds(),
+    members: [], // list of { id, member_role_id }
 });
 
 const selectWorkflow = (wf) => {
@@ -54,22 +70,56 @@ const selectNoneWorkflow = () => {
     form.workflow_ids = [...kanbanIds];
 };
 
-const getInitialWorkflowIds = () => {
-    if (!props.workflows) return [];
-    const kanbanIds = props.workflows.filter(w => w.workflow_type === 'Kanban').map(w => w.id);
-    return [...kanbanIds];
-};
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+const currentMember = computed(() => currentUser.value?.member);
 
-const form = useForm({
-    name: '',
-    description: '',
-    status: 'planning',
-    section_id: '',
-    start_date: '',
-    end_date: '',
-    workflow_ids: getInitialWorkflowIds(),
-    members: [], // list of { id, member_role_id }
+const userSection = computed(() => {
+    if (currentMember.value?.sections && currentMember.value.sections.length > 0) {
+        const creatorSec = currentMember.value.sections[0];
+        const matched = props.sections?.find(s => s.id === creatorSec.id);
+        return matched || creatorSec;
+    }
+    if (currentMember.value && props.sections) {
+        const pmSec = props.sections.find(s => s.project_manager?.id === currentMember.value.id);
+        if (pmSec) return pmSec;
+        const memberSec = props.sections.find(s => s.members?.some(m => m.id === currentMember.value.id));
+        if (memberSec) return memberSec;
+    }
+    return props.sections && props.sections.length > 0 ? props.sections[0] : null;
 });
+
+const isIpcrWorkflow = computed(() => {
+    if (selectedWorkflow.value && selectedWorkflow.value.toUpperCase() === 'IPCR') {
+        return true;
+    }
+    if (props.workflows && form.workflow_ids.length > 0) {
+        return props.workflows.some(w => form.workflow_ids.includes(w.id) && w.workflow_type?.toUpperCase() === 'IPCR');
+    }
+    return false;
+});
+
+watch(isIpcrWorkflow, (newVal) => {
+    if (newVal) {
+        if (userSection.value?.id) {
+            form.section_id = userSection.value.id;
+        } else if (props.sections && props.sections.length > 0 && !form.section_id) {
+            form.section_id = props.sections[0].id;
+        }
+        if (currentMember.value) {
+            const memberId = currentMember.value.id;
+            if (!form.members.some(m => m.id === memberId)) {
+                const defaultRoleId = currentMember.value.member_roles && currentMember.value.member_roles.length > 0 
+                    ? currentMember.value.member_roles[0].id 
+                    : (props.memberRoles && props.memberRoles.length > 0 ? props.memberRoles[0].id : '');
+                form.members.push({
+                    id: memberId,
+                    member_role_id: Number(defaultRoleId)
+                });
+            }
+        }
+    }
+}, { immediate: true });
 
 const groupedWorkflows = computed(() => {
     const groups = {};
@@ -283,7 +333,18 @@ const removeCollaborator = (memberId) => {
 };
 
 watch(() => form.section_id, () => {
-    form.members = [];
+    if (isIpcrWorkflow.value && currentMember.value) {
+        const memberId = currentMember.value.id;
+        const defaultRoleId = currentMember.value.member_roles && currentMember.value.member_roles.length > 0 
+            ? currentMember.value.member_roles[0].id 
+            : (props.memberRoles && props.memberRoles.length > 0 ? props.memberRoles[0].id : '');
+        form.members = [{
+            id: memberId,
+            member_role_id: Number(defaultRoleId)
+        }];
+    } else {
+        form.members = [];
+    }
 });
 </script>
 
@@ -332,22 +393,7 @@ watch(() => form.section_id, () => {
                             <div v-if="form.errors.description" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.description }}</div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Section</label>
-                                <select 
-                                    v-model="form.section_id" 
-                                    required 
-                                    class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm"
-                                >
-                                    <option value="" disabled>Select a section...</option>
-                                    <option v-for="section in sections" :key="section.id" :value="section.id">
-                                        {{ section.name }} (PM: {{ section.project_manager?.user?.name || 'None' }})
-                                    </option>
-                                </select>
-                                <div v-if="form.errors.section_id" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.section_id }}</div>
-                            </div>
-
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Initial Status</label>
                                 <select 
@@ -362,107 +408,7 @@ watch(() => form.section_id, () => {
                                 </select>
                                 <div v-if="form.errors.status" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.status }}</div>
                             </div>
-                        </div>
 
-                        <!-- Selected Section Members & Roles Assignment -->
-                        <div v-if="form.section_id" class="border-t border-slate-100 pt-6">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Board Roles</label>
-                                    <p class="text-xs text-slate-400 mt-0.5">Select members from this section to work on this board, and assign their board-specific functional roles.</p>
-                                </div>
-                                <button 
-                                    type="button" 
-                                    @click="openCollaboratorModal" 
-                                    class="shrink-0 px-3 py-1.5 text-xs font-bold text-[#0D9488] hover:text-white hover:bg-[#0D9488] bg-white rounded-lg border border-[#0D9488] transition flex items-center gap-1 shadow-sm"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                    </svg>
-                                    Add Collaborator
-                                </button>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                <div 
-                                    v-for="member in selectedSectionMembers" 
-                                    :key="member.id"
-                                    class="border border-slate-100 rounded-xl p-4 flex flex-col gap-3 bg-slate-50/20"
-                                >
-                                    <div class="flex items-center gap-2">
-                                        <input 
-                                            type="checkbox" 
-                                            :id="'member-' + member.id"
-                                            :checked="isMemberSelected(member.id)"
-                                            @change="toggleMemberSelection(member)"
-                                            class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
-                                        />
-                                        <label :for="'member-' + member.id" class="text-xs font-bold text-slate-800 cursor-pointer select-none">
-                                            {{ member.name }}
-                                        </label>
-                                    </div>
-                                    
-                                    <div v-if="isMemberSelected(member.id)" class="pl-6 space-y-1">
-                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
-                                        <RoleSelectDropdown
-                                            :member="member"
-                                            :all-roles="memberRoles"
-                                            :model-value="getMemberProjectRoleId(member.id)"
-                                            @update:model-value="updateMemberProjectRole(member.id, $event)"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-if="form.errors.members" class="text-xs text-rose-500 font-semibold mt-2">{{ form.errors.members }}</div>
-
-                            <!-- Collaborators Section -->
-                            <div v-if="selectedCollaborators.length > 0" class="mt-6 border-t border-slate-100 pt-6">
-                                <div class="mb-4">
-                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Board Collaborators (Other Sections)</label>
-                                    <p class="text-xs text-slate-400 mt-0.5">Collaborators from other sections assigned to this board.</p>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                    <div 
-                                        v-for="collaborator in selectedCollaborators" 
-                                        :key="collaborator.id"
-                                        class="border border-teal-100 rounded-xl p-4 flex flex-col gap-3 bg-[#F0FDFA]/40 relative"
-                                    >
-                                        <div class="flex items-start justify-between gap-2">
-                                            <div class="flex flex-col min-w-0 pr-6">
-                                                <span class="text-xs font-bold text-slate-800 truncate">
-                                                    {{ collaborator.name }}
-                                                </span>
-                                                <span class="text-[10px] text-slate-400 font-semibold truncate mt-0.5">
-                                                    {{ collaborator.sectionName }}
-                                                </span>
-                                            </div>
-                                            <button 
-                                                type="button"
-                                                @click="removeCollaborator(collaborator.id)"
-                                                class="absolute top-3 right-3 text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition"
-                                                title="Remove collaborator"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.24 9m4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        
-                                        <div class="space-y-1">
-                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
-                                            <RoleSelectDropdown
-                                                :member="collaborator"
-                                                :all-roles="memberRoles"
-                                                :model-value="getMemberProjectRoleId(collaborator.id)"
-                                                @update:model-value="updateMemberProjectRole(collaborator.id, $event)"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Start Date</label>
                                 <input 
@@ -610,6 +556,137 @@ watch(() => form.section_id, () => {
                                             <div class="min-w-0">
                                                 <p class="font-bold text-xs leading-none text-slate-800">{{ workflow.name }}</p>
                                                 <span class="text-[9px] text-slate-400 font-semibold leading-none mt-1.5 block">Order #{{ workflow.order }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Assign Section -->
+                        <div class="border-t border-slate-100 pt-6">
+                            <div class="mb-4">
+                                <div class="flex items-center justify-between gap-2 mb-2">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section</label>
+                                    <span v-if="isIpcrWorkflow" class="px-2.5 py-0.5 text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 rounded-full flex items-center gap-1">
+                                        <svg class="w-3 h-3 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        IPCR Workflow: Assigned to Creator
+                                    </span>
+                                </div>
+                                <select 
+                                    v-model="form.section_id" 
+                                    required 
+                                    :disabled="isIpcrWorkflow"
+                                    class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
+                                >
+                                    <option value="" disabled>Select a section...</option>
+                                    <option v-for="section in sections" :key="section.id" :value="section.id">
+                                        {{ section.name }} (PM: {{ section.project_manager?.user?.name || 'None' }})
+                                    </option>
+                                </select>
+                                <p v-if="isIpcrWorkflow" class="text-xs text-teal-600 font-medium mt-1.5 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                    </svg>
+                                    <span>Selected workflow is IPCR. Task board is assigned directly to creator <strong>{{ currentUser?.name }}</strong>.</span>
+                                </p>
+                                <div v-if="form.errors.section_id" class="text-xs text-rose-500 font-semibold mt-1">{{ form.errors.section_id }}</div>
+                            </div>
+
+                            <!-- Selected Section Members & Roles Assignment -->
+                            <div v-if="form.section_id" class="border-t border-slate-100 pt-6">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assign Section Members & Board Roles</label>
+                                        <p class="text-xs text-slate-400 mt-0.5">Select members from this section to work on this board, and assign their board-specific functional roles.</p>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="openCollaboratorModal" 
+                                        class="shrink-0 px-3 py-1.5 text-xs font-bold text-[#0D9488] hover:text-white hover:bg-[#0D9488] bg-white rounded-lg border border-[#0D9488] transition flex items-center gap-1 shadow-sm"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                        Add Collaborator
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div 
+                                        v-for="member in selectedSectionMembers" 
+                                        :key="member.id"
+                                        class="border border-slate-100 rounded-xl p-4 flex flex-col gap-3 bg-slate-50/20"
+                                    >
+                                        <div class="flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                :id="'member-' + member.id"
+                                                :checked="isMemberSelected(member.id)"
+                                                @change="toggleMemberSelection(member)"
+                                                class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
+                                            />
+                                            <label :for="'member-' + member.id" class="text-xs font-bold text-slate-800 cursor-pointer select-none">
+                                                {{ member.name }}
+                                            </label>
+                                        </div>
+                                        
+                                        <div v-if="isMemberSelected(member.id)" class="pl-6 space-y-1">
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
+                                            <RoleSelectDropdown
+                                                :member="member"
+                                                :all-roles="memberRoles"
+                                                :model-value="getMemberProjectRoleId(member.id)"
+                                                @update:model-value="updateMemberProjectRole(member.id, $event)"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="form.errors.members" class="text-xs text-rose-500 font-semibold mt-2">{{ form.errors.members }}</div>
+
+                                <!-- Collaborators Section -->
+                                <div v-if="selectedCollaborators.length > 0" class="mt-6 border-t border-slate-100 pt-6">
+                                    <div class="mb-4">
+                                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Board Collaborators (Other Sections)</label>
+                                        <p class="text-xs text-slate-400 mt-0.5">Collaborators from other sections assigned to this board.</p>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div 
+                                            v-for="collaborator in selectedCollaborators" 
+                                            :key="collaborator.id"
+                                            class="border border-teal-100 rounded-xl p-4 flex flex-col gap-3 bg-[#F0FDFA]/40 relative"
+                                        >
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="flex flex-col min-w-0 pr-6">
+                                                    <span class="text-xs font-bold text-slate-800 truncate">
+                                                        {{ collaborator.name }}
+                                                    </span>
+                                                    <span class="text-[10px] text-slate-400 font-semibold truncate mt-0.5">
+                                                        {{ collaborator.sectionName }}
+                                                    </span>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    @click="removeCollaborator(collaborator.id)"
+                                                    class="absolute top-3 right-3 text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition"
+                                                    title="Remove collaborator"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.24 9m4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="space-y-1">
+                                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Role</label>
+                                                <RoleSelectDropdown
+                                                    :member="collaborator"
+                                                    :all-roles="memberRoles"
+                                                    :model-value="getMemberProjectRoleId(collaborator.id)"
+                                                    @update:model-value="updateMemberProjectRole(collaborator.id, $event)"
+                                                />
                                             </div>
                                         </div>
                                     </div>

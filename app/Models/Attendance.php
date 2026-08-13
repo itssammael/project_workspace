@@ -14,6 +14,7 @@ class Attendance extends Model
         'member_id',
         'scheduled_activity_id',
         'is_present',
+        'status',
     ];
 
     protected $casts = [
