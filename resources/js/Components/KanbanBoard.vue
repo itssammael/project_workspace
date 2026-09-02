@@ -1,6 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import ConfirmationModal from './ConfirmationModal.vue';
+import SecondaryButton from './SecondaryButton.vue';
 
 const props = defineProps({
     project: Object,
@@ -10,8 +12,6 @@ const props = defineProps({
     canToggleAllTasks: Boolean,
     currentMemberId: Number,
 });
-import ConfirmationModal from './ConfirmationModal.vue';
-import SecondaryButton from './SecondaryButton.vue';
 
 const emit = defineEmits(['add-task', 'edit-task', 'toggle-all-tasks']);
 

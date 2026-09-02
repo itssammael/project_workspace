@@ -3,6 +3,7 @@ import { useForm, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, watch, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import RoleSelectDropdown from '@/Components/RoleSelectDropdown.vue';
+import CollaboratorPickerModal from '@/Components/Modals/CollaboratorPickerModal.vue';
 
 const props = defineProps({
     sections: Array,
@@ -715,120 +716,17 @@ watch(() => form.section_id, () => {
         </div>
 
         <!-- Collaborator Selection Modal -->
-        <div v-if="isCollaboratorModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <!-- Backdrop -->
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="isCollaboratorModalOpen = false"></div>
-
-            <!-- Modal Content -->
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 relative z-10 flex flex-col max-h-[90vh]">
-                <!-- Header -->
-                <div class="p-6 border-b border-slate-150 flex items-center justify-between">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-base">Add Board Collaborator</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Find and assign section members to this board.</p>
-                    </div>
-                    <button 
-                        type="button" 
-                        @click="isCollaboratorModalOpen = false" 
-                        class="text-slate-400 hover:text-slate-500 p-1 hover:bg-slate-100 rounded-lg transition"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div class="p-6 flex-1 overflow-y-auto space-y-4">
-                    <!-- Search input -->
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            v-model="collaboratorSearchQuery"
-                            placeholder="Search by name or section..."
-                            class="w-full rounded-lg border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488] pl-9 py-2"
-                        />
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Search Results -->
-                    <div class="space-y-1.5 max-h-56 overflow-y-auto">
-                        <button
-                            v-for="member in filteredCollaborators"
-                            :key="member.id"
-                            type="button"
-                            @click="selectCollaboratorForAdding(member)"
-                            class="w-full flex items-center justify-between p-3 rounded-xl border text-left transition"
-                            :class="[
-                                selectedCollaboratorId === member.id 
-                                    ? 'bg-teal-50/50 border-teal-200 text-teal-900 shadow-sm ring-1 ring-teal-100'
-                                    : 'bg-white hover:bg-slate-50 border-slate-100 text-slate-700'
-                            ]"
-                        >
-                            <div class="min-w-0 pr-4">
-                                <p class="font-bold text-xs text-slate-800">{{ member.name }}</p>
-                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5">{{ member.sectionName }}</p>
-                            </div>
-                            <div v-if="selectedCollaboratorId === member.id" class="text-[#0D9488] shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                            </div>
-                        </button>
-                        <div v-if="filteredCollaborators.length === 0" class="text-xs text-slate-400 text-center py-6">
-                            No eligible section members found
-                        </div>
-                    </div>
-
-                    <!-- Role selector (only if a collaborator is selected) -->
-                    <div 
-                        v-if="selectedCollaboratorId" 
-                        class="bg-slate-50/50 border border-slate-100 rounded-xl p-4 space-y-3 mt-4"
-                    >
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-700">Assign Board Role</span>
-                            <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded font-bold">
-                                {{ allAvailableMembers.find(m => m.id === selectedCollaboratorId)?.name }}
-                            </span>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Functional Role</label>
-                            <select 
-                                v-model="selectedCollaboratorRoleId"
-                                class="w-full rounded-lg border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]"
-                            >
-                                <option v-for="role in memberRoles" :key="role.id" :value="role.id">
-                                    {{ role.name }} {{ hasRoleGlobally(allAvailableMembers.find(m => m.id === selectedCollaboratorId), role.id) ? '' : '(attach globally)' }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="p-6 border-t border-slate-150 bg-slate-50/50 flex justify-end gap-2">
-                    <button 
-                        type="button" 
-                        @click="isCollaboratorModalOpen = false" 
-                        class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-50 transition"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        type="button" 
-                        @click="confirmAddCollaborator" 
-                        :disabled="!selectedCollaboratorId || isAttachingCollaboratorRole"
-                        class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        <span v-if="isAttachingCollaboratorRole" class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        {{ isAttachingCollaboratorRole ? 'Attaching...' : 'Add to Board' }}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <CollaboratorPickerModal
+            :show="isCollaboratorModalOpen"
+            :available-members="filteredCollaborators"
+            :selected-member-id="selectedCollaboratorId"
+            :selected-role-id="selectedCollaboratorRoleId"
+            :member-roles="memberRoles"
+            :is-attaching="isAttachingCollaboratorRole"
+            @close="isCollaboratorModalOpen = false"
+            @select-member="selectCollaboratorForAdding"
+            @update:selected-role-id="(id) => selectedCollaboratorRoleId = id"
+            @confirm-add="confirmAddCollaborator"
+        />
     </AppLayout>
 </template>

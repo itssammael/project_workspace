@@ -1,7 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, Head } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import RuleBuilderModal from '@/Components/Modals/RuleBuilderModal.vue';
+import RulePreviewModal from '@/Components/Modals/RulePreviewModal.vue';
+import ImportRulesModal from '@/Components/Modals/ImportRulesModal.vue';
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
     settings: Object,
@@ -97,7 +103,6 @@ const ruleSearch = ref('');
 const ruleTypeFilter = ref('');
 const ruleScopeFilter = ref('');
 const ruleStatusFilter = ref('');
-const selectedRuleIds = ref([]);
 
 const isRuleModalOpen = ref(false);
 const ruleModalMode = ref('create'); // 'create' or 'edit'
@@ -109,10 +114,6 @@ const isDeleteModalOpen = ref(false);
 const ruleToDelete = ref(null);
 
 // Rule Domain Categories & Types Specification
-const ruleCategories = [
-    { id: 'system_wide_access', label: 'System-Wide Access & Security', desc: 'System/Functional role permissions, allowed/prohibited actions, page & route access' },
-    { id: 'workspace_governance', label: 'Workspace & Form Governance', desc: 'Conditional logic, validation checks, approval chains, escalation alerts, compliance rules' }
-];
 
 const ruleTypeOptions = [
     // System-Wide Access & Security Types
@@ -382,9 +383,9 @@ const exportAllRulesJSON = () => {
     downloadAnchor.remove();
 };
 
-const submitImportJSON = () => {
+const submitImportJSON = (jsonContent) => {
     try {
-        const parsed = JSON.parse(importJsonText.value);
+        const parsed = JSON.parse(jsonContent);
         const payload = Array.isArray(parsed) ? parsed : [parsed];
         useForm({ rules: payload }).post(route('admin.rules.import'), {
             onSuccess: () => {
@@ -417,28 +418,6 @@ const getTypeLabel = (type) => {
     return opt ? opt.label : type;
 };
 
-// Builder Condition Helpers
-const addSubCondition = (conditionGroup) => {
-    if (!conditionGroup.conditions) conditionGroup.conditions = [];
-    conditionGroup.conditions.push({ field: 'Status', operator: 'equals', value: 'In Progress' });
-};
-
-const removeCondition = (conditionsArr, index) => {
-    conditionsArr.splice(index, 1);
-};
-
-const addApprovalStep = () => {
-    if (!ruleForm.rule_logic.approval_chain) ruleForm.rule_logic.approval_chain = [];
-    ruleForm.rule_logic.approval_chain.push('Department Head');
-};
-
-const removeApprovalStep = (index) => {
-    ruleForm.rule_logic.approval_chain.splice(index, 1);
-};
-
-const insertErrorMessageVar = (varName) => {
-    ruleForm.rule_logic.error_message = (ruleForm.rule_logic.error_message || '') + ` [${varName}]`;
-};
 </script>
 
 <template>
@@ -1070,351 +1049,36 @@ const insertErrorMessageVar = (varName) => {
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MODAL 1: WYSIWYG RULE BUILDER (CREATE / EDIT) -->
-        <!-- ========================================== -->
-        <div v-if="isRuleModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" @click="isRuleModalOpen = false"></div>
+        <RuleBuilderModal 
+            :show="isRuleModalOpen"
+            :mode="ruleModalMode"
+            :form="ruleForm"
+            :roles="roles"
+            :memberRoles="memberRoles"
+            @close="isRuleModalOpen = false"
+            @submit="submitRuleForm"
+        />
 
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden max-w-3xl w-full z-10 transform transition-all flex flex-col max-h-[90vh]">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-lg">
-                            {{ ruleModalMode === 'create' ? 'Add New System Rule' : 'Edit System Rule' }}
-                        </h3>
-                        <p class="text-xs text-slate-500">Configure System-Wide Access & Security or Workspace Governance Rule parameters.</p>
-                    </div>
-                    <button @click="isRuleModalOpen = false" class="text-slate-400 hover:text-slate-600">✕</button>
-                </div>
+        <RulePreviewModal
+            :show="isPreviewModalOpen"
+            :rule="previewingRule"
+            @close="isPreviewModalOpen = false; previewingRule = null"
+        />
 
-                <form @submit.prevent="submitRuleForm" class="p-6 space-y-6 overflow-y-auto flex-1">
-                    
-                    <!-- Basic Meta & Category -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rule Name</label>
-                            <input type="text" v-model="ruleForm.name" required class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]" placeholder="e.g. Admin Management Page Access Restriction" />
-                        </div>
+        <ImportRulesModal
+            :show="isImportModalOpen"
+            @close="isImportModalOpen = false"
+            @submit="submitImportJSON"
+        />
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rule Type</label>
-                            <select v-model="ruleForm.type" required class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]">
-                                <option v-for="t in ruleTypeOptions" :key="t.value" :value="t.value">
-                                    {{ ['page_access_rule', 'role_permission_rule', 'data_integrity_rule'].includes(t.value) ? '🛡️ [System-Wide]' : '📋 [Workspace]' }} {{ t.label }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-                            <select v-model="ruleForm.status" class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="draft">Draft</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Applicable Module Scope</label>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                <label v-for="mod in availableModules" :key="mod" class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
-                                    <input type="checkbox" :value="mod" v-model="ruleForm.scope" class="rounded text-[#0D9488] focus:ring-[#0D9488]" />
-                                    {{ mod }}
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Description</label>
-                        <textarea v-model="ruleForm.description" rows="2" class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488]" placeholder="Detailed explanation of rule purpose and operational enforcement..."></textarea>
-                    </div>
-
-                    <!-- DYNAMIC BUILDER PANELS BY TYPE -->
-
-                    <!-- 1. PAGE ACCESS RULE PANEL -->
-                    <div v-if="ruleForm.type === 'page_access_rule'" class="border border-sky-200 rounded-2xl p-5 bg-sky-50/40 space-y-4">
-                        <h4 class="text-xs font-bold text-sky-900 uppercase tracking-wider">🛡️ System-Wide Page View & Route Restriction Config</h4>
-                        <div>
-                            <label class="block text-[10px] font-bold text-sky-800 uppercase mb-1">Target Page Route</label>
-                            <select v-model="ruleForm.rule_logic.target_route" class="w-full rounded-xl border-sky-200 text-xs">
-                                <option v-for="ro in routeOptions" :key="ro.route" :value="ro.route">{{ ro.label }}</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[10px] font-bold text-sky-800 uppercase mb-1">Permitted System Roles</label>
-                                <div class="space-y-1">
-                                    <label v-for="sr in systemRoleOptions" :key="sr.slug" class="flex items-center gap-2 text-xs">
-                                        <input type="checkbox" :value="sr.slug" v-model="ruleForm.rule_logic.allowed_system_roles" class="rounded text-sky-600" />
-                                        {{ sr.label }}
-                                    </label>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-sky-800 uppercase mb-1">Permitted Functional Roles</label>
-                                <div class="space-y-1 max-h-28 overflow-y-auto">
-                                    <label v-for="fr in functionalRoleOptions" :key="fr.slug" class="flex items-center gap-2 text-xs">
-                                        <input type="checkbox" :value="fr.slug" v-model="ruleForm.rule_logic.allowed_functional_roles" class="rounded text-sky-600" />
-                                        {{ fr.label }}
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2. ROLE PERMISSION RULE PANEL -->
-                    <div v-else-if="ruleForm.type === 'role_permission_rule'" class="border border-indigo-200 rounded-2xl p-5 bg-indigo-50/40 space-y-4">
-                        <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">🛡️ System & Functional Role Operational Action Permissions</h4>
-                        <div>
-                            <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Operational Action</label>
-                            <select v-model="ruleForm.rule_logic.operation" class="w-full rounded-xl border-indigo-200 text-xs">
-                                <option value="create_user">Create User Accounts</option>
-                                <option value="update_user">Update User Accounts & Roles</option>
-                                <option value="delete_user">Delete User Accounts</option>
-                                <option value="create_project">Create Task Boards</option>
-                                <option value="update_project">Update Task Boards</option>
-                                <option value="delete_project">Delete Task Boards</option>
-                                <option value="manage_tasks">Allocate Tasks & Workflows</option>
-                                <option value="manage_sections">Manage Sections</option>
-                                <option value="manage_workflows">Manage Workflows</option>
-                                <option value="manage_functional_roles">Manage Functional Roles</option>
-                                <option value="view_all_projects_dashboard">View All Task Boards on Dashboard</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-indigo-200/60">
-                            <div>
-                                <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Permitted System Roles</label>
-                                <div class="space-y-1">
-                                    <label v-for="sr in systemRoleOptions" :key="sr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="checkbox" :value="sr.slug" v-model="ruleForm.rule_logic.allowed_system_roles" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                                        <span>{{ sr.label }}</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Permitted Functional Roles</label>
-                                <div class="space-y-1 max-h-32 overflow-y-auto">
-                                    <label v-for="fr in functionalRoleOptions" :key="fr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="checkbox" :value="fr.slug" v-model="ruleForm.rule_logic.allowed_functional_roles" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                                        <span>{{ fr.label }}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-indigo-800 uppercase mb-1">Target Error / Restriction Message</label>
-                            <input type="text" v-model="ruleForm.rule_logic.error_message" class="w-full rounded-xl border-indigo-200 text-xs" placeholder="e.g. Only authorized roles can perform this action." />
-                        </div>
-                    </div>
-
-                    <!-- 3. CONDITIONAL LOGIC BUILDER -->
-                    <div v-else-if="ruleForm.type === 'conditional_logic'" class="border border-teal-200 rounded-2xl p-5 bg-teal-50/20 space-y-4">
-                        <h4 class="text-xs font-bold text-[#0F766E] uppercase tracking-wider">📋 Form Conditional Logic Builder</h4>
-                        <div class="bg-slate-900 p-4 rounded-xl text-white text-xs space-y-3 font-mono">
-                            <div class="flex items-center justify-between text-teal-300 font-bold">
-                                <span>IF CONDITIONS:</span>
-                                <button type="button" @click="addSubCondition(ruleForm.rule_logic)" class="px-2 py-1 bg-teal-600 text-white rounded text-[10px] uppercase font-sans">+ Add Condition</button>
-                            </div>
-                            
-                            <div v-for="(cond, cidx) in (ruleForm.rule_logic.conditions || [])" :key="cidx" class="pl-2 border-l-2 border-teal-500 space-y-2">
-                                <div v-if="cond.field" class="flex flex-wrap items-center gap-2">
-                                    <select v-model="cond.field" class="bg-slate-800 border-slate-700 text-amber-300 text-xs rounded p-1.5">
-                                        <option v-for="f in formFields" :key="f" :value="f">{{ f }}</option>
-                                    </select>
-                                    <select v-model="cond.operator" class="bg-slate-800 border-slate-700 text-sky-300 text-xs rounded p-1.5">
-                                        <option v-for="op in operatorOptions" :key="op" :value="op">{{ op }}</option>
-                                    </select>
-                                    <input type="text" v-model="cond.value" class="bg-slate-800 border-slate-700 text-emerald-300 text-xs rounded p-1.5 flex-1" placeholder="Value..." />
-                                    <button type="button" @click="removeCondition(ruleForm.rule_logic.conditions, cidx)" class="text-rose-400">✕</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. VALIDATION RULE BUILDER -->
-                    <div v-else-if="ruleForm.type === 'validation_rule'" class="border border-amber-200 rounded-2xl p-5 bg-amber-50/40 space-y-3">
-                        <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider">📋 Form Validation Rule Builder</h4>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Field to Validate</label>
-                                <select v-model="ruleForm.rule_logic.field" class="w-full rounded-xl border-slate-200 text-xs">
-                                    <option v-for="f in formFields" :key="f" :value="f">{{ f }}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Validation Constraint</label>
-                                <select v-model="ruleForm.rule_logic.validation_type" class="w-full rounded-xl border-slate-200 text-xs">
-                                    <option value="required">Required Field</option>
-                                    <option value="min_length">Minimum Character Length</option>
-                                    <option value="numeric">Must be Numeric</option>
-                                    <option value="date_range">Valid Date Range</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Custom Error Message Template</label>
-                            <textarea v-model="ruleForm.rule_logic.error_message" rows="2" class="w-full rounded-xl border-slate-200 font-mono text-xs" placeholder="e.g. Project Name [Project Name] must be at least 5 characters long."></textarea>
-                            <div class="flex items-center gap-2 mt-1">
-                                <button type="button" @click="insertErrorMessageVar('Project Name')" class="px-2 py-0.5 bg-slate-200 text-[10px] font-bold rounded">[Project Name]</button>
-                                <button type="button" @click="insertErrorMessageVar('Field Name')" class="px-2 py-0.5 bg-slate-200 text-[10px] font-bold rounded">[Field Name]</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 5. APPROVAL RULE BUILDER -->
-                    <div v-else-if="ruleForm.type === 'approval_rule'" class="border border-teal-200 rounded-2xl p-5 bg-teal-50/40 space-y-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Target Operational Action</label>
-                            <select v-model="ruleForm.rule_logic.operation" class="w-full rounded-xl border-teal-200 text-xs">
-                                <option value="create_project">Create Task Boards (Task Board Creation Authority)</option>
-                                <option value="manage_tasks">Allocate Tasks & Workflows (Section Manager Authority)</option>
-                                <option value="update_project">Update Task Boards</option>
-                                <option value="create_user">Create User Accounts</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h4 class="text-xs font-bold text-teal-900 uppercase tracking-wider">📋 Approval Hierarchy Chain</h4>
-                                <p class="text-[11px] text-slate-500 mt-0.5">Select and sequence System Roles & Functional Roles required for approval routing.</p>
-                            </div>
-                            <button type="button" @click="addApprovalStep" class="px-3 py-1.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Add Step
-                            </button>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 flex-wrap bg-white p-4 rounded-xl border border-slate-200 shadow-sm min-h-[56px]">
-                            <template v-for="(step, sidx) in (ruleForm.rule_logic.approval_chain || [])" :key="sidx">
-                                <div class="flex items-center gap-1.5 bg-[#F0FDFA] border border-teal-300 pl-3 pr-1 py-1 rounded-xl shadow-xs">
-                                    <select 
-                                        v-model="ruleForm.rule_logic.approval_chain[sidx]" 
-                                        class="bg-transparent border-none text-[#0D9488] font-bold text-xs p-0 pe-6 focus:ring-0 cursor-pointer"
-                                    >
-                                        <optgroup label="System Roles">
-                                            <option v-for="r in (props.roles.length ? props.roles : [{name: 'Administrator'}, {name: 'User'}, {name: 'Viewer'}])" :key="r.name" :value="r.name">{{ r.name }}</option>
-                                        </optgroup>
-                                        <optgroup label="Functional Roles">
-                                            <option v-for="mr in (props.memberRoles.length ? props.memberRoles : [{name: 'Department Head'}, {name: 'Project Manager'}, {name: 'Admin Staff'}, {name: 'Lead Developer'}, {name: 'Developer'}, {name: 'UI/UX Designer'}])" :key="mr.name" :value="mr.name">{{ mr.name }}</option>
-                                        </optgroup>
-                                    </select>
-                                    <button type="button" @click="removeApprovalStep(sidx)" class="p-1 text-teal-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Remove Step">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <span v-if="sidx < (ruleForm.rule_logic.approval_chain?.length - 1)" class="text-teal-400 font-bold text-base">→</span>
-                            </template>
-                            <div v-if="!ruleForm.rule_logic.approval_chain || ruleForm.rule_logic.approval_chain.length === 0" class="text-xs text-slate-400 italic">
-                                No approval steps configured. Click "+ Add Step" to add a role to the chain.
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-teal-200/60">
-                            <div>
-                                <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Permitted System Roles</label>
-                                <div class="space-y-1">
-                                    <label v-for="sr in systemRoleOptions" :key="sr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="checkbox" :value="sr.slug" v-model="ruleForm.rule_logic.allowed_system_roles" class="rounded text-teal-600 focus:ring-teal-500" />
-                                        <span>{{ sr.label }}</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-teal-800 uppercase mb-1">Permitted Functional Roles</label>
-                                <div class="space-y-1 max-h-32 overflow-y-auto">
-                                    <label v-for="fr in functionalRoleOptions" :key="fr.slug" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="checkbox" :value="fr.slug" v-model="ruleForm.rule_logic.allowed_functional_roles" class="rounded text-teal-600 focus:ring-teal-500" />
-                                        <span>{{ fr.label }}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Actions Checkboxes -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Actions Performed When Rule Applies</label>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-36 overflow-y-auto">
-                            <label v-for="act in availableActions" :key="act.value" class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                <input type="checkbox" :value="act.value" v-model="ruleForm.actions" class="rounded text-[#0D9488] focus:ring-[#0D9488]" />
-                                <span>{{ act.label }}</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" @click="isRuleModalOpen = false" class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-xl hover:bg-slate-50 transition">
-                            Cancel
-                        </button>
-                        <button type="submit" :disabled="ruleForm.processing" class="px-5 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl shadow-sm transition">
-                            Save System Rule
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL 2: INTERACTIVE PREVIEW -->
-        <div v-if="isPreviewModalOpen && previewingRule" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm" @click="isPreviewModalOpen = false"></div>
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-xl w-full z-10 p-6 space-y-4">
-                <div class="flex items-center justify-between border-b pb-3">
-                    <h3 class="font-bold text-slate-800 text-lg">Rule Simulation Preview</h3>
-                    <button @click="isPreviewModalOpen = false" class="text-slate-400 hover:text-slate-600">✕</button>
-                </div>
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-                    <p class="font-bold text-slate-700">System Rule: <span class="text-[#0D9488]">{{ previewingRule.name }}</span></p>
-                    <p class="text-slate-500">{{ previewingRule.description }}</p>
-                </div>
-                <div class="p-4 bg-teal-50 border border-teal-200 text-[#0F766E] rounded-xl text-xs space-y-1">
-                    <p class="font-bold uppercase tracking-wider text-[10px]">Simulation Result:</p>
-                    <p>Enforcement Status: <strong class="text-emerald-700">Active & Enforced System-Wide</strong></p>
-                    <p>Configured Actions: <strong>{{ (previewingRule.actions || []).join(', ') }}</strong></p>
-                </div>
-                <div class="flex justify-end">
-                    <button @click="isPreviewModalOpen = false" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl">Close Simulation</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL 3: IMPORT JSON -->
-        <div v-if="isImportModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm" @click="isImportModalOpen = false"></div>
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-xl w-full z-10 p-6 space-y-4">
-                <div class="flex items-center justify-between border-b pb-3">
-                    <h3 class="font-bold text-slate-800 text-lg">Import System Rules from JSON</h3>
-                    <button @click="isImportModalOpen = false" class="text-slate-400 hover:text-slate-600">✕</button>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paste JSON Array Payload</label>
-                    <textarea v-model="importJsonText" rows="8" class="w-full rounded-xl border-slate-200 font-mono text-xs" placeholder='[ { "name": "Rule 1", "type": "page_access_rule", ... } ]'></textarea>
-                </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <button @click="isImportModalOpen = false" class="px-4 py-2 border text-xs font-semibold text-slate-700 rounded-xl">Cancel</button>
-                    <button @click="submitImportJSON" class="px-4 py-2 bg-[#0D9488] text-white text-xs font-bold rounded-xl">Import Payload</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL 4: DELETE CONFIRMATION -->
-        <div v-if="isDeleteModalOpen && ruleToDelete" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm" @click="isDeleteModalOpen = false"></div>
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full z-10 p-6 space-y-4">
-                <h3 class="font-bold text-slate-800 text-lg">Delete System Rule</h3>
-                <p class="text-xs text-slate-600">Are you sure you want to permanently delete rule <strong>"{{ ruleToDelete.name }}"</strong>? This action cannot be undone.</p>
-                <div class="flex justify-end gap-3 pt-2">
-                    <button @click="isDeleteModalOpen = false" class="px-4 py-2 border text-xs font-semibold text-slate-700 rounded-xl">Cancel</button>
-                    <button @click="executeDeleteRule" class="px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl">Delete Permanently</button>
-                </div>
-            </div>
-        </div>
+        <ConfirmationModal :show="isDeleteModalOpen && ruleToDelete != null" @close="isDeleteModalOpen = false; ruleToDelete = null">
+            <template #title>Delete Rule</template>
+            <template #content>Are you sure you want to delete the rule <strong>"{{ ruleToDelete?.name }}"</strong>? This action cannot be undone.</template>
+            <template #footer>
+                <SecondaryButton @click="isDeleteModalOpen = false; ruleToDelete = null">Cancel</SecondaryButton>
+                <DangerButton class="ms-3" @click="executeDeleteRule">Delete Permanently</DangerButton>
+            </template>
+        </ConfirmationModal>
 
     </AppLayout>
 </template>

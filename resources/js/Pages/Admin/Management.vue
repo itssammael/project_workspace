@@ -1,10 +1,16 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm, Link, Head, usePage } from '@inertiajs/vue3';
+import { useForm, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
+import UserFormModal from '@/Components/Modals/UserFormModal.vue';
+import SectionFormModal from '@/Components/Modals/SectionFormModal.vue';
+import WorkflowFormModal from '@/Components/Modals/WorkflowFormModal.vue';
+import WorkflowTypeFormModal from '@/Components/Modals/WorkflowTypeFormModal.vue';
+import RoleFormModal from '@/Components/Modals/RoleFormModal.vue';
+import DepartmentFormModal from '@/Components/Modals/DepartmentFormModal.vue';
 
 const props = defineProps({
     users: Array,
@@ -45,7 +51,6 @@ const roleFilter = ref('');
 const sectionSearch = ref('');
 const departmentSearch = ref('');
 const workflowSearch = ref('');
-const projectTypeFilter = ref('');
 const systemLogSearch = ref('');
 
 // Modals state
@@ -554,52 +559,9 @@ const filteredDepartments = computed(() => {
     );
 });
 
-const isMemberPickerOpen = ref(false);
-const memberPickerSearch = ref('');
-
-const assignedSectionMembers = computed(() => {
-    return props.membersList.filter(m => sectionForm.member_ids.includes(m.id));
-});
-
-const filteredPickerMembers = computed(() => {
-    if (!memberPickerSearch.value) return props.membersList;
-    const query = memberPickerSearch.value.toLowerCase();
-    return props.membersList.filter(m => 
-        m.name.toLowerCase().includes(query) ||
-        (m.email && m.email.toLowerCase().includes(query)) ||
-        (m.role && m.role.toLowerCase().includes(query))
-    );
-});
-
-const openMemberPicker = () => {
-    memberPickerSearch.value = '';
-    isMemberPickerOpen.value = true;
-};
-
-const closeMemberPicker = () => {
-    isMemberPickerOpen.value = false;
-};
-
-const removeMemberAssignment = (memberId) => {
-    const index = sectionForm.member_ids.indexOf(memberId);
-    if (index > -1) {
-        sectionForm.member_ids.splice(index, 1);
-    }
-};
-
 const closeSectionModal = () => {
     isSectionModalOpen.value = false;
-    isMemberPickerOpen.value = false;
     sectionForm.reset();
-};
-
-const toggleMemberAssignment = (memberId) => {
-    const index = sectionForm.member_ids.indexOf(memberId);
-    if (index > -1) {
-        sectionForm.member_ids.splice(index, 1);
-    } else {
-        sectionForm.member_ids.push(memberId);
-    }
 };
 
 const getInitials = (name) => {
@@ -1646,700 +1608,72 @@ const submitBulkAssign = () => {
         </div>
 
         <!-- User Create/Edit Modal -->
-        <div v-if="isUserModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeUserModal"></div>
-
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        {{ userModalMode === 'create' ? 'Add New User & Member' : 'Edit User Profile' }}
-                    </h3>
-                    <button @click="closeUserModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitUserForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                        <input type="text" autocomplete="off" v-model="userForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Jane Doe" />
-                        <div v-if="userForm.errors.name" class="text-rose-500 text-xs mt-1">{{ userForm.errors.name }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Username</label>
-                        <input type="text" autocomplete="off" v-model="userForm.username" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. janedoe" />
-                        <div v-if="userForm.errors.username" class="text-rose-500 text-xs mt-1">{{ userForm.errors.username }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email Address</label>
-                        <input type="email" autocomplete="off" v-model="userForm.email" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. jane@example.com" />
-                        <div v-if="userForm.errors.email" class="text-rose-500 text-xs mt-1">{{ userForm.errors.email }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                            Password <span v-if="userModalMode === 'edit'" class="text-slate-400 font-normal">(Leave empty to keep current)</span>
-                        </label>
-                        <input type="password" autocomplete="off" v-model="userForm.password" :required="userModalMode === 'create'" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="Minimum 8 characters" />
-                        <div v-if="userForm.errors.password" class="text-rose-500 text-xs mt-1">{{ userForm.errors.password }}</div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">System Role</label>
-                            <select v-model="userForm.role_id" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                <option value="">Select Role</option>
-                                <option v-for="r in availableSystemRolesForForm" :key="r.id" :value="r.id">{{ r.name }}</option>
-                            </select>
-                            <div v-if="userForm.errors.role_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.role_id }}</div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Functional Roles</label>
-                            <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
-                                <div v-for="mr in memberRoles" :key="mr.id" class="flex items-center">
-                                    <input 
-                                        type="checkbox" 
-                                        :id="'member_role_' + mr.id" 
-                                        :value="mr.id" 
-                                        v-model="userForm.member_role_ids" 
-                                        class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
-                                    />
-                                    <label :for="'member_role_' + mr.id" class="ms-2 text-xs font-medium text-slate-700 select-none cursor-pointer">
-                                        {{ mr.name }}
-                                    </label>
-                                </div>
-                            </div>
-                            <div v-if="userForm.errors.member_role_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.member_role_ids }}</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Employee Type</label>
-                        <div class="flex items-center gap-6 py-2.5 px-3 border border-slate-200 rounded-lg bg-slate-50/50">
-                            <label 
-                                v-for="et in employeeTypes" 
-                                :key="et.id" 
-                                class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none"
-                            >
-                                <input 
-                                    type="radio" 
-                                    name="employee_type" 
-                                    :value="et.id" 
-                                    v-model="userForm.employee_type_id" 
-                                    class="text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4" 
-                                />
-                                <span>{{ et.description }}</span>
-                            </label>
-                        </div>
-                        <div v-if="userForm.errors.employee_type_id" class="text-rose-500 text-xs mt-1">{{ userForm.errors.employee_type_id }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign to Section(s)</label>
-                        <div class="mt-2 space-y-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50/50">
-                            <div v-for="sec in availableSections" :key="sec.id" class="flex items-center">
-                                <input 
-                                    type="checkbox" 
-                                    :id="'user_sec_' + sec.id" 
-                                    :value="sec.id" 
-                                    v-model="userForm.section_ids" 
-                                    class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
-                                />
-                                <label :for="'user_sec_' + sec.id" class="ms-2 text-xs font-medium text-slate-700 select-none cursor-pointer">
-                                    {{ sec.name }}
-                                </label>
-                            </div>
-                            <div v-if="availableSections.length === 0" class="text-xs text-slate-400 italic">
-                                No sections available.
-                            </div>
-                        </div>
-                        <div v-if="userForm.errors.section_ids" class="text-rose-500 text-xs mt-1">{{ userForm.errors.section_ids }}</div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button 
-                            type="button" 
-                            @click="closeUserModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="userForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
-                        >
-                            Save Profile
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <UserFormModal
+            :show="isUserModalOpen"
+            :mode="userModalMode"
+            :form="userForm"
+            :roles="roles"
+            :member-roles="memberRoles"
+            :sections="availableSections"
+            :employee-types="employeeTypes"
+            @close="closeUserModal"
+            @submit="submitUserForm"
+        />
 
         <!-- Section Create/Edit Modal -->
-        <div v-if="isSectionModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeSectionModal"></div>
+        <SectionFormModal
+            :show="isSectionModalOpen"
+            :mode="sectionModalMode"
+            :form="sectionForm"
+            :departments="departments"
+            :members-list="membersList"
+            @close="closeSectionModal"
+            @submit="submitSectionForm"
+        />
 
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-lg w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        {{ sectionModalMode === 'create' ? 'Create New Section' : 'Edit Section' }}
-                    </h3>
-                    <button @click="closeSectionModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitSectionForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
-                        <select v-model="sectionForm.department_id" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                            <option value="" disabled>Select Department</option>
-                            <option v-for="dept in props.departments" :key="dept.id" :value="dept.id">
-                                {{ dept.name }}
-                            </option>
-                        </select>
-                        <div v-if="sectionForm.errors.department_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.department_id }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Section Name</label>
-                        <input type="text" v-model="sectionForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Beta Development Section" />
-                        <div v-if="sectionForm.errors.name" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.name }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Head</label>
-                        <select v-model="sectionForm.member_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                            <option value="">Unassigned</option>
-                            <option v-for="m in membersList" :key="m.id" :value="m.id">
-                                {{ m.name }} ({{ m.role }})
-                            </option>
-                        </select>
-                        <div v-if="sectionForm.errors.member_id" class="text-rose-500 text-xs mt-1">{{ sectionForm.errors.member_id }}</div>
-                    </div>
-
-                    <!-- Member Assignment List (Shows ONLY Assigned Members with + Button) -->
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                Section Members ({{ assignedSectionMembers.length }})
-                            </label>
-                            <button 
-                                type="button" 
-                                @click="openMemberPicker"
-                                class="inline-flex items-center gap-1 text-xs font-bold text-[#0D9488] hover:text-[#0f766e] bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-lg border border-teal-200/60 transition shadow-sm"
-                                title="Add member to section"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
-                                <span>Add Member</span>
-                            </button>
-                        </div>
-
-                        <!-- List of Assigned Members Only -->
-                        <div class="border border-slate-200 rounded-xl max-h-56 overflow-y-auto p-3 bg-slate-50/50 space-y-2">
-                            <div 
-                                v-for="m in assignedSectionMembers" 
-                                :key="m.id"
-                                class="flex items-center justify-between p-2.5 rounded-lg border bg-white border-slate-200/80 shadow-sm transition-all"
-                            >
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <div class="h-8 w-8 rounded-full bg-[#F0FDFA] border border-teal-200 text-[#0D9488] flex items-center justify-center font-bold text-xs shrink-0">
-                                        {{ getInitials(m.name) }}
-                                    </div>
-                                    <div class="min-w-0">
-                                        <p class="font-bold text-xs truncate leading-none text-slate-800">{{ m.name }}</p>
-                                        <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider leading-none mt-1 block">
-                                            {{ m.role }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <button 
-                                    type="button" 
-                                    @click="removeMemberAssignment(m.id)"
-                                    class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
-                                    title="Remove member from section"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <!-- Empty State when no members assigned -->
-                            <div v-if="assignedSectionMembers.length === 0" class="text-center py-6 px-4">
-                                <svg class="w-8 h-8 mx-auto text-slate-300 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                                </svg>
-                                <p class="text-xs font-medium text-slate-500">No members assigned to this section</p>
-                                <button 
-                                    type="button" 
-                                    @click="openMemberPicker"
-                                    class="mt-1.5 text-xs font-bold text-[#0D9488] hover:underline inline-flex items-center gap-1"
-                                >
-                                    <span>Click "+ Add Member" to assign</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button 
-                            type="button" 
-                            @click="closeSectionModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="sectionForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
-                        >
-                            Save Section
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Searchable Member Picker Modal -->
-        <div v-if="isMemberPickerOpen" class="fixed inset-0 overflow-y-auto z-[60] flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeMemberPicker"></div>
-
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col max-h-[80vh]">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-base">Select Section Members</h3>
-                        <p class="text-xs text-slate-500">Search and select members to assign to this section.</p>
-                    </div>
-                    <button @click="closeMemberPicker" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="p-4 border-b border-slate-100 bg-white flex-shrink-0">
-                    <input 
-                        type="text" 
-                        v-model="memberPickerSearch"
-                        placeholder="Search by name, email, or role..." 
-                        class="w-full rounded-xl border-slate-200 text-xs focus:border-[#0D9488] focus:ring-[#0D9488] shadow-sm"
-                        autofocus
-                    />
-                </div>
-
-                <div class="p-4 overflow-y-auto flex-1 space-y-2 max-h-[340px]">
-                    <div 
-                        v-for="m in filteredPickerMembers" 
-                        :key="m.id"
-                        @click="toggleMemberAssignment(m.id)"
-                        :class="[
-                            'flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all',
-                            sectionForm.member_ids.includes(m.id) 
-                                ? 'bg-[#F0FDFA] border-teal-300 text-teal-900 shadow-sm' 
-                                : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                        ]"
-                    >
-                        <input 
-                            type="checkbox" 
-                            :checked="sectionForm.member_ids.includes(m.id)" 
-                            @click.stop 
-                            @change="toggleMemberAssignment(m.id)"
-                            class="rounded text-[#0D9488] border-slate-300 focus:ring-[#0D9488] h-4 w-4"
-                        />
-                        <div class="flex-1 min-w-0">
-                            <p class="font-bold text-xs truncate leading-none text-slate-800">{{ m.name }}</p>
-                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none mt-1 block">
-                                {{ m.role }}
-                            </span>
-                        </div>
-                        <span v-if="sectionForm.member_ids.includes(m.id)" class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-100 text-teal-800">
-                            Assigned ✓
-                        </span>
-                    </div>
-
-                    <div v-if="filteredPickerMembers.length === 0" class="text-center py-8 text-slate-400">
-                        <p class="text-xs font-semibold">No members match your search query.</p>
-                    </div>
-                </div>
-
-                <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end flex-shrink-0">
-                    <button 
-                        type="button" 
-                        @click="closeMemberPicker" 
-                        class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg shadow-sm transition"
-                    >
-                        Done ({{ sectionForm.member_ids.length }} Selected)
-                    </button>
-                </div>
-            </div>
-        </div>
         <!-- Workflow Create/Edit Modal -->
-        <div v-if="isWorkflowModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWorkflowModal"></div>
-
-            <div :class="[workflowModalMode === 'create' ? 'max-w-2xl' : 'max-w-md', 'bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden w-full z-10 transform transition-all flex flex-col max-h-[90vh]']">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-lg">
-                            {{ workflowModalMode === 'create' ? 'Add Workflows' : 'Edit Workflow' }}
-                        </h3>
-                        <p v-if="workflowModalMode === 'create'" class="text-xs text-slate-500">
-                            Create one or multiple workflows at once.
-                        </p>
-                    </div>
-                    <button @click="closeWorkflowModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitWorkflowForm" class="p-6 overflow-y-auto space-y-4 flex-1">
-                    <!-- CREATE MODE: Multiple Workflow Rows -->
-                    <template v-if="workflowModalMode === 'create'">
-                        <div class="space-y-4">
-                            <div 
-                                v-for="(row, index) in workflowForm.workflows" 
-                                :key="index"
-                                class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 relative group"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-[#0D9488] uppercase tracking-wider">
-                                        Workflow #{{ index + 1 }}
-                                    </span>
-                                    <button 
-                                        v-if="workflowForm.workflows.length > 1" 
-                                        type="button" 
-                                        @click="removeWorkflowRow(index)"
-                                        class="text-slate-400 hover:text-rose-600 p-1 rounded transition"
-                                        title="Remove workflow row"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                                    <div class="sm:col-span-5">
-                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Workflow Name</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="row.name" 
-                                            required 
-                                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
-                                            placeholder="e.g. Design & Prototype" 
-                                        />
-                                        <div v-if="workflowForm.errors[`workflows.${index}.name`]" class="text-rose-500 text-xs mt-1">
-                                            {{ workflowForm.errors[`workflows.${index}.name`] }}
-                                        </div>
-                                    </div>
-
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Display Order</label>
-                                        <input 
-                                            type="number" 
-                                            v-model="row.order" 
-                                            required 
-                                            min="0" 
-                                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
-                                            placeholder="e.g. 1" 
-                                        />
-                                        <div v-if="workflowForm.errors[`workflows.${index}.order`]" class="text-rose-500 text-xs mt-1">
-                                            {{ workflowForm.errors[`workflows.${index}.order`] }}
-                                        </div>
-                                    </div>
-
-                                    <div class="sm:col-span-4">
-                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Workflow Type</label>
-                                        <select v-model="row.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                            <option value="">Uncategorized / General</option>
-                                            <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
-                                        </select>
-                                        <div v-if="workflowForm.errors[`workflows.${index}.workflow_type_id`]" class="text-rose-500 text-xs mt-1">
-                                            {{ workflowForm.errors[`workflows.${index}.workflow_type_id`] }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button 
-                            type="button" 
-                            @click="addWorkflowRow" 
-                            class="w-full py-2.5 px-4 border-2 border-dashed border-slate-200 hover:border-[#0D9488] text-slate-600 hover:text-[#0D9488] text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-[#F0FDFA]"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            Add Another Workflow
-                        </button>
-                    </template>
-
-                    <!-- EDIT MODE: Single Workflow -->
-                    <template v-else>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Name</label>
-                            <input type="text" v-model="workflowForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Design & Prototype" />
-                            <div v-if="workflowForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.name }}</div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Display Order</label>
-                            <input type="number" v-model="workflowForm.order" required min="0" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. 1" />
-                            <div v-if="workflowForm.errors.order" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.order }}</div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Workflow Type</label>
-                            <select v-model="workflowForm.workflow_type_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                                <option value="">Uncategorized / General</option>
-                                <option v-for="t in props.workflowTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
-                            </select>
-                            <div v-if="workflowForm.errors.workflow_type_id" class="text-rose-500 text-xs mt-1">{{ workflowForm.errors.workflow_type_id }}</div>
-                        </div>
-                    </template>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6 flex-shrink-0">
-                        <button 
-                            type="button" 
-                            @click="closeWorkflowModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="workflowForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm flex items-center gap-2"
-                        >
-                            <span v-if="workflowForm.processing" class="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-white"></span>
-                            {{ workflowModalMode === 'create' ? (workflowForm.workflows.length > 1 ? `Save ${workflowForm.workflows.length} Workflows` : 'Save Workflow') : 'Save Workflow' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <WorkflowFormModal
+            :show="isWorkflowModalOpen"
+            :mode="workflowModalMode"
+            :form="workflowForm"
+            :workflow-types="workflowTypes"
+            @close="closeWorkflowModal"
+            @submit="submitWorkflowForm"
+            @add-row="addWorkflowRow"
+            @remove-row="removeWorkflowRow"
+        />
 
         <!-- Workflow Type Create/Edit Modal -->
-        <div v-if="isWorkflowTypeModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWorkflowTypeModal"></div>
-
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        {{ workflowTypeModalMode === 'create' ? 'Add Workflow Type' : 'Edit Workflow Type' }}
-                    </h3>
-                    <button @click="closeWorkflowTypeModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitWorkflowTypeForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type Name</label>
-                        <input type="text" v-model="workflowTypeForm.name" required class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" placeholder="e.g. Software Development" />
-                        <div v-if="workflowTypeForm.errors.name" class="text-rose-500 text-xs mt-1">{{ workflowTypeForm.errors.name }}</div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button 
-                            type="button" 
-                            @click="closeWorkflowTypeModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="workflowTypeForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
-                        >
-                            Save Type
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <WorkflowTypeFormModal
+            :show="isWorkflowTypeModalOpen"
+            :mode="workflowTypeModalMode"
+            :form="workflowTypeForm"
+            @close="closeWorkflowTypeModal"
+            @submit="submitWorkflowTypeForm"
+        />
 
         <!-- Manage Functional Roles Modal -->
-        <div v-if="isRoleModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeRoleModal"></div>
-
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        Manage Functional Roles
-                    </h3>
-                    <button @click="closeRoleModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="p-6 space-y-6">
-                    <!-- Create Role Form -->
-                    <form @submit.prevent="submitRoleForm" class="space-y-3">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            {{ roleModalMode === 'create' ? 'Create New Functional Role' : 'Edit Functional Role' }}
-                        </label>
-                        <div class="flex gap-2">
-                            <input 
-                                type="text" 
-                                v-model="roleForm.name" 
-                                required 
-                                placeholder="Role Name (e.g. QA Engineer)" 
-                                class="flex-1 rounded-lg border-slate-200 text-sm focus:border-[#0D9488] focus:ring-[#0D9488]"
-                            />
-                            <button 
-                                type="submit" 
-                                :disabled="roleForm.processing"
-                                class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg transition shadow-sm"
-                            >
-                                {{ roleModalMode === 'create' ? 'Add Role' : 'Update' }}
-                            </button>
-                            <button 
-                                v-if="roleModalMode === 'edit'"
-                                type="button" 
-                                @click="cancelEditRoleMode"
-                                class="px-3 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                        <div v-if="roleForm.errors.name" class="text-rose-500 text-xs">{{ roleForm.errors.name }}</div>
-                    </form>
-
-                    <!-- Roles List -->
-                    <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Existing Functional Roles</label>
-                        <div class="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-60 overflow-y-auto">
-                            <div v-for="role in memberRoles" :key="role.id" class="px-4 py-3 flex items-center justify-between hover:bg-slate-50/50 transition">
-                                <span class="text-sm font-medium text-slate-700">{{ role.name }}</span>
-                                <div class="flex items-center gap-1.5">
-                                    <button 
-                                        @click="openEditRoleModal(role)"
-                                        class="p-1 text-slate-400 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded transition"
-                                        title="Edit Role"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                                        </svg>
-                                    </button>
-                                    <button 
-                                        @click="deleteRole(role)"
-                                        class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                                        title="Delete Role"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end pt-4 border-t border-slate-100">
-                        <button 
-                            type="button" 
-                            @click="closeRoleModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <RoleFormModal
+            :show="isRoleModalOpen"
+            :mode="roleModalMode"
+            :form="roleForm"
+            :member-roles="memberRoles"
+            @close="closeRoleModal"
+            @submit="submitRoleForm"
+            @edit-role="openEditRoleModal"
+            @delete-role="deleteRole"
+            @cancel-edit="cancelEditRoleMode"
+        />
 
         <!-- Department Create/Edit Modal -->
-        <div v-if="isDepartmentModalOpen" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDepartmentModal"></div>
-
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-w-md w-full z-10 transform transition-all flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-lg">
-                        {{ departmentModalMode === 'create' ? 'Create New Department' : 'Edit Department' }}
-                    </h3>
-                    <button @click="closeDepartmentModal" class="text-slate-400 hover:text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitDepartmentForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department Name</label>
-                        <input 
-                            type="text" 
-                            v-model="departmentForm.name" 
-                            required 
-                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm" 
-                            placeholder="e.g. Information Technology Department" 
-                        />
-                        <div v-if="departmentForm.errors.name" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.name }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Short Code / Abbreviation</label>
-                        <input 
-                            type="text" 
-                            v-model="departmentForm.short_name" 
-                            required 
-                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm uppercase" 
-                            placeholder="e.g. IT, HR, FIN" 
-                        />
-                        <div v-if="departmentForm.errors.short_name" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.short_name }}</div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department Head</label>
-                        <select v-model="departmentForm.department_head_id" class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm">
-                            <option value="">Unassigned</option>
-                            <option v-for="m in membersList" :key="m.id" :value="m.id">
-                                {{ m.name }} ({{ m.role }})
-                            </option>
-                        </select>
-                        <div v-if="departmentForm.errors.department_head_id" class="text-rose-500 text-xs mt-1">{{ departmentForm.errors.department_head_id }}</div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button 
-                            type="button" 
-                            @click="closeDepartmentModal" 
-                            class="px-4 py-2 border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="departmentForm.processing"
-                            class="px-4 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition shadow-sm"
-                        >
-                            Save Department
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <DepartmentFormModal
+            :show="isDepartmentModalOpen"
+            :mode="departmentModalMode"
+            :form="departmentForm"
+            :members-list="membersList"
+            @close="closeDepartmentModal"
+            @submit="submitDepartmentForm"
+        />
 
         <!-- Confirmation Modal -->
         <ConfirmationModal :show="confirmModalState.show" @close="confirmModalState.show = false">

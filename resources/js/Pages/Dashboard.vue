@@ -9,7 +9,6 @@ const props = defineProps({
     pendingTasks: Array,
     undeliveredTasks: Array,
     isDeptHead: Boolean,
-    isProjectManager: Boolean,
     memberRole: String,
     systemRole: String,
 });
@@ -38,14 +37,7 @@ const getStatusClass = (status) => {
     }
 };
 
-const getInitials = (name) => {
-    if (!name) return 'U';
-    const parts = name.split(' ');
-    if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-};
+import { getInitials } from '@/Utils/helpers.js';
 </script>
 
 <template>
