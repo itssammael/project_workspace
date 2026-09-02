@@ -49,8 +49,14 @@ class SupportFunctionReportsController extends Controller
         }
 
         // Apply Same-Department Rule scoping on members list
-        $membersQuery = Member::with(['user', 'sections']);
+        $membersQuery = Member::with(['user', 'sections', 'employeeType']);
         $membersQuery = SystemRuleEvaluator::scopeMemberQueryByDepartmentRule($membersQuery, $request->user());
+        
+        // Only include employee types: Regular and Casual
+        $membersQuery->whereHas('employeeType', function ($q) {
+            $q->whereIn('description', ['Regular', 'Casual']);
+        });
+
         $members = $membersQuery->get();
 
         // Group members by Section

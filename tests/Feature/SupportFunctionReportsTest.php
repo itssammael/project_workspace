@@ -7,12 +7,12 @@ use App\Models\Member;
 use App\Models\ScheduledActivity;
 use App\Models\Attendance;
 use App\Models\TardinessAbsenceUndertime;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class SupportFunctionReportsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected $seed = true;
 
@@ -209,5 +209,39 @@ class SupportFunctionReportsTest extends TestCase
         ]);
 
         $editResponse->assertStatus(403);
+    }
+
+    /**
+     * Test only Regular and Casual employee types are included in Support Function Reports.
+     */
+    public function test_only_regular_and_casual_employee_types_are_included_in_reports(): void
+    {
+        $adminUser = User::whereHas('role', fn($q) => $q->where('slug', 'admin'))->first() ?? User::first();
+        $jowType = \App\Models\EmployeeType::where('description', 'JOW')->first()
+            ?? \App\Models\EmployeeType::create(['id' => 3, 'description' => 'JOW']);
+
+        // Create a JOW member
+        $jowUser = User::factory()->create(['name' => 'JOW Worker']);
+        $jowMember = Member::create([
+            'user_id' => $jowUser->id,
+            'employee_type_id' => $jowType->id,
+        ]);
+        $section = \App\Models\Section::first();
+        if ($section) {
+            $section->members()->attach($jowMember->id);
+        }
+
+        $response = $this->actingAs($adminUser)->get(route('support-function-reports.index'));
+        $response->assertStatus(200);
+
+        $groupedSections = $response->inertiaPage()['props']['groupedSections'];
+        $allMemberIdsInReport = [];
+        foreach ($groupedSections as $sec) {
+            foreach ($sec['members'] as $m) {
+                $allMemberIdsInReport[] = $m['id'];
+            }
+        }
+
+        $this->assertNotContains($jowMember->id, $allMemberIdsInReport);
     }
 }
