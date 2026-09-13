@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'login_portal' => [
+        'url' => env('LOGIN_PORTAL_URL', 'http://127.0.0.1:8000'),
+        'client_id' => env('LOGIN_PORTAL_CLIENT_ID', 'project_tracker_client_id'),
+        'client_secret' => env('LOGIN_PORTAL_CLIENT_SECRET', 'project_tracker_client_secret'),
+        'redirect_uri' => env('LOGIN_PORTAL_REDIRECT_URI', 'http://127.0.0.1:8002/sso/callback'),
+    ],
+
 ];
+

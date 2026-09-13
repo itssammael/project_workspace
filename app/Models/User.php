@@ -99,4 +99,9 @@ class User extends Authenticatable
     {
         return $this->member && $this->member->memberRoles()->where('slug', 'admin_staff')->exists();
     }
+
+    public function ssoIdentityLinks()
+    {
+        return $this->hasMany(SsoIdentityLink::class);
+    }
 }

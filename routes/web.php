@@ -13,7 +13,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// SSO Routes
+Route::get('/sso/redirect', [\App\Http\Controllers\Auth\SsoClientController::class, 'redirect'])->name('sso.redirect');
+Route::get('/sso/callback', [\App\Http\Controllers\Auth\SsoClientController::class, 'callback'])->name('sso.callback');
+
 Route::middleware([
+
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
