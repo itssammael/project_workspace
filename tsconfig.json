@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "jsx": "preserve",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "skipLibCheck": true,
+        "paths": {
+            "@/*": ["./resources/js/*"]
+        },
+        "types": ["vite/client", "node"]
+    },
+    "include": [
+        "resources/js/**/*",
+        "resources/js/**/*.vue",
+        "vite.config.ts",
+        "tailwind.config.ts"
+    ],
+    "exclude": ["node_modules", "public"]
+}

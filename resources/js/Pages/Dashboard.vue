@@ -37,7 +37,7 @@ const getStatusClass = (status) => {
     }
 };
 
-import { getInitials } from '@/Utils/helpers.js';
+import { getInitials } from '@/Utils/helpers';
 </script>
 
 <template>
