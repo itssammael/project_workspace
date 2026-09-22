@@ -20,7 +20,15 @@ Route::post('/sso/verify-credentials', function (Request $request) {
         return response()->json(['success' => false, 'message' => 'Username/Email and Password are required.'], 400);
     }
 
-    $user = \App\Models\User::where('email', $username)->orWhere('username', $username)->first();
+    $userQuery = \App\Models\User::query();
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'username')) {
+        $userQuery->where(function ($q) use ($username) {
+            $q->where('email', $username)->orWhere('username', $username);
+        });
+    } else {
+        $userQuery->where('email', $username);
+    }
+    $user = $userQuery->first();
 
     if (! $user || ! \Illuminate\Support\Facades\Hash::check($password, $user->password)) {
         return response()->json(['success' => false, 'message' => 'Invalid username or password.'], 400);
@@ -32,7 +40,7 @@ Route::post('/sso/verify-credentials', function (Request $request) {
             'id' => (string) $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'username' => $user->username,
+            'username' => \Illuminate\Support\Facades\Schema::hasColumn('users', 'username') ? ($user->username ?? $user->email) : $user->email,
         ],
     ]);
 });

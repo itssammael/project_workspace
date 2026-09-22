@@ -33,6 +33,8 @@ class User extends Authenticatable
         'username',
         'password',
         'role_id',
+        'login_portal_user_id',
+        'sso_provider',
     ];
 
     /**

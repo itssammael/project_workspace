@@ -14,8 +14,8 @@ Route::get('/', function () {
 });
 
 // SSO Routes
-Route::get('/sso/redirect', [\App\Http\Controllers\Auth\SsoClientController::class, 'redirect'])->name('sso.redirect');
-Route::get('/sso/callback', [\App\Http\Controllers\Auth\SsoClientController::class, 'callback'])->name('sso.callback');
+Route::get('/sso/redirect', [\App\Http\Controllers\SsoClientController::class, 'redirect'])->name('sso.redirect');
+Route::get('/sso/callback', [\App\Http\Controllers\SsoClientController::class, 'callback'])->name('sso.callback');
 
 Route::middleware([
 
