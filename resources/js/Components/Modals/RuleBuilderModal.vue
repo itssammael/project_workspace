@@ -1,4 +1,6 @@
 <script setup>
+import { ref, watch } from 'vue';
+
 const props = defineProps({
     show: Boolean,
     mode: {
@@ -23,7 +25,145 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['close', 'submit']);
+const emit = defineEmits(['close', 'submit', 'import-rules']);
+
+const fileInput = ref(null);
+const isDragging = ref(false);
+const importError = ref('');
+const importSuccess = ref('');
+const importedRulesList = ref([]);
+const selectedRuleIndex = ref(0);
+
+const clearImportFeedback = () => {
+    importError.value = '';
+    importSuccess.value = '';
+    importedRulesList.value = [];
+    selectedRuleIndex.value = 0;
+    isDragging.value = false;
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+};
+
+watch(() => props.show, (newVal) => {
+    if (!newVal) {
+        clearImportFeedback();
+    }
+});
+
+const triggerFileInput = () => {
+    importError.value = '';
+    fileInput.value?.click();
+};
+
+const onFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        handleFile(file);
+    }
+};
+
+const onDrop = (e) => {
+    isDragging.value = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+        handleFile(file);
+    }
+};
+
+const handleFile = (file) => {
+    importError.value = '';
+    importSuccess.value = '';
+
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+        importError.value = 'Please select a valid .json file.';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const content = e.target.result;
+            const parsed = JSON.parse(content);
+            processParsedJSON(parsed, file.name);
+        } catch (err) {
+            importError.value = 'Failed to parse JSON file: ' + err.message;
+        }
+    };
+    reader.onerror = () => {
+        importError.value = 'Failed to read the selected file.';
+    };
+    reader.readAsText(file);
+};
+
+const processParsedJSON = (parsed, fileName) => {
+    let rules = [];
+    if (Array.isArray(parsed)) {
+        rules = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.rules)) {
+            rules = parsed.rules;
+        } else {
+            rules = [parsed];
+        }
+    }
+
+    // Filter valid rule objects
+    const validRules = rules.filter(r => r && typeof r === 'object' && (r.name || r.type || r.rule_logic));
+
+    if (validRules.length === 0) {
+        importError.value = 'No valid rule definitions found in the JSON file. Ensure each rule contains at least a name or type.';
+        return;
+    }
+
+    importedRulesList.value = validRules;
+    selectedRuleIndex.value = 0;
+    applyRuleToForm(validRules[0]);
+
+    if (validRules.length === 1) {
+        importSuccess.value = `Successfully imported "${validRules[0].name || 'Rule'}" from ${fileName}. The form fields below have been populated.`;
+    } else {
+        importSuccess.value = `Loaded ${validRules.length} rules from ${fileName}. Rule 1 ("${validRules[0].name || 'Rule 1'}") is currently populated in the builder below.`;
+    }
+};
+
+const selectImportedRule = (index) => {
+    if (importedRulesList.value[index]) {
+        selectedRuleIndex.value = index;
+        applyRuleToForm(importedRulesList.value[index]);
+    }
+};
+
+const applyRuleToForm = (rule) => {
+    if (!rule || typeof rule !== 'object') return;
+
+    if (rule.name !== undefined) props.form.name = rule.name;
+    if (rule.type !== undefined) props.form.type = rule.type;
+    if (rule.status !== undefined) props.form.status = rule.status;
+    if (rule.enabled !== undefined) props.form.enabled = Boolean(rule.enabled);
+    if (rule.description !== undefined) props.form.description = rule.description || '';
+    if (Array.isArray(rule.scope)) props.form.scope = [...rule.scope];
+    if (Array.isArray(rule.actions)) props.form.actions = [...rule.actions];
+
+    if (rule.rule_logic && typeof rule.rule_logic === 'object') {
+        props.form.rule_logic = JSON.parse(JSON.stringify(rule.rule_logic));
+    } else if (!props.form.rule_logic) {
+        props.form.rule_logic = {};
+    }
+
+    if (props.form.rule_logic.allowed_system_roles && !Array.isArray(props.form.rule_logic.allowed_system_roles)) {
+        props.form.rule_logic.allowed_system_roles = [props.form.rule_logic.allowed_system_roles];
+    }
+    if (props.form.rule_logic.allowed_functional_roles && !Array.isArray(props.form.rule_logic.allowed_functional_roles)) {
+        props.form.rule_logic.allowed_functional_roles = [props.form.rule_logic.allowed_functional_roles];
+    }
+};
+
+const importAllDirectly = () => {
+    if (importedRulesList.value.length > 0) {
+        emit('import-rules', importedRulesList.value);
+    }
+};
 
 const ruleTypeOptions = [
     { value: 'page_access_rule', label: 'Page & Route Access Restriction', category: 'system_wide_access', desc: 'Control page view permissions and route access restrictions' },
@@ -117,10 +257,112 @@ const insertErrorMessageVar = (varName) => {
                         </h3>
                         <p class="text-xs text-slate-500">Configure System-Wide Access & Security or Workspace Governance Rule parameters.</p>
                     </div>
-                    <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600">✕</button>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            v-if="mode === 'create'"
+                            type="button" 
+                            @click="triggerFileInput"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
+                            title="Import rule configuration from a JSON file"
+                        >
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span>Import JSON File</span>
+                        </button>
+                        <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer">✕</button>
+                    </div>
                 </div>
 
                 <form @submit.prevent="$emit('submit')" class="p-6 space-y-6 overflow-y-auto flex-1">
+                    <!-- Hidden file input -->
+                    <input 
+                        ref="fileInput" 
+                        type="file" 
+                        accept=".json,application/json" 
+                        class="hidden" 
+                        @change="onFileChange" 
+                    />
+
+                    <!-- JSON Import Dropzone / Banner (Shown in Create mode) -->
+                    <div 
+                        v-if="mode === 'create'"
+                        @dragover.prevent="isDragging = true"
+                        @dragleave.prevent="isDragging = false"
+                        @drop.prevent="onDrop"
+                        :class="[
+                            'border-2 border-dashed rounded-2xl p-4 transition-all',
+                            isDragging ? 'border-emerald-500 bg-emerald-50/70 scale-[1.01]' : 'border-slate-200 bg-slate-50/60 hover:bg-slate-50 hover:border-emerald-300'
+                        ]"
+                    >
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-800">Import Rule Configuration from JSON</h4>
+                                    <p class="text-[11px] text-slate-500">Drop a JSON rule file here or browse to auto-fill all rule parameters.</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="triggerFileInput" 
+                                class="shrink-0 px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-emerald-400 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                            >
+                                Browse JSON File
+                            </button>
+                        </div>
+
+                        <!-- Success Alert & Multi-rule selector -->
+                        <div v-if="importSuccess" class="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex flex-col gap-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2 text-xs text-emerald-800 font-semibold">
+                                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>{{ importSuccess }}</span>
+                                </div>
+                                <button type="button" @click="clearImportFeedback" class="text-emerald-500 hover:text-emerald-700 text-xs cursor-pointer">✕</button>
+                            </div>
+
+                            <div v-if="importedRulesList.length > 1" class="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-200/60">
+                                <span class="text-[11px] font-bold text-emerald-800">Available Rules ({{ importedRulesList.length }}):</span>
+                                <button 
+                                    v-for="(r, idx) in importedRulesList" 
+                                    :key="idx" 
+                                    type="button" 
+                                    @click="selectImportedRule(idx)"
+                                    :class="[
+                                        'px-2.5 py-1 text-[11px] font-bold rounded-lg transition border cursor-pointer',
+                                        selectedRuleIndex === idx ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                    ]"
+                                >
+                                    {{ r.name || `Rule #${idx + 1}` }}
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="importAllDirectly"
+                                    class="ms-auto px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold rounded-lg shadow-xs transition flex items-center gap-1 cursor-pointer"
+                                >
+                                    Import All {{ importedRulesList.length }} Rules Directly
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Error Alert -->
+                        <div v-if="importError" class="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-2 text-xs text-rose-700 font-medium">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>{{ importError }}</span>
+                            </div>
+                            <button type="button" @click="importError = ''" class="text-rose-500 hover:text-rose-700 text-xs cursor-pointer">✕</button>
+                        </div>
+                    </div>
                     
                     <!-- Basic Meta & Category -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

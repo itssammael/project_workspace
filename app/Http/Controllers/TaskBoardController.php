@@ -18,12 +18,10 @@ class TaskBoardController extends Controller
         $user = $request->user();
         $member = $user->member;
 
-        if ($user->hasRole('admin')) {
-            $taskBoardsQuery = TaskBoard::with(['section.projectManager.user', 'tasks.subTasks']);
-        } else {
-            $sectionIds = $member ? $member->sections->pluck('id')->toArray() : [];
-            $taskBoardsQuery = TaskBoard::whereIn('section_id', $sectionIds)->with(['section.projectManager.user', 'tasks.subTasks']);
-        }
+        $taskBoardsQuery = \App\Services\SystemRuleEvaluator::scopeTaskBoardQuery(
+            TaskBoard::with(['section.projectManager.user', 'tasks.subTasks']),
+            $user
+        );
 
         $taskBoards = $taskBoardsQuery->get()->map(function (TaskBoard $taskBoard) {
             $subTasks = $taskBoard->tasks->flatMap->subTasks;
@@ -144,9 +142,7 @@ class TaskBoardController extends Controller
                 
                 $isAssignee = $member && $st->member_id === $member->id;
                 
-                $isPM = $member && $member->memberRoles()->where('slug', 'project_manager')->exists() && 
-                        $taskBoard->section && 
-                        $taskBoard->section->member_id === $member->id;
+                $isPM = Gate::allows('manage-tasks', $taskBoard);
 
                 $isDeptHead = $member && $member->memberRoles()->where('slug', 'department_head')->exists();
                 
@@ -305,7 +301,7 @@ class TaskBoardController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         if (Gate::has('create-task-boards')) {
             Gate::authorize('create-task-boards');
@@ -313,17 +309,18 @@ class TaskBoardController extends Controller
             Gate::authorize('create-projects');
         }
 
+        $user = $request->user();
         $sections = Section::with(['projectManager.user', 'members.user', 'members.memberRoles'])->get()->map(function ($t) {
             return [
                 'id' => $t->id,
                 'name' => $t->name,
                 'project_manager' => $t->projectManager ? [
                     'id' => $t->projectManager->id,
-                    'name' => $t->projectManager->user->name,
+                    'name' => $t->projectManager->user?->name ?? 'None',
                 ] : null,
                 'members' => $t->members->map(fn($m) => [
                     'id' => $m->id,
-                    'name' => $m->user->name,
+                    'name' => $m->user?->name ?? '',
                     'member_roles' => $m->memberRoles->map(fn($mr) => [
                         'id' => $mr->id,
                         'name' => $mr->name
@@ -331,6 +328,13 @@ class TaskBoardController extends Controller
                 ])
             ];
         });
+
+        $userSectionIds = [];
+        if ($user && $user->member) {
+            $sIds = $user->member->sections()->pluck('sections.id')->toArray();
+            $pmSectionIds = Section::where('member_id', $user->member->id)->pluck('id')->toArray();
+            $userSectionIds = array_values(array_unique(array_merge($sIds, $pmSectionIds)));
+        }
         
         $workflows = Workflow::with('workflowType')->orderBy('order', 'asc')->get()->map(function ($workflow) {
             return [
@@ -345,6 +349,7 @@ class TaskBoardController extends Controller
             'sections' => $sections,
             'workflows' => $workflows,
             'memberRoles' => \App\Models\MemberRole::all(),
+            'userSectionIds' => $userSectionIds,
         ]);
     }
 
@@ -355,6 +360,8 @@ class TaskBoardController extends Controller
         } else {
             Gate::authorize('create-projects');
         }
+
+        $user = $request->user();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -369,6 +376,20 @@ class TaskBoardController extends Controller
             'members.*.id' => 'required|exists:members,id',
             'members.*.member_role_id' => 'required|exists:member_roles,id',
         ]);
+
+        if ($user && ($user->hasRole('user') || strtolower($user->role?->slug ?? '') === 'user')) {
+            $member = $user->member;
+            if ($member) {
+                $sectionIds = $member->sections()->pluck('sections.id')->toArray();
+                $pmSectionIds = Section::where('member_id', $member->id)->pluck('id')->toArray();
+                $belongingIds = array_values(array_unique(array_merge($sectionIds, $pmSectionIds)));
+                if (!in_array((int)$validated['section_id'], $belongingIds)) {
+                    return redirect()->back()->withErrors(['section_id' => 'You can only create task boards for your assigned section.']);
+                }
+            } else {
+                return redirect()->back()->withErrors(['section_id' => 'You are not assigned to any section.']);
+            }
+        }
 
         // Evaluate active System Rules for Task Board validation
         $validationRules = \App\Models\SystemRule::where('enabled', true)
@@ -412,7 +433,7 @@ class TaskBoardController extends Controller
 
         $taskBoard = TaskBoard::create([
             'name' => $validated['name'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'section_id' => $validated['section_id'],
             'start_date' => $validated['start_date'],

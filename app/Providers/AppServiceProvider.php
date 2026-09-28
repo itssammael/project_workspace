@@ -105,21 +105,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-tasks', function (User $user, TaskBoard $taskBoard) {
-            $isPermittedRole = \App\Services\SystemRuleEvaluator::checkOperation($user, 'manage_tasks', ['admin'], ['project_manager']);
-            if (!$isPermittedRole) {
-                return false;
-            }
-            if ($user->hasRole('admin')) {
-                return true;
-            }
-            return $user->member && $taskBoard->section && $taskBoard->section->member_id === $user->member->id;
+            return \App\Services\SystemRuleEvaluator::canManageTasks($user, $taskBoard);
         });
 
         Gate::define('view-task-board', function (User $user, TaskBoard $taskBoard) {
-            if ($user->hasRole('admin')) {
-                return true;
-            }
-            return $user->member && $user->member->sections()->where('sections.id', $taskBoard->section_id)->exists();
+            return \App\Services\SystemRuleEvaluator::canViewTaskBoard($user, $taskBoard);
         });
         Gate::define('view-project', function (User $user, TaskBoard $taskBoard) {
             return Gate::allows('view-task-board', $taskBoard);

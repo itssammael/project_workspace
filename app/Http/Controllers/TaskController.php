@@ -367,9 +367,7 @@ class TaskController extends Controller
 
         $isAssignee = $subTask->member_id === $member->id;
         
-        $isPM = $member->memberRoles()->where('slug', 'project_manager')->exists() && 
-                $taskBoard->section && 
-                $taskBoard->section->member_id === $member->id;
+        $isPM = Gate::allows('manage-tasks', $taskBoard);
 
         $isDeptHead = $member->memberRoles()->where('slug', 'department_head')->exists();
         

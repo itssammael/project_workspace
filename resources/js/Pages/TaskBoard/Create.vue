@@ -9,6 +9,60 @@ const props = defineProps({
     sections: Array,
     workflows: Array,
     memberRoles: Array,
+    userSectionIds: Array,
+});
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+const currentMember = computed(() => currentUser.value?.member);
+
+const isUserSystemRole = computed(() => {
+    const slug = currentUser.value?.role?.slug?.toLowerCase();
+    const name = currentUser.value?.role?.name?.toLowerCase();
+    return slug === 'user' || name === 'user';
+});
+
+const availableSections = computed(() => {
+    if (!props.sections) return [];
+    if (isUserSystemRole.value) {
+        const allowedIds = new Set([
+            ...(props.userSectionIds || []),
+            ...(currentMember.value?.sections?.map(s => s.id) || []),
+        ]);
+        const filtered = props.sections.filter(s => 
+            allowedIds.has(s.id) || 
+            s.project_manager?.id === currentMember.value?.id ||
+            s.members?.some(m => m.id === currentMember.value?.id)
+        );
+        return filtered.length > 0 ? filtered : props.sections;
+    }
+    return props.sections;
+});
+
+const userSection = computed(() => {
+    if (currentMember.value?.sections && currentMember.value.sections.length > 0) {
+        const creatorSec = currentMember.value.sections[0];
+        const matched = props.sections?.find(s => s.id === creatorSec.id);
+        return matched || creatorSec;
+    }
+    if (currentMember.value && props.sections) {
+        const pmSec = props.sections.find(s => s.project_manager?.id === currentMember.value.id);
+        if (pmSec) return pmSec;
+        const memberSec = props.sections.find(s => s.members?.some(m => m.id === currentMember.value.id));
+        if (memberSec) return memberSec;
+    }
+    return availableSections.value && availableSections.value.length > 0 ? availableSections.value[0] : null;
+});
+
+const defaultSectionId = computed(() => {
+    if (!isUserSystemRole.value) return '';
+    if (userSection.value?.id && availableSections.value.some(s => s.id === userSection.value.id)) {
+        return userSection.value.id;
+    }
+    if (availableSections.value.length > 0) {
+        return availableSections.value[0].id;
+    }
+    return '';
 });
 
 const workflowTypes = computed(() => {
@@ -45,12 +99,24 @@ const form = useForm({
     name: '',
     description: '',
     status: 'planning',
-    section_id: '',
+    section_id: defaultSectionId.value || '',
     start_date: '',
     end_date: '',
     workflow_ids: getInitialWorkflowIds(),
     members: [], // list of { id, member_role_id }
 });
+
+watch(
+    [isUserSystemRole, defaultSectionId, availableSections],
+    ([isUser, defId, availSecs]) => {
+        if (isUser && defId) {
+            if (!form.section_id || !availSecs.some(s => s.id === form.section_id)) {
+                form.section_id = defId;
+            }
+        }
+    },
+    { immediate: true }
+);
 
 const selectWorkflow = (wf) => {
     selectedWorkflow.value = wf;
@@ -70,25 +136,6 @@ const selectNoneWorkflow = () => {
     const kanbanIds = props.workflows.filter(w => w.workflow_type === 'Kanban').map(w => w.id);
     form.workflow_ids = [...kanbanIds];
 };
-
-const page = usePage();
-const currentUser = computed(() => page.props.auth?.user);
-const currentMember = computed(() => currentUser.value?.member);
-
-const userSection = computed(() => {
-    if (currentMember.value?.sections && currentMember.value.sections.length > 0) {
-        const creatorSec = currentMember.value.sections[0];
-        const matched = props.sections?.find(s => s.id === creatorSec.id);
-        return matched || creatorSec;
-    }
-    if (currentMember.value && props.sections) {
-        const pmSec = props.sections.find(s => s.project_manager?.id === currentMember.value.id);
-        if (pmSec) return pmSec;
-        const memberSec = props.sections.find(s => s.members?.some(m => m.id === currentMember.value.id));
-        if (memberSec) return memberSec;
-    }
-    return props.sections && props.sections.length > 0 ? props.sections[0] : null;
-});
 
 const isIpcrWorkflow = computed(() => {
     if (selectedWorkflow.value && selectedWorkflow.value.toUpperCase() === 'IPCR') {
@@ -582,9 +629,9 @@ watch(() => form.section_id, () => {
                                     :disabled="isIpcrWorkflow"
                                     class="w-full rounded-lg border-slate-200 shadow-sm focus:border-[#0D9488] focus:ring-[#0D9488] text-sm disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                                 >
-                                    <option value="" disabled>Select a section...</option>
-                                    <option v-for="section in sections" :key="section.id" :value="section.id">
-                                        {{ section.name }} (PM: {{ section.project_manager?.user?.name || 'None' }})
+                                    <option v-if="!isUserSystemRole || !form.section_id" value="" disabled>Select a section...</option>
+                                    <option v-for="section in availableSections" :key="section.id" :value="section.id">
+                                        {{ section.name }} (PM: {{ section.project_manager?.name || section.project_manager?.user?.name || 'None' }})
                                     </option>
                                 </select>
                                 <p v-if="isIpcrWorkflow" class="text-xs text-teal-600 font-medium mt-1.5 flex items-center gap-1">

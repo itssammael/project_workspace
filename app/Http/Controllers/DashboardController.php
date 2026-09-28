@@ -22,8 +22,10 @@ class DashboardController extends Controller
         if ($canViewAll) {
             $taskBoardsQuery = TaskBoard::with('section.projectManager.user');
         } else {
-            $sectionIds = $member ? $member->sections->pluck('id')->toArray() : [];
-            $taskBoardsQuery = TaskBoard::whereIn('section_id', $sectionIds)->with('section.projectManager.user');
+            $taskBoardsQuery = \App\Services\SystemRuleEvaluator::scopeTaskBoardQuery(
+                TaskBoard::with('section.projectManager.user'),
+                $user
+            );
         }
         
         $taskBoards = $taskBoardsQuery->get()->map(function (TaskBoard $taskBoard) {

@@ -399,6 +399,11 @@ const submitImportJSON = (jsonContent) => {
     }
 };
 
+const handleImportRulesFromModal = (rules) => {
+    submitImportJSON(JSON.stringify(rules));
+    isRuleModalOpen.value = false;
+};
+
 const getTypeBadgeStyle = (type) => {
     switch (type) {
         case 'page_access_rule': return 'bg-sky-50 text-sky-700 border-sky-200';
@@ -1057,6 +1062,7 @@ const getTypeLabel = (type) => {
             :memberRoles="memberRoles"
             @close="isRuleModalOpen = false"
             @submit="submitRuleForm"
+            @import-rules="handleImportRulesFromModal"
         />
 
         <RulePreviewModal
