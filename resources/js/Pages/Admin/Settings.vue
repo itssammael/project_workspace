@@ -8,6 +8,7 @@ import ImportRulesModal from '@/Components/Modals/ImportRulesModal.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
+import RoleModal from '@/Components/Modals/RoleModal.vue';
 
 const props = defineProps({
     settings: Object,
@@ -20,6 +21,10 @@ const props = defineProps({
         default: () => []
     },
     memberRoles: {
+        type: Array,
+        default: () => []
+    },
+    availablePermissions: {
         type: Array,
         default: () => []
     }
@@ -423,6 +428,154 @@ const getTypeLabel = (type) => {
     return opt ? opt.label : type;
 };
 
+// ==========================================
+// ROLES ACCESS STATE & HANDLERS
+// ==========================================
+const roleSearch = ref('');
+const roleFilterType = ref('all'); // 'all', 'core', 'custom'
+const isRoleModalOpen = ref(false);
+const roleModalMode = ref('create'); // 'create' or 'edit'
+const expandedRolePermsMap = ref({});
+
+const toggleRolePermsExpand = (roleId) => {
+    expandedRolePermsMap.value[roleId] = !expandedRolePermsMap.value[roleId];
+};
+
+const roleForm = useForm({
+    id: null,
+    name: '',
+    slug: '',
+    show_role_switcher: true,
+    permissions: []
+});
+
+const isDeleteRoleModalOpen = ref(false);
+const roleToDelete = ref(null);
+const deleteRoleForm = useForm({});
+
+const totalUsersAssigned = computed(() => {
+    return props.roles.reduce((acc, r) => acc + (r.users_count || 0), 0);
+});
+
+const openCreateRoleModal = () => {
+    roleModalMode.value = 'create';
+    roleForm.clearErrors();
+    roleForm.id = null;
+    roleForm.name = '';
+    roleForm.slug = '';
+    roleForm.show_role_switcher = true;
+    roleForm.permissions = [];
+    isRoleModalOpen.value = true;
+};
+
+const openEditRoleModal = (role) => {
+    roleModalMode.value = 'edit';
+    roleForm.clearErrors();
+    roleForm.id = role.id;
+    roleForm.name = role.name;
+    roleForm.slug = role.slug;
+    roleForm.show_role_switcher = role.show_role_switcher !== false;
+    roleForm.permissions = Array.isArray(role.permissions)
+        ? role.permissions.map(p => typeof p === 'object' ? p.permission : p)
+        : [];
+    isRoleModalOpen.value = true;
+};
+
+const toggleHeaderSwitcher = (role) => {
+    useForm({}).post(route('admin.settings.roles.toggle-switcher', role.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            const state = !role.show_role_switcher;
+            showSuccess(`Header role switcher menu ${state ? 'enabled' : 'disabled'} for '${role.name}'.`);
+        }
+    });
+};
+
+const submitRoleForm = () => {
+    if (roleModalMode.value === 'create') {
+        roleForm.post(route('admin.settings.roles.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                isRoleModalOpen.value = false;
+                showSuccess(`Role '${roleForm.name}' created successfully.`);
+            }
+        });
+    } else {
+        roleForm.put(route('admin.settings.roles.update', roleForm.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                isRoleModalOpen.value = false;
+                showSuccess(`Role '${roleForm.name}' updated successfully.`);
+            }
+        });
+    }
+};
+
+const confirmDeleteRole = (role) => {
+    roleToDelete.value = role;
+    isDeleteRoleModalOpen.value = true;
+};
+
+const executeDeleteRole = () => {
+    if (!roleToDelete.value) return;
+    deleteRoleForm.delete(route('admin.settings.roles.destroy', roleToDelete.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isDeleteRoleModalOpen.value = false;
+            showSuccess(`Role '${roleToDelete.value.name}' deleted successfully.`);
+            roleToDelete.value = null;
+        },
+        onError: () => {
+            isDeleteRoleModalOpen.value = false;
+        }
+    });
+};
+
+const filteredRoles = computed(() => {
+    const query = roleSearch.value.trim().toLowerCase();
+    return props.roles.filter(r => {
+        // Filter by type
+        if (roleFilterType.value === 'core') {
+            if (!['admin', 'user'].includes(r.slug)) return false;
+        } else if (roleFilterType.value === 'custom') {
+            if (['admin', 'user'].includes(r.slug)) return false;
+        }
+
+        // Filter by search query
+        if (!query) return true;
+        const nameMatches = r.name.toLowerCase().includes(query);
+        const slugMatches = r.slug.toLowerCase().includes(query);
+        const permsMatch = Array.isArray(r.permissions) && r.permissions.some(p => {
+            const str = typeof p === 'object' ? p.permission : p;
+            return str.toLowerCase().includes(query);
+        });
+
+        return nameMatches || slugMatches || permsMatch;
+    });
+});
+
+const getRoleCategoryBadgeClass = (permKey) => {
+    const catalogItem = props.availablePermissions.find(p => p.key === permKey);
+    const category = catalogItem?.category || 'Custom';
+    switch (category) {
+        case 'Administration & Security':
+            return 'bg-rose-50 text-rose-700 border-rose-200';
+        case 'Dashboard & Workspaces':
+            return 'bg-sky-50 text-sky-700 border-sky-200';
+        case 'Tasks & Workflows':
+            return 'bg-teal-50 text-teal-700 border-teal-200';
+        case 'Reports & Activities':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        default:
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    }
+};
+
+const getRolePermissionName = (permKey) => {
+    const catalogItem = props.availablePermissions.find(p => p.key === permKey);
+    return catalogItem ? catalogItem.name : permKey;
+};
+
 </script>
 
 <template>
@@ -442,6 +595,18 @@ const getTypeLabel = (type) => {
                         ]"
                     >
                         System Rules Engine
+                    </button>
+                    <button 
+                        @click="activeTab = 'roles_access'"
+                        :class="[
+                            'px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5',
+                            activeTab === 'roles_access' ? 'bg-[#0D9488] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                        ]"
+                    >
+                        <span>Roles Access</span>
+                        <span :class="['px-1.5 py-0.2 rounded-full text-[10px] font-bold', activeTab === 'roles_access' ? 'bg-teal-700 text-white' : 'bg-slate-200 text-slate-700']">
+                            {{ props.roles.length }}
+                        </span>
                     </button>
                     <button 
                         @click="activeTab = 'general'"
@@ -940,6 +1105,271 @@ const getTypeLabel = (type) => {
 
                 </div>
 
+                <!-- TAB: ROLES ACCESS -->
+                <div v-else-if="activeTab === 'roles_access'" class="space-y-6">
+                    
+                    <!-- Header Stats & Overview Card -->
+                    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-6 rounded-2xl text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <span class="px-2.5 py-1 bg-teal-500/20 text-teal-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-teal-500/30">Access Control & Security</span>
+                                <h3 class="text-xl font-bold">System Roles & Roles Access</h3>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1 max-w-2xl">
+                                Manage system roles and granular access permissions across Administration, Workspaces, Task Management, and Support Functions.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4 bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/10">
+                            <div class="text-center px-3 border-r border-white/10">
+                                <p class="text-[10px] uppercase text-slate-400 font-bold">Total Roles</p>
+                                <p class="text-lg font-bold text-teal-300">{{ props.roles.length }}</p>
+                            </div>
+                            <div class="text-center px-3 border-r border-white/10">
+                                <p class="text-[10px] uppercase text-slate-400 font-bold">Assigned Users</p>
+                                <p class="text-lg font-bold text-emerald-400">{{ totalUsersAssigned }}</p>
+                            </div>
+                            <div class="text-center px-3 border-r border-white/10">
+                                <p class="text-[10px] uppercase text-slate-400 font-bold">Header Switcher</p>
+                                <p class="text-lg font-bold text-amber-300">
+                                    {{ props.roles.filter(r => r.show_role_switcher !== false).length }} / {{ props.roles.length }} Active
+                                </p>
+                            </div>
+                            <div class="text-center px-3">
+                                <p class="text-[10px] uppercase text-slate-400 font-bold">Permissions</p>
+                                <p class="text-lg font-bold text-sky-300">{{ props.availablePermissions.length }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter & Action Controls Bar -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <!-- Left: Search and Filters -->
+                        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
+                            <div class="relative w-full sm:w-80">
+                                <svg class="w-4 h-4 absolute left-3 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <input 
+                                    v-model="roleSearch" 
+                                    type="text" 
+                                    placeholder="Search roles by name, slug, or permission..." 
+                                    class="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#0D9488] focus:border-transparent transition"
+                                />
+                            </div>
+
+                            <!-- Role Scope Filter Pills -->
+                            <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                                <button 
+                                    @click="roleFilterType = 'all'"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-bold rounded-xl transition',
+                                        roleFilterType === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    ]"
+                                >
+                                    All Roles ({{ props.roles.length }})
+                                </button>
+                                <button 
+                                    @click="roleFilterType = 'core'"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-bold rounded-xl transition',
+                                        roleFilterType === 'core' ? 'bg-sky-700 text-white shadow-xs' : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                                    ]"
+                                >
+                                    Core Roles
+                                </button>
+                                <button 
+                                    @click="roleFilterType = 'custom'"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-bold rounded-xl transition',
+                                        roleFilterType === 'custom' ? 'bg-indigo-700 text-white shadow-xs' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                                    ]"
+                                >
+                                    Custom Roles
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right: Action Button -->
+                        <div class="w-full md:w-auto flex justify-end">
+                            <button 
+                                @click="openCreateRoleModal"
+                                class="w-full sm:w-auto px-4 py-2.5 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                <span>Create System Role</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Roles List / Grid -->
+                    <div class="space-y-4">
+                        <div 
+                            v-for="role in filteredRoles" 
+                            :key="role.id"
+                            class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:border-slate-300 transition duration-150 space-y-4"
+                        >
+                            <!-- Role Header Row -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-[#0D9488] flex items-center justify-center font-bold shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h4 class="font-bold text-slate-800 text-base">{{ role.name }}</h4>
+                                            <span class="px-2 py-0.5 text-[11px] font-mono font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                                {{ role.slug }}
+                                            </span>
+                                            <span 
+                                                v-if="['admin', 'user'].includes(role.slug)" 
+                                                class="px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider bg-sky-50 text-sky-700 border border-sky-200"
+                                            >
+                                                Built-in Core Role
+                                            </span>
+                                            <span 
+                                                v-else 
+                                                class="px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                            >
+                                                Custom Role
+                                            </span>
+                                            <span 
+                                                :class="[
+                                                    'px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider border flex items-center gap-1',
+                                                    role.show_role_switcher !== false 
+                                                        ? 'bg-teal-50 text-[#0F766E] border-teal-200' 
+                                                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                                                ]"
+                                            >
+                                                <span :class="['w-1.5 h-1.5 rounded-full', role.show_role_switcher !== false ? 'bg-[#0D9488]' : 'bg-slate-400']"></span>
+                                                Header Menu: {{ role.show_role_switcher !== false ? 'Visible' : 'Hidden' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-slate-400 mt-0.5">Role ID: #{{ role.id }}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Actions and Assigned Users -->
+                                <div class="flex flex-wrap items-center gap-2.5">
+                                    <!-- User Count Badge -->
+                                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
+                                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        </svg>
+                                        <span>{{ role.users_count || 0 }} User{{ (role.users_count || 0) === 1 ? '' : 's' }}</span>
+                                    </div>
+
+                                    <!-- Quick Header Switcher Toggle Button -->
+                                    <button 
+                                        @click="toggleHeaderSwitcher(role)"
+                                        :class="[
+                                            'px-3 py-1.5 text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer border',
+                                            role.show_role_switcher !== false 
+                                                ? 'bg-teal-50 hover:bg-teal-100 text-[#0F766E] border-teal-200' 
+                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                                        ]"
+                                        :title="role.show_role_switcher !== false ? 'Click to hide header role switcher for this role' : 'Click to show header role switcher for this role'"
+                                    >
+                                        <svg class="w-3.5 h-3.5 text-[#0D9488]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                        </svg>
+                                        <span>Header Switcher: {{ role.show_role_switcher !== false ? 'On' : 'Off' }}</span>
+                                    </button>
+
+                                    <!-- Edit Role Button -->
+                                    <button 
+                                        @click="openEditRoleModal(role)"
+                                        class="px-3 py-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-[#0D9488] text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                        title="Edit role and permissions"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        <span>Edit Access</span>
+                                    </button>
+
+                                    <!-- Delete Role Button -->
+                                    <button 
+                                        v-if="!['admin', 'user'].includes(role.slug)"
+                                        @click="confirmDeleteRole(role)"
+                                        :disabled="(role.users_count || 0) > 0"
+                                        :class="[
+                                            'px-3 py-1.5 text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1 cursor-pointer',
+                                            (role.users_count || 0) > 0
+                                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                                : 'bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 border border-rose-200'
+                                        ]"
+                                        :title="(role.users_count || 0) > 0 ? 'Cannot delete role with assigned users' : 'Delete system role'"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Permissions Section -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                        <span>Granted Permissions:</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-100 text-[#0F766E]">
+                                            {{ role.permissions ? role.permissions.length : 0 }}
+                                        </span>
+                                    </span>
+
+                                    <!-- Expand / Collapse if more than 6 -->
+                                    <button 
+                                        v-if="role.permissions && role.permissions.length > 6"
+                                        type="button"
+                                        @click="toggleRolePermsExpand(role.id)"
+                                        class="text-xs font-bold text-[#0D9488] hover:text-[#0f766e] flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <span>{{ expandedRolePermsMap[role.id] ? 'Show Less' : `+${role.permissions.length - 6} More Permissions` }}</span>
+                                        <svg :class="['w-3.5 h-3.5 transform transition-transform', expandedRolePermsMap[role.id] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Permission Chips -->
+                                <div v-if="role.permissions && role.permissions.length > 0" class="flex flex-wrap gap-1.5">
+                                    <span 
+                                        v-for="p in (expandedRolePermsMap[role.id] ? role.permissions : role.permissions.slice(0, 6))" 
+                                        :key="typeof p === 'object' ? p.id : p"
+                                        :class="[
+                                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition',
+                                            getRoleCategoryBadgeClass(typeof p === 'object' ? p.permission : p)
+                                        ]"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                                        <span class="font-bold">{{ getRolePermissionName(typeof p === 'object' ? p.permission : p) }}</span>
+                                        <span class="text-[10px] font-mono opacity-80">({{ typeof p === 'object' ? p.permission : p }})</span>
+                                    </span>
+                                </div>
+
+                                <div v-else class="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-500 italic">
+                                    No granular access permissions currently assigned. Click "Edit Access" to grant permissions.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div v-if="filteredRoles.length === 0" class="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400">
+                            <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <h4 class="font-bold text-slate-700 text-base">No system roles found</h4>
+                            <p class="text-xs text-slate-500 mt-1">Try adjusting your search criteria or click "+ Create System Role".</p>
+                        </div>
+                    </div>
+
+                </div>
+
                 <!-- TAB 2: GENERAL & BRANDING SETTINGS -->
                 <div v-else-if="activeTab === 'general'" class="bg-white border border-slate-200 overflow-hidden shadow-sm rounded-2xl p-6 lg:p-8">
                     <form @submit.prevent="submitGeneralSettings" class="space-y-8">
@@ -1083,6 +1513,27 @@ const getTypeLabel = (type) => {
             <template #footer>
                 <SecondaryButton @click="isDeleteModalOpen = false; ruleToDelete = null">Cancel</SecondaryButton>
                 <DangerButton class="ms-3" @click="executeDeleteRule">Delete Permanently</DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <RoleModal 
+            :show="isRoleModalOpen"
+            :mode="roleModalMode"
+            :form="roleForm"
+            :available-permissions="availablePermissions"
+            @close="isRoleModalOpen = false"
+            @submit="submitRoleForm"
+        />
+
+        <ConfirmationModal :show="isDeleteRoleModalOpen && roleToDelete != null" @close="isDeleteRoleModalOpen = false; roleToDelete = null">
+            <template #title>Delete System Role</template>
+            <template #content>
+                Are you sure you want to delete the system role <strong>"{{ roleToDelete?.name }}"</strong> (<code>{{ roleToDelete?.slug }}</code>)? 
+                This will permanently remove the role and all associated permission records.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="isDeleteRoleModalOpen = false; roleToDelete = null">Cancel</SecondaryButton>
+                <DangerButton class="ms-3" :disabled="deleteRoleForm.processing" @click="executeDeleteRole">Delete Role</DangerButton>
             </template>
         </ConfirmationModal>
 

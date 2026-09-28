@@ -11,6 +11,7 @@ const props = defineProps({
     showAllTasks: Boolean,
     canToggleAllTasks: Boolean,
     currentMemberId: Number,
+    highlightTaskId: [Number, String],
 });
 
 const emit = defineEmits(['add-task', 'edit-task', 'toggle-all-tasks']);
@@ -292,6 +293,7 @@ const getColumnBannerDetails = (workflowName) => {
                     <div 
                         v-for="task in workflow.tasks" 
                         :key="task.id"
+                        :id="'task-' + task.id"
                         :draggable="canDrag(task)"
                         @dragstart="onDragStart($event, task, workflow.id)"
                         @dragend="onDragEnd($event)"
@@ -301,6 +303,9 @@ const getColumnBannerDetails = (workflowName) => {
                             isOverdue(task) 
                                 ? 'bg-[#EA580C] border-orange-700 text-white' 
                                 : ['bg-white border-slate-100', getCardStatusClass(task.status).border],
+                            highlightTaskId && Number(highlightTaskId) === Number(task.id) 
+                                ? 'ring-4 ring-[#0D9488] shadow-2xl scale-[1.02] border-[#0D9488] animate-pulse z-10' 
+                                : '',
                             canDrag(task) ? 'hover:cursor-grab active:cursor-grabbing' : 'opacity-95'
                         ]"
                     >

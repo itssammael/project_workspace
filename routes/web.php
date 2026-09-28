@@ -25,8 +25,16 @@ Route::middleware([
 ])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/switch-view', [DashboardController::class, 'switchView'])->name('dashboard.switch-view');
+    Route::get('/dashboard/export-report', [DashboardController::class, 'exportReport'])->name('dashboard.export-report');
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-read', [\App\Http\Controllers\NotificationController::class, 'markRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 
     // Task Boards
+    Route::get('/task-boards/search', [TaskBoardController::class, 'search'])->name('task-boards.search');
     Route::get('/task-boards', [TaskBoardController::class, 'index'])->name('task-boards.index');
     Route::get('/task-boards/create', [TaskBoardController::class, 'create'])->name('task-boards.create');
     Route::post('/task-boards', [TaskBoardController::class, 'store'])->name('task-boards.store');
@@ -97,4 +105,10 @@ Route::middleware([
     Route::post('/admin/settings/rules/{rule}/clone', [\App\Http\Controllers\AdminSettingsController::class, 'cloneRule'])->name('admin.rules.clone');
     Route::delete('/admin/settings/rules/{rule}', [\App\Http\Controllers\AdminSettingsController::class, 'destroyRule'])->name('admin.rules.destroy');
     Route::post('/admin/settings/rules/import', [\App\Http\Controllers\AdminSettingsController::class, 'importRules'])->name('admin.rules.import');
+
+    // System Roles & Role Access Management
+    Route::post('/admin/settings/roles', [\App\Http\Controllers\AdminSettingsController::class, 'storeRole'])->name('admin.settings.roles.store');
+    Route::put('/admin/settings/roles/{role}', [\App\Http\Controllers\AdminSettingsController::class, 'updateRole'])->name('admin.settings.roles.update');
+    Route::post('/admin/settings/roles/{role}/toggle-switcher', [\App\Http\Controllers\AdminSettingsController::class, 'toggleRoleSwitcher'])->name('admin.settings.roles.toggle-switcher');
+    Route::delete('/admin/settings/roles/{role}', [\App\Http\Controllers\AdminSettingsController::class, 'destroyRole'])->name('admin.settings.roles.destroy');
 });

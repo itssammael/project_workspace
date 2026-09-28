@@ -51,6 +51,12 @@ class HandleInertiaRequests extends Middleware
                 'access_admin_settings' => $user ? \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/admin/settings', ['admin'], ['admin_staff']) : false,
                 'access_support_function_reports' => $user ? \App\Services\SystemRuleEvaluator::checkPageAccess($user, '/support-function-reports', ['admin', 'user', 'viewer'], ['admin_staff', 'department_head', 'project_manager', 'developer']) : false,
             ],
+            'dashboardRoles' => $user ? [
+                'active_view' => \App\Services\DashboardRoleService::getActiveView($request, $user),
+                'available_views' => \App\Services\DashboardRoleService::getAvailableViewsWithMeta($user),
+                'user_info' => \App\Services\DashboardRoleService::getUserOrganizationalInfo($user),
+                'show_role_switcher' => \App\Services\DashboardRoleService::canViewRoleSwitcher($user),
+            ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

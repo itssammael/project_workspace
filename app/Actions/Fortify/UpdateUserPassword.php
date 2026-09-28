@@ -31,5 +31,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
         $user->forceFill([
             'password' => Hash::make($input['password']),
         ])->save();
+
+        \App\Models\SystemLog::log('Update Password', "Password was successfully changed for user '{$user->name}'.");
     }
 }

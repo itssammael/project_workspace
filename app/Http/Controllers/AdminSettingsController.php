@@ -27,10 +27,97 @@ class AdminSettingsController extends Controller
 
         $systemRules = SystemRule::orderBy('created_at', 'desc')->get();
 
-        $roles = \App\Models\Role::all();
+        $roles = \App\Models\Role::with('permissions')->withCount('users')->orderBy('id', 'asc')->get();
         $memberRoles = \App\Models\MemberRole::all();
 
-        return Inertia::render('Admin/Settings', compact('settings', 'systemRules', 'roles', 'memberRoles'));
+        $availablePermissions = [
+            [
+                'key' => 'system.config',
+                'name' => 'System Configuration',
+                'category' => 'Administration & Security',
+                'description' => 'Configure global system settings, themes, and organization preferences'
+            ],
+            [
+                'key' => 'user.provision',
+                'name' => 'User Provisioning',
+                'category' => 'Administration & Security',
+                'description' => 'Create, modify, and provision user accounts and system access'
+            ],
+            [
+                'key' => 'view.audit_logs',
+                'name' => 'View Audit Logs',
+                'category' => 'Administration & Security',
+                'description' => 'Inspect security events, login attempts, and operational audit trail'
+            ],
+            [
+                'key' => 'manage.system_settings',
+                'name' => 'Manage System Rules',
+                'category' => 'Administration & Security',
+                'description' => 'Create, configure, and toggle automated system rules & guards'
+            ],
+            [
+                'key' => 'view.dashboard',
+                'name' => 'View Dashboard',
+                'category' => 'Dashboard & Workspaces',
+                'description' => 'Access operational landing page and dashboard views'
+            ],
+            [
+                'key' => 'view.role_switcher',
+                'name' => 'Header Role Switcher Menu',
+                'category' => 'Dashboard & Workspaces',
+                'description' => 'Show the Role access switcher dropdown menu on the top header navigation'
+            ],
+            [
+                'key' => 'view.all_task_boards',
+                'name' => 'View All Task Boards',
+                'category' => 'Dashboard & Workspaces',
+                'description' => 'Inspect task boards across all sections and departments'
+            ],
+            [
+                'key' => 'export.reports',
+                'name' => 'Export Reports',
+                'category' => 'Dashboard & Workspaces',
+                'description' => 'Download and export operational reports (CSV / print format)'
+            ],
+            [
+                'key' => 'edit.tasks',
+                'name' => 'Edit Tasks',
+                'category' => 'Tasks & Workflows',
+                'description' => 'Update status and submit deliverables for assigned tasks'
+            ],
+            [
+                'key' => 'manage.tasks',
+                'name' => 'Manage Tasks',
+                'category' => 'Tasks & Workflows',
+                'description' => 'Create, edit, and reallocate tasks within task boards'
+            ],
+            [
+                'key' => 'approve.tasks',
+                'name' => 'Approve Submissions',
+                'category' => 'Tasks & Workflows',
+                'description' => 'Review, verify, and approve deliverables submitted by team members'
+            ],
+            [
+                'key' => 'delete.tasks',
+                'name' => 'Delete Tasks',
+                'category' => 'Tasks & Workflows',
+                'description' => 'Remove tasks and subtasks from workflows'
+            ],
+            [
+                'key' => 'view.reports',
+                'name' => 'View Support Reports',
+                'category' => 'Reports & Activities',
+                'description' => 'View attendance, undertime, and activity support reports'
+            ],
+            [
+                'key' => 'edit.reports',
+                'name' => 'Edit Support Reports',
+                'category' => 'Reports & Activities',
+                'description' => 'Submit and modify support function records and attendance'
+            ],
+        ];
+
+        return Inertia::render('Admin/Settings', compact('settings', 'systemRules', 'roles', 'memberRoles', 'availablePermissions'));
     }
 
     /**
@@ -237,5 +324,134 @@ class AdminSettingsController extends Controller
         \App\Models\SystemLog::log('Import System Rules', "Imported {$count} system rule(s) via JSON.");
 
         return redirect()->back()->with('success', "Successfully imported {$count} system rule(s).");
+    }
+
+    /**
+     * Store a newly created system role and its permissions.
+     */
+    public function storeRole(Request $request): RedirectResponse
+    {
+        Gate::authorize('manage-system-settings');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:roles,slug',
+            'show_role_switcher' => 'nullable|boolean',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|max:255',
+        ]);
+
+        $slug = !empty($validated['slug'])
+            ? \Illuminate\Support\Str::slug($validated['slug'], '_')
+            : \Illuminate\Support\Str::slug($validated['name'], '_');
+
+        // Check uniqueness if slug generated
+        $originalSlug = $slug;
+        $counter = 1;
+        while (\App\Models\Role::where('slug', $slug)->exists()) {
+            $slug = "{$originalSlug}_{$counter}";
+            $counter++;
+        }
+
+        $role = \App\Models\Role::create([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'show_role_switcher' => $request->has('show_role_switcher') ? $request->boolean('show_role_switcher') : true,
+        ]);
+
+        if (!empty($validated['permissions'])) {
+            $uniquePerms = array_unique(array_filter(array_map('trim', $validated['permissions'])));
+            foreach ($uniquePerms as $perm) {
+                $role->permissions()->create(['permission' => $perm]);
+            }
+        }
+
+        \App\Models\SystemLog::log('Create Role', "System role '{$role->name}' ({$role->slug}) created with " . count($validated['permissions'] ?? []) . " permission(s).");
+
+        return redirect()->back()->with('success', "System role '{$role->name}' created successfully.");
+    }
+
+    /**
+     * Update an existing system role and its permissions.
+     */
+    public function updateRole(Request $request, \App\Models\Role $role): RedirectResponse
+    {
+        Gate::authorize('manage-system-settings');
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => "required|string|max:255|unique:roles,slug,{$role->id}",
+            'show_role_switcher' => 'nullable|boolean',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|max:255',
+        ]);
+
+        // Protect built-in admin role slug from being modified
+        if ($role->slug === 'admin' && $validated['slug'] !== 'admin') {
+            return redirect()->back()->with('error', "The built-in 'admin' slug cannot be changed.");
+        }
+
+        $roleData = [
+            'name' => $validated['name'],
+            'slug' => \Illuminate\Support\Str::slug($validated['slug'], '_'),
+        ];
+        if ($request->has('show_role_switcher')) {
+            $roleData['show_role_switcher'] = $request->boolean('show_role_switcher');
+        }
+
+        $role->update($roleData);
+
+        // Sync permissions
+        $role->permissions()->delete();
+        if (!empty($validated['permissions'])) {
+            $uniquePerms = array_unique(array_filter(array_map('trim', $validated['permissions'])));
+            foreach ($uniquePerms as $perm) {
+                $role->permissions()->create(['permission' => $perm]);
+            }
+        }
+
+        \App\Models\SystemLog::log('Update Role', "System role '{$role->name}' and its permissions updated.");
+
+        return redirect()->back()->with('success', "System role '{$role->name}' and access permissions updated successfully.");
+    }
+
+    /**
+     * Delete a system role.
+     */
+    public function destroyRole(\App\Models\Role $role): RedirectResponse
+    {
+        Gate::authorize('manage-system-settings');
+
+        if (in_array($role->slug, ['admin', 'user'])) {
+            return redirect()->back()->with('error', "The core system role '{$role->name}' cannot be deleted.");
+        }
+
+        if ($role->users()->count() > 0) {
+            return redirect()->back()->with('error', "Cannot delete role '{$role->name}' because {$role->users()->count()} user(s) are currently assigned to it.");
+        }
+
+        $name = $role->name;
+        $role->permissions()->delete();
+        $role->delete();
+
+        \App\Models\SystemLog::log('Delete Role', "System role '{$name}' was deleted.");
+
+        return redirect()->back()->with('success', "System role '{$name}' deleted successfully.");
+    }
+
+    /**
+     * Quick toggle the header role switcher menu display for a role.
+     */
+    public function toggleRoleSwitcher(Request $request, \App\Models\Role $role): RedirectResponse
+    {
+        Gate::authorize('manage-system-settings');
+
+        $newState = !$role->show_role_switcher;
+        $role->update(['show_role_switcher' => $newState]);
+
+        $statusStr = $newState ? 'enabled' : 'disabled';
+        \App\Models\SystemLog::log('Update Role Switcher', "Header role switcher menu {$statusStr} for system role '{$role->name}'.");
+
+        return redirect()->back()->with('success', "Header role switcher menu {$statusStr} for role '{$role->name}'.");
     }
 }

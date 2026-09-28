@@ -38,6 +38,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 'email' => $input['email'],
             ])->save();
         }
+
+        \App\Models\SystemLog::log('Update Profile', "Profile details updated for user '{$user->name}' (Username: {$input['username']}, Email: {$input['email']}).");
     }
 
     /**

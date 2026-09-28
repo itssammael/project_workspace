@@ -196,25 +196,53 @@ class TaskController extends Controller
         $user = $request->user();
         $member = $user->member;
 
-        // Either Project Manager (Gate) or the assigned member can update status
+        // Either Admin, Project Manager (Gate), Supervisor/Dept Head, or assigned member can update status
         $isPM = Gate::allows('manage-tasks', $subTask->task->taskBoard);
         $isAssignee = $member && $subTask->member_id === $member->id;
+        $isSupervisor = $member && (
+            $user->hasRole('admin') ||
+            $member->headedDepartments()->where('id', $subTask->task->taskBoard?->section?->department_id)->exists() ||
+            $subTask->task->taskBoard?->section?->member_id === $member->id ||
+            $member->memberRoles()->whereIn('slug', ['department_head', 'department-head', 'section-head', 'section_head'])->exists()
+        );
 
-        if (!$isPM && !$isAssignee) {
+        if (!$isPM && !$isAssignee && !$isSupervisor) {
             abort(403, 'Unauthorized action.');
         }
 
         $validated = $request->validate([
-            'status' => 'required|string|in:pending,in_progress,submitted,completed',
+            'status' => 'nullable|string|in:pending,in_progress,submitted,completed',
+            'priority' => 'nullable|string|in:urgent,high,medium,low',
+            'is_blocked' => 'nullable|boolean',
+            'blocked_reason' => 'nullable|string|max:255',
         ]);
 
-        $subTask->update([
-            'status' => $validated['status'],
-        ]);
+        $updates = [];
+        if (isset($validated['status'])) {
+            $updates['status'] = $validated['status'];
+        }
+        if (isset($validated['priority'])) {
+            $updates['priority'] = $validated['priority'];
+        }
+        if (array_key_exists('is_blocked', $validated)) {
+            $updates['is_blocked'] = $validated['is_blocked'];
+            if (!empty($validated['blocked_reason'])) {
+                $updates['blocked_reason'] = $validated['blocked_reason'];
+            } elseif (!$validated['is_blocked']) {
+                $updates['blocked_reason'] = null;
+            }
+        }
 
-        \App\Models\SystemLog::log('Update Subtask Status', "Subtask '{$subTask->name}' status updated to '{$validated['status']}'.");
+        if (!empty($updates)) {
+            $subTask->update($updates);
+            $actionDesc = [];
+            if (isset($updates['status'])) $actionDesc[] = "status to '{$updates['status']}'";
+            if (isset($updates['priority'])) $actionDesc[] = "priority to '{$updates['priority']}'";
+            if (isset($updates['is_blocked'])) $actionDesc[] = $updates['is_blocked'] ? 'marked blocked' : 'unblocked';
+            \App\Models\SystemLog::log('Update Subtask', "Subtask '{$subTask->name}' updated: " . implode(', ', $actionDesc));
+        }
 
-        return redirect()->back()->with('success', 'Subtask status updated successfully.');
+        return redirect()->back()->with('success', 'Subtask updated successfully.');
     }
 
     /**

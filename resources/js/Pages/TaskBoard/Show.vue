@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useForm, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import KanbanBoard from '@/Components/KanbanBoard.vue';
@@ -34,6 +34,22 @@ const board = computed(() => props.taskBoard || props.project);
 const page = usePage();
 
 const showAllTasks = ref(false);
+const highlightTaskId = ref(null);
+
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetTaskId = params.get('highlight_task') || params.get('task_id');
+    if (targetTaskId) {
+        highlightTaskId.value = targetTaskId;
+        showAllTasks.value = true;
+        setTimeout(() => {
+            const el = document.getElementById('task-' + targetTaskId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 400);
+    }
+});
 
 const canToggleAllTasks = computed(() => {
     // Check system role: Admin
@@ -906,6 +922,7 @@ const removeModalCollaborator = (memberId) => {
                     :show-all-tasks="showAllTasks"
                     :can-toggle-all-tasks="canToggleAllTasks"
                     :current-member-id="currentMemberId"
+                    :highlight-task-id="highlightTaskId"
                     @toggle-all-tasks="showAllTasks = !showAllTasks"
                     @add-task="openAddTaskModal"
                     @edit-task="openEditTaskModal"

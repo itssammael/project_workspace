@@ -7,6 +7,9 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import RoleSwitcher from '@/Components/RoleSwitcher.vue';
+import NavbarSearch from '@/Components/NavbarSearch.vue';
+import NavbarNotifications from '@/Components/NavbarNotifications.vue';
 
 defineProps({
     title: String,
@@ -69,8 +72,19 @@ const logout = () => {
                             </div>
                         </div>
 
-                        <div class="hidden sm:flex sm:items-center sm:ms-6">
-                            <div class="ms-3 relative">
+                        <div class="hidden sm:flex sm:items-center sm:ms-6 gap-3">
+                            <!-- Global Quick Search -->
+                            <div class="hidden sm:block">
+                                <NavbarSearch />
+                            </div>
+
+                            <!-- Notifications Bell -->
+                            <NavbarNotifications />
+
+                            <!-- Role Switcher -->
+                            <RoleSwitcher />
+
+                            <div class="ms-1 relative">
                                 <!-- Teams Dropdown -->
                                 <Dropdown v-if="$page.props.jetstream.hasTeamFeatures" align="right" width="60">
                                     <template #trigger>
@@ -174,8 +188,9 @@ const logout = () => {
                             </div>
                         </div>
 
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
+                        <!-- Hamburger & Mobile Notifications -->
+                        <div class="-me-2 flex items-center sm:hidden gap-1">
+                            <NavbarNotifications />
                             <button class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out" @click="showingNavigationDropdown = ! showingNavigationDropdown">
                                 <svg
                                     class="size-6"
@@ -205,6 +220,15 @@ const logout = () => {
 
                 <!-- Responsive Navigation Menu -->
                 <div :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}" class="sm:hidden">
+                    <div v-if="$page.props.dashboardRoles?.show_role_switcher !== false" class="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-500">Perspective:</span>
+                        <RoleSwitcher />
+                    </div>
+
+                    <div class="px-4 py-2.5 bg-white border-b border-slate-100">
+                        <NavbarSearch />
+                    </div>
+
                     <div class="pt-2 pb-3 space-y-1">
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Dashboard

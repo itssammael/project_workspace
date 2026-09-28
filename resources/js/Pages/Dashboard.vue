@@ -1,290 +1,255 @@
 <script setup>
-import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import RoleSwitcher from '@/Components/RoleSwitcher.vue';
+import StaffDashboard from '@/Pages/Dashboard/StaffDashboard.vue';
+import SupervisorDashboard from '@/Pages/Dashboard/SupervisorDashboard.vue';
+import DepartmentHeadDashboard from '@/Pages/Dashboard/DepartmentHeadDashboard.vue';
+import AdminDashboard from '@/Pages/Dashboard/AdminDashboard.vue';
+import { getInitials } from '@/Utils/helpers';
 
 const props = defineProps({
+    // Role-based architecture props
+    activeView: {
+        type: String,
+        default: 'staff',
+    },
+    availableViews: {
+        type: Array,
+        default: () => [],
+    },
+    userInfo: {
+        type: Object,
+        default: () => ({}),
+    },
+    viewData: {
+        type: Object,
+        default: () => ({}),
+    },
+
+    // Backward-compatible props
     taskBoards: Array,
-    projects: Array, // fallback prop
+    projects: Array,
     pendingTasks: Array,
     undeliveredTasks: Array,
     isDeptHead: Boolean,
+    isProjectManager: Boolean,
     memberRole: String,
     systemRole: String,
 });
 
-const boardsList = computed(() => props.taskBoards || props.projects || []);
+const currentView = computed(() => props.activeView || 'staff');
 
-const updateTaskStatus = (subtask, newStatus) => {
-    router.put(route('subtasks.update-status', subtask.id), {
-        status: newStatus
-    }, {
-        preserveScroll: true
-    });
-};
-
-const getStatusClass = (status) => {
-    switch (status) {
-        case 'completed':
-            return 'bg-green-50 text-green-700 border-green-200';
-        case 'submitted':
-            return 'bg-teal-50 text-[#0D9488] border-teal-200';
-        case 'in_progress':
-            return 'bg-blue-50 text-blue-700 border-blue-200';
-        case 'pending':
+// Dynamic view title and description
+const viewTitle = computed(() => {
+    switch (currentView.value) {
+        case 'admin':
+            return 'System Administration & Governance';
+        case 'department_head':
+            return 'Department Executive Overview';
+        case 'supervisor':
+            return 'Supervisor Operational Command';
+        case 'staff':
         default:
-            return 'bg-slate-100 text-slate-700 border-slate-200';
+            return 'Staff Operational Workspace';
+    }
+});
+
+const viewSubtitle = computed(() => {
+    switch (currentView.value) {
+        case 'admin':
+            return 'Infrastructure health, user provisioning, security audit trail, and global taxonomies';
+        case 'department_head':
+            return 'Strategic progress, section performance benchmarks, macro timeline, and audit reporting';
+        case 'supervisor':
+            return 'Team workload capacity, bottleneck escalations, pending approvals, and milestone delivery';
+        case 'staff':
+        default:
+            return 'Priority task queue, personal action items, active timer, and collaborative updates';
+    }
+});
+
+// Role-adaptive sub-navigation anchors
+const adaptiveNavItems = computed(() => {
+    switch (currentView.value) {
+        case 'admin':
+            return [
+                { label: 'System Health', href: '#system-health' },
+                { label: 'User Directory', href: '#user-management' },
+                { label: 'Audit Logs', href: '#audit-logs' },
+                { label: 'System Config', href: '#system-configuration' },
+            ];
+        case 'department_head':
+            return [
+                { label: 'Executive Summary', href: '#summary' },
+                { label: 'Section Performance', href: '#section-performance' },
+                { label: 'Roadmap & Gantt', href: '#department-roadmap' },
+            ];
+        case 'supervisor':
+            return [
+                { label: 'Escalations', href: '#escalation-alerts' },
+                { label: 'Team Workload', href: '#team-workload' },
+                { label: 'Pending Approvals', href: '#pending-approvals' },
+                { label: 'Team Milestones', href: '#team-milestones' },
+            ];
+        case 'staff':
+        default:
+            return [
+                { label: 'Action Items', href: '#action-items' },
+                { label: 'Active Timer', href: '#active-timer' },
+                { label: 'Recent Activity', href: '#recent-activity' },
+                { label: 'Board Shortcuts', href: '#shortcuts' },
+            ];
+    }
+});
+
+const scrollToAnchor = (href) => {
+    if (!href.startsWith('#')) return;
+    const target = document.querySelector(href);
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 };
-
-import { getInitials } from '@/Utils/helpers';
 </script>
 
 <template>
-    <AppLayout title="Task Board Dashboard">
+    <AppLayout :title="viewTitle">
+        <!-- Page Header -->
         <template #header>
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h2 class="font-bold text-2xl text-slate-800 leading-tight">
-                        Task Board Workspace
-                    </h2>
-                    <p class="text-slate-500 text-sm mt-1">
-                        System Role: <span class="font-medium text-slate-700">{{ systemRole }}</span> &bull; 
-                        Functional Role: <span class="font-medium text-[#0D9488]">{{ memberRole }}</span>
-                    </p>
+            <div class="space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-start gap-3.5">
+                        <div
+                            class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-xs shrink-0"
+                            :class="currentView === 'admin'
+                                ? 'bg-slate-900 text-white'
+                                : currentView === 'department_head'
+                                    ? 'bg-blue-600 text-white'
+                                    : currentView === 'supervisor'
+                                        ? 'bg-amber-600 text-white'
+                                        : 'bg-[#0D9488] text-white'"
+                        >
+                            <svg v-if="currentView === 'admin'" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                            <svg v-else-if="currentView === 'department_head'" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                            </svg>
+                            <svg v-else-if="currentView === 'supervisor'" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                            </svg>
+                            <svg v-else class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                        </div>
+
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <h2 class="font-extrabold text-xl sm:text-2xl text-slate-800 leading-tight">
+                                    {{ viewTitle }}
+                                </h2>
+                                <span
+                                    class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border shadow-2xs"
+                                    :class="currentView === 'admin'
+                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                        : currentView === 'department_head'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                            : currentView === 'supervisor'
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                : 'bg-teal-50 text-[#0D9488] border-teal-200'"
+                                >
+                                    {{ currentView.replace('_', ' ') }}
+                                </span>
+                            </div>
+                            <p class="text-slate-500 text-xs sm:text-sm mt-0.5">
+                                {{ viewSubtitle }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Right Controls: Role Switcher & New Board Action -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <RoleSwitcher />
+
+                        <Link
+                            v-if="isDeptHead || currentView === 'admin' || currentView === 'department_head'"
+                            :href="route('task-boards.create')"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0D9488] border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-wider hover:bg-[#0f766e] active:bg-[#115e59] transition shadow-xs hover:shadow"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            New Board
+                        </Link>
+                    </div>
                 </div>
-                <div v-if="isDeptHead" class="flex items-center">
-                    <Link
-                        :href="route('task-boards.create')"
-                        class="inline-flex items-center px-4 py-2 bg-[#0D9488] border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#0f766e] active:bg-[#115e59] focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:ring-offset-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 mr-2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        New Board
-                    </Link>
+
+                <!-- Adaptive Sub-Navigation Bar -->
+                <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider mr-1">Quick Jump:</span>
+                        <a
+                            v-for="item in adaptiveNavItems"
+                            :key="item.label"
+                            :href="item.href"
+                            @click.prevent="scrollToAnchor(item.href)"
+                            class="px-2.5 py-1 rounded-md font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/80 transition"
+                        >
+                            {{ item.label }}
+                        </a>
+                    </div>
+
+                    <div class="text-[11px] text-slate-400 hidden lg:flex items-center gap-2">
+                        <span>Authenticated as: <strong class="text-slate-700 font-semibold">{{ userInfo?.name || $page.props.auth?.user?.name }}</strong></span>
+                        <span>&bull;</span>
+                        <span class="text-[#0D9488] font-medium">{{ userInfo?.functional_roles_string || memberRole }}</span>
+                    </div>
                 </div>
             </div>
         </template>
 
+        <!-- Main Dashboard Workspace Content -->
         <div class="py-8 bg-slate-50/50 min-h-[calc(100vh-140px)]">
-            <div class="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-                <!-- Metrics Summary Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Task Boards Count Card -->
-                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Boards</p>
-                                <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ boardsList.length }}</h3>
-                            </div>
-                            <div class="bg-[#F0FDFA] p-2.5 rounded-lg text-[#0D9488]">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- 1. Staff Dashboard View -->
+                <StaffDashboard
+                    v-if="currentView === 'staff'"
+                    :data="viewData"
+                    :user-info="userInfo"
+                />
 
-                    <!-- Pending Tasks Card -->
-                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">My Pending Tasks</p>
-                                <h3 class="text-3xl font-extrabold text-slate-800 mt-2">{{ pendingTasks.length }}</h3>
-                            </div>
-                            <div class="bg-slate-100 p-2.5 rounded-lg text-[#64748B]">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 11.69a2.625 2.625 0 113.75 3.75L12 18.75l-3.1-3.1a2.625 2.625 0 013.75-3.75h.7z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 2.25H15M9 4.5H15M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+                <!-- 2. Supervisor Dashboard View -->
+                <SupervisorDashboard
+                    v-else-if="currentView === 'supervisor'"
+                    :data="viewData"
+                    :user-info="userInfo"
+                />
 
-                    <!-- Overdue Tasks Card -->
-                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overdue Tasks</p>
-                                <h3 class="text-3xl font-extrabold text-[#EA580C] mt-2">{{ undeliveredTasks.length }}</h3>
-                            </div>
-                            <div class="bg-orange-50 p-2.5 rounded-lg text-[#EA580C]">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+                <!-- 3. Department Head Dashboard View -->
+                <DepartmentHeadDashboard
+                    v-else-if="currentView === 'department_head'"
+                    :data="viewData"
+                    :user-info="userInfo"
+                />
 
-                    <!-- User Persona Card -->
-                    <div class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:shadow-md transition duration-300">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Operational Status</p>
-                                <h3 class="text-lg font-bold text-slate-700 mt-2 truncate">{{ $page.props.auth.user.name }}</h3>
-                                <p class="text-xs text-[#0D9488] font-semibold mt-1">Logged In</p>
-                            </div>
-                            <div class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0D9488] to-[#0f766e] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                                {{ getInitials($page.props.auth.user.name) }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- 4. Administrator Dashboard View -->
+                <AdminDashboard
+                    v-else-if="currentView === 'admin'"
+                    :data="viewData"
+                    :user-info="userInfo"
+                />
 
-                <!-- Section 1: Assigned Task Boards Grid -->
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-[#0D9488] rounded-full mr-2"></span>
-                            Assigned Task Boards
-                        </h3>
-                    </div>
-
-                    <div v-if="boardsList.length === 0" class="bg-white border border-slate-100 rounded-xl p-8 text-center text-slate-400">
-                        No Task Boards assigned to your sections yet.
-                    </div>
-
-                    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="board in boardsList" :key="board.id" class="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between overflow-hidden">
-                            <div class="p-6 space-y-4">
-                                <div class="flex justify-between items-start gap-4">
-                                    <h4 class="font-bold text-slate-800 text-lg hover:text-[#0D9488] transition">
-                                        <Link :href="route('task-boards.show', board.id)">{{ board.name }}</Link>
-                                    </h4>
-                                    <span class="px-2.5 py-1 text-[10px] font-bold uppercase rounded-full border"
-                                        :class="board.status === 'active' || board.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : (board.status === 'planning' || board.status === 'on_hold' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-slate-100 text-slate-700 border-slate-200')">
-                                        {{ board.status }}
-                                    </span>
-                                </div>
-                                <p class="text-slate-500 text-sm line-clamp-2">{{ board.description || 'No description provided.' }}</p>
-                                
-                                <!-- Progress Bar -->
-                                <div class="space-y-1.5">
-                                    <div class="flex justify-between text-xs font-semibold text-slate-500">
-                                        <span>Progress</span>
-                                        <span>{{ board.progress }}%</span>
-                                    </div>
-                                    <div class="w-full bg-slate-100 rounded-full h-2">
-                                        <div class="bg-[#0D9488] h-2 rounded-full transition-all duration-500" :style="`width: ${board.progress}%`"></div>
-                                    </div>
-                                    <div class="flex justify-between text-[11px] text-slate-400">
-                                        <span>{{ board.completed_tasks }} / {{ board.total_tasks }} tasks</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Footer -->
-                            <div class="bg-slate-50/50 border-t border-slate-100 px-6 py-4 flex items-center justify-between text-xs text-slate-500">
-                                <div class="flex items-center gap-2">
-                                    <div class="h-6 w-6 rounded-full bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center font-bold text-[10px]" v-if="board.section?.project_manager">
-                                        {{ getInitials(board.section.project_manager.user.name) }}
-                                    </div>
-                                    <span class="font-medium" v-if="board.section?.project_manager">
-                                        PM: {{ board.section.project_manager.user.name.split(' ')[0] }}
-                                    </span>
-                                </div>
-                                <Link :href="route('task-boards.show', board.id)" class="text-[#0D9488] hover:text-[#0f766e] font-semibold flex items-center gap-1">
-                                    Task Board
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                    </svg>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2 & 3 Side by Side / Stacked -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Section 2: Pending/Assigned Tasks -->
-                    <div class="space-y-4">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-[#64748B] rounded-full mr-2"></span>
-                            My Pending & Active Tasks
-                        </h3>
-
-                        <div class="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
-                            <div v-if="pendingTasks.length === 0" class="p-8 text-center text-slate-400">
-                                You have no open tasks. Great job!
-                            </div>
-                            <div v-else class="divide-y divide-slate-100 max-h-[450px] overflow-y-auto">
-                                <div v-for="task in pendingTasks" :key="task.id" class="p-5 flex justify-between items-start gap-4 hover:bg-slate-50/50 transition">
-                                    <div class="space-y-1">
-                                        <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
-                                        <p class="text-xs text-slate-400">
-                                            {{ (task.task_board || task.project)?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
-                                            &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
-                                        </p>
-                                        <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Starts: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <!-- Inline status selector -->
-                                        <select
-                                            @change="updateTaskStatus(task, $event.target.value)"
-                                            :value="task.status"
-                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-[#0D9488] focus:border-[#0D9488]"
-                                            :class="getStatusClass(task.status)"
-                                        >
-                                            <option value="pending">Pending</option>
-                                            <option value="in_progress">In Progress</option>
-                                            <option value="submitted">Submitted</option>
-                                            <option value="completed">Completed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Section 3: Undelivered / Overdue Tasks -->
-                    <div class="space-y-4">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center">
-                            <span class="w-1 h-5 bg-[#EA580C] rounded-full mr-2"></span>
-                            Undelivered & Delayed Tasks
-                        </h3>
-
-                        <div class="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
-                            <div v-if="undeliveredTasks.length === 0" class="p-8 text-center text-slate-400">
-                                No overdue tasks currently. Keep it up!
-                            </div>
-                            <div v-else class="divide-y divide-slate-100 max-h-[450px] overflow-y-auto">
-                                <div v-for="task in undeliveredTasks" :key="task.id" class="p-5 flex justify-between items-start gap-4 hover:bg-slate-50/50 transition">
-                                    <div class="space-y-1">
-                                        <div class="flex items-center gap-2">
-                                            <h4 class="font-semibold text-slate-800 text-sm">{{ task.name }}</h4>
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-850">
-                                                Overdue
-                                            </span>
-                                        </div>
-                                        <p class="text-xs text-slate-400">
-                                            {{ (task.task_board || task.project)?.name }} &bull; <span class="font-medium text-slate-500">{{ task.workflow?.name }}</span>
-                                            &bull; <span class="text-slate-400 font-normal">{{ task.parent_task_name }}</span>
-                                        </p>
-                                        <p class="text-xs text-slate-500">Duration: {{ task.duration }} days &bull; Started: {{ task.start_date ? new Date(task.start_date).toLocaleDateString() : 'N/A' }}</p>
-                                        <p class="text-xs text-[#EA580C] font-semibold">
-                                            Should have finished by: 
-                                            {{ new Date(new Date(task.start_date).getTime() + task.duration * 24 * 60 * 60 * 1000).toLocaleDateString() }}
-                                        </p>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <!-- Inline status selector -->
-                                        <select
-                                            @change="updateTaskStatus(task, $event.target.value)"
-                                            :value="task.status"
-                                            class="text-xs rounded-lg border-slate-200 py-1.5 pl-2.5 pr-8 font-semibold focus:outline-none focus:ring-[#0D9488] focus:border-[#0D9488]"
-                                            :class="getStatusClass(task.status)"
-                                        >
-                                            <option value="pending">Pending</option>
-                                            <option value="in_progress">In Progress</option>
-                                            <option value="submitted">Submitted</option>
-                                            <option value="completed">Completed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Fallback / Unrecognized View -->
+                <div v-else class="bg-white p-12 text-center rounded-xl border border-slate-200 shadow-xs">
+                    <h3 class="text-base font-bold text-slate-800">Perspective Not Found</h3>
+                    <p class="text-xs text-slate-500 mt-1">The requested operational view is not recognized.</p>
+                    <Link
+                        :href="route('dashboard', { view: 'staff' })"
+                        class="mt-4 inline-flex items-center px-4 py-2 bg-[#0D9488] text-white rounded-lg text-xs font-semibold"
+                    >
+                        Return to Staff Workspace
+                    </Link>
                 </div>
             </div>
         </div>

@@ -10,9 +10,108 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 class TaskBoardController extends Controller
 {
+    /**
+     * Quick search task boards by name, description, or non-kanban workflow used.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $queryStr = trim($request->input('q', ''));
+
+        if ($queryStr === '') {
+            return response()->json([]);
+        }
+
+        $boardsQuery = \App\Services\SystemRuleEvaluator::scopeTaskBoardQuery(
+            TaskBoard::query(),
+            $user
+        );
+
+        $boardsQuery->with(['workflows.workflowType', 'section']);
+
+        $boardsQuery->where(function ($q) use ($queryStr) {
+            $q->where('name', 'like', "%{$queryStr}%")
+              ->orWhere('description', 'like', "%{$queryStr}%")
+              ->orWhereHas('workflows', function ($wq) use ($queryStr) {
+                  $wq->where(function ($innerWq) use ($queryStr) {
+                      $innerWq->where('name', 'like', "%{$queryStr}%")
+                              ->orWhereHas('workflowType', function ($tq) use ($queryStr) {
+                                  $tq->where('name', 'like', "%{$queryStr}%");
+                              });
+                  })
+                  ->where('name', 'not like', '%kanban%')
+                  ->whereDoesntHave('workflowType', function ($tq) {
+                      $tq->where('name', 'like', '%kanban%');
+                  });
+              });
+        });
+
+        $boards = $boardsQuery->limit(10)->get();
+
+        $results = $boards->map(function ($board) use ($queryStr) {
+            $nonKanbanWorkflows = $board->workflows->filter(function ($w) {
+                $typeName = strtolower($w->workflowType?->name ?? '');
+                $wName = strtolower($w->name ?? '');
+                return !str_contains($typeName, 'kanban') && !str_contains($wName, 'kanban');
+            });
+
+            $workflowTypeNames = $nonKanbanWorkflows
+                ->map(fn($w) => $w->workflowType?->name)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $workflowStageNames = $nonKanbanWorkflows
+                ->pluck('name')
+                ->unique()
+                ->values();
+
+            $workflowUsed = $workflowTypeNames->isNotEmpty()
+                ? $workflowTypeNames->implode(', ')
+                : ($workflowStageNames->isNotEmpty() ? $workflowStageNames->implode(', ') : null);
+
+            $lowerQ = strtolower($queryStr);
+            $matchedFields = [];
+            $matchedWorkflowStage = null;
+
+            if (str_contains(strtolower($board->name), $lowerQ)) {
+                $matchedFields[] = 'name';
+            }
+            if ($board->description && str_contains(strtolower($board->description), $lowerQ)) {
+                $matchedFields[] = 'description';
+            }
+            if ($workflowTypeNames->contains(fn($t) => str_contains(strtolower($t), $lowerQ))) {
+                $matchedFields[] = 'workflow';
+            }
+            $matchedStage = $workflowStageNames->first(fn($s) => str_contains(strtolower($s), $lowerQ));
+            if ($matchedStage) {
+                if (!in_array('workflow', $matchedFields)) {
+                    $matchedFields[] = 'workflow';
+                }
+                $matchedWorkflowStage = $matchedStage;
+            }
+
+            return [
+                'id' => $board->id,
+                'name' => $board->name,
+                'description' => $board->description,
+                'status' => $board->status,
+                'section_name' => $board->section?->name,
+                'workflow_used' => $workflowUsed, // Excludes "Kanban"
+                'workflow_types' => $workflowTypeNames->all(),
+                'workflow_stages' => $workflowStageNames->all(),
+                'matched_fields' => $matchedFields,
+                'matched_workflow_stage' => $matchedWorkflowStage,
+            ];
+        });
+
+        return response()->json($results);
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();

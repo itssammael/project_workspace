@@ -18,10 +18,14 @@ class SubTask extends Model
         'member_id',
         'start_date',
         'status',
+        'priority',
+        'is_blocked',
+        'blocked_reason',
     ];
 
     protected $casts = [
         'start_date' => 'date',
+        'is_blocked' => 'boolean',
     ];
 
     public function task(): BelongsTo
